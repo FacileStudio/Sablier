@@ -1,0 +1,11 @@
+.DS_Store
+.git
+**/.git
+**/.gocache
+**/.gomodcache
+**/.env
+**/node_modules
+**/.svelte-kit
+**/dist
+**/build
+**/bin
