@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { CalendarClock, KeyRound, ScanQrCode, Ticket, UserRound } from '@lucide/svelte';
+	import { CalendarClock, KeyRound, ScanQrCode, Ticket, UserRound } from 'lucide-svelte';
 	import { backend, type EventRecord, type ValidateTicketResponse } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';

@@ -1,4 +1,7 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapterAuto from '@sveltejs/adapter-auto';
+import adapterNode from '@sveltejs/adapter-node';
+
+const adapter = process.env.NODE_ENV === 'production' ? adapterNode : adapterAuto;
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
