@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { CalendarClock, KeyRound, ScanQrCode, Ticket, UserRound } from 'lucide-svelte';
+	import { CalendarClock, KeyRound, ScanQrCode, Ticket, UserRound } from '@lucide/svelte';
 	import { backend, type EventRecord, type ValidateTicketResponse } from '$lib/backend';
-	import Button from '$lib/components/ui/button.svelte';
-	import Card from '$lib/components/ui/card.svelte';
-	import Input from '$lib/components/ui/input.svelte';
-	import Label from '$lib/components/ui/label.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	const tokenStorageKey = 'chime.frontend.token';
 
@@ -189,7 +189,7 @@
 
 <div class="mx-auto flex min-h-screen max-w-7xl flex-col gap-8 px-4 py-8 md:px-8">
 	<section class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-		<Card class="relative overflow-hidden">
+		<Card.Root class="relative overflow-hidden">
 			<div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--primary)] via-orange-300 to-amber-200"></div>
 			<div class="flex flex-col gap-5">
 				<div class="flex items-center gap-3 text-[var(--secondary-foreground)]">
@@ -210,9 +210,9 @@
 					{/if}
 				</div>
 			</div>
-		</Card>
+		</Card.Root>
 
-		<Card>
+		<Card.Root>
 			<div class="flex items-center gap-3">
 				<div class="rounded-2xl bg-[var(--secondary)] p-3"><UserRound class="size-5" /></div>
 				<div>
@@ -238,11 +238,11 @@
 					<p class="text-sm text-[var(--secondary-foreground)]">{authMessage}</p>
 				{/if}
 			</div>
-		</Card>
+		</Card.Root>
 	</section>
 
 	<section class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-		<Card>
+		<Card.Root>
 			<div class="flex items-center gap-3">
 				<div class="rounded-2xl bg-[var(--secondary)] p-3"><Ticket class="size-5" /></div>
 				<div>
@@ -316,10 +316,10 @@
 
 			{#if eventsMessage}<p class="mt-4 text-sm text-[var(--secondary-foreground)]">{eventsMessage}</p>{/if}
 			{#if ticketMessage}<p class="mt-2 text-sm text-[var(--secondary-foreground)]">{ticketMessage}</p>{/if}
-		</Card>
+		</Card.Root>
 
 		<div class="grid gap-6">
-			<Card>
+			<Card.Root>
 				<div class="flex items-center gap-3">
 					<div class="rounded-2xl bg-[var(--secondary)] p-3"><ScanQrCode class="size-5" /></div>
 					<div>
@@ -342,9 +342,9 @@
 					{/if}
 					{#if validationMessage}<p class="text-sm text-[var(--secondary-foreground)]">{validationMessage}</p>{/if}
 				</div>
-			</Card>
+			</Card.Root>
 
-			<Card>
+			<Card.Root>
 				<div class="flex items-center gap-3">
 					<div class="rounded-2xl bg-[var(--secondary)] p-3"><KeyRound class="size-5" /></div>
 					<div>
@@ -360,7 +360,7 @@
 					<Button variant="secondary" onclick={checkInTicket}>Check in</Button>
 					{#if checkInMessage}<p class="text-sm text-[var(--secondary-foreground)]">{checkInMessage}</p>{/if}
 				</div>
-			</Card>
+			</Card.Root>
 		</div>
 	</section>
 </div>
