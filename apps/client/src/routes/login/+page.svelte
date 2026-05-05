@@ -116,6 +116,18 @@
 				{tab === 'register' ? 'Create account' : 'Log in'}
 			</Button>
 		</form>
+
+		<div class="mt-4 flex items-center gap-3">
+			<div class="h-px flex-1 bg-border"></div>
+			<span class="text-xs text-muted-foreground">or</span>
+			<div class="h-px flex-1 bg-border"></div>
+		</div>
+
+		<a href="{backend.baseUrl}/auth/oidc" class="mt-4 block">
+			<Button variant="outline" class="w-full" type="button">
+				Continue with SSO
+			</Button>
+		</a>
 	</div>
 	</div>
 </div>
