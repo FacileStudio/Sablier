@@ -118,6 +118,7 @@
 						accept="image/png,image/jpeg,image/gif,image/webp"
 						onchange={onAvatarChange}
 						disabled={uploading}
+						class="cursor-pointer hover:border-foreground/30 hover:bg-muted/30 file:cursor-pointer"
 					/>
 					<p class="text-xs text-muted-foreground">PNG, JPG, GIF, or WebP. Max 5 MB.</p>
 				</div>
