@@ -1,27 +1,21 @@
-# Use full Node.js Debian image (not slim, not alpine) for the most robust networking/DNS stack
+# Use full Node.js Debian image for the most robust networking stack
 FROM node:22 AS build
 
 WORKDIR /app
 
-# Diagnostic: Check DNS configuration and connectivity
-RUN cat /etc/resolv.conf && \
-    (getent hosts registry.npmjs.org || echo "DNS Resolution Failed")
-
-# Conservative npm configuration
-# - maxsockets=1: Limit to one connection to avoid overwhelming weak host DNS/networks
-# - fetch-retries=5: Be more patient with transient DNS failures
-ENV NPM_CONFIG_MAXSOCKETS=1
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NPM_CONFIG_AUDIT=false
-ENV NPM_CONFIG_FUND=false
-
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Run install - the full debian image handles DNS much better than alpine in restricted VPCs
-RUN npm install
+# npm configuration
+ENV NPM_CONFIG_MAXSOCKETS=1
+ENV NPM_CONFIG_AUDIT=false
+ENV NPM_CONFIG_FUND=false
+
+# FIX: Overwrite the broken Tailscale DNS with a public one for the install step
+# We use a subshell to ensure the DNS is set just before npm runs
+RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
+    echo "nameserver 1.1.1.1" >> /etc/resolv.conf && \
+    npm install
 
 COPY . .
 
