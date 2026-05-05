@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { Clock, BarChart3, Calendar, ArrowLeft, Timer } from 'lucide-svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Clock, BarChart3, Calendar, ArrowLeft, Timer, Pencil, Trash2, Check, X } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -15,6 +18,12 @@
 	let project = $state<Project | null>(null);
 	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
+	let editingProject = $state(false);
+	let editName = $state('');
+	let editDescription = $state('');
+	let projectActionError = $state('');
+	let savingProject = $state(false);
+	let deletingProject = $state(false);
 	let deletingEntryId = $state<number | null>(null);
 	let deleteError = $state('');
 
@@ -101,6 +110,54 @@
 		}
 	}
 
+	function startProjectEdit() {
+		if (!project) {
+			return;
+		}
+		projectActionError = '';
+		editName = project.name;
+		editDescription = project.description;
+		editingProject = true;
+	}
+
+	function cancelProjectEdit() {
+		editingProject = false;
+		projectActionError = '';
+		editName = '';
+		editDescription = '';
+	}
+
+	async function saveProject() {
+		if (!project) {
+			return;
+		}
+		savingProject = true;
+		projectActionError = '';
+		try {
+			project = await backend.updateProject(ctx.token, project.id, editName, editDescription);
+			editingProject = false;
+		} catch (e) {
+			projectActionError = e instanceof Error ? e.message : 'Failed to save project.';
+		} finally {
+			savingProject = false;
+		}
+	}
+
+	async function deleteProject() {
+		if (!project || !confirm(`Delete project "${project.name}"?`)) {
+			return;
+		}
+		deletingProject = true;
+		projectActionError = '';
+		try {
+			await backend.deleteProject(ctx.token, project.id);
+			await goto('/projects');
+		} catch (e) {
+			projectActionError = e instanceof Error ? e.message : 'Failed to delete project.';
+			deletingProject = false;
+		}
+	}
+
 	onMount(async () => {
 		try {
 			const id = Number(page.params.id);
@@ -145,6 +202,79 @@
 					Created {formatDateShort(project.created_at)}
 				</p>
 			</div>
+
+			<Card.Root class="mt-6">
+				<Card.Header class="gap-4">
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<Card.Title>Project Settings</Card.Title>
+							<Card.Description>Edit metadata or delete the project from here, not from the grid.</Card.Description>
+						</div>
+						{#if !editingProject}
+							<div class="flex shrink-0 gap-2">
+								<Button variant="outline" size="sm" onclick={startProjectEdit}>
+									<Pencil class="h-4 w-4" />
+									Edit
+								</Button>
+								<Button
+									variant="destructive"
+									size="sm"
+									onclick={deleteProject}
+									disabled={deletingProject}
+								>
+									<Trash2 class="h-4 w-4" />
+									{deletingProject ? 'Deleting…' : 'Delete'}
+								</Button>
+							</div>
+						{/if}
+					</div>
+				</Card.Header>
+				<Card.Content class="flex flex-col gap-4">
+					{#if projectActionError}
+						<p class="text-sm text-destructive">{projectActionError}</p>
+					{/if}
+
+					{#if editingProject}
+						<div class="grid gap-4 md:grid-cols-2">
+							<div class="flex flex-col gap-1.5">
+								<Label for="project-edit-name">Name</Label>
+								<Input id="project-edit-name" bind:value={editName} />
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<Label for="project-edit-description">Description</Label>
+								<Input
+									id="project-edit-description"
+									bind:value={editDescription}
+									placeholder="Optional"
+								/>
+							</div>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<Button onclick={saveProject} disabled={savingProject}>
+								<Check class="h-4 w-4" />
+								{savingProject ? 'Saving…' : 'Save'}
+							</Button>
+							<Button variant="outline" onclick={cancelProjectEdit} disabled={savingProject}>
+								<X class="h-4 w-4" />
+								Cancel
+							</Button>
+						</div>
+					{:else}
+						<div class="grid gap-4 md:grid-cols-2">
+							<div>
+								<p class="text-xs uppercase tracking-wide text-muted-foreground">Name</p>
+								<p class="mt-1 font-medium">{project.name}</p>
+							</div>
+							<div>
+								<p class="text-xs uppercase tracking-wide text-muted-foreground">Description</p>
+								<p class="mt-1 text-sm text-muted-foreground">
+									{project.description || 'No description'}
+								</p>
+							</div>
+						</div>
+					{/if}
+				</Card.Content>
+			</Card.Root>
 
 			<div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
 				<Card.Root>

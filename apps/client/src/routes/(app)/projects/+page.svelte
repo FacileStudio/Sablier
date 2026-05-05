@@ -6,7 +6,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Drawer from '$lib/components/ui/drawer';
-	import { Plus, Trash2, Pencil, Check, X } from 'lucide-svelte';
+	import { Plus } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -14,10 +14,6 @@
 	let drawerOpen = $state(false);
 	let name = $state('');
 	let description = $state('');
-
-	let editingId = $state<number | null>(null);
-	let editName = $state('');
-	let editDescription = $state('');
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString('en-US', {
@@ -37,29 +33,6 @@
 		name = '';
 		description = '';
 		drawerOpen = false;
-		await load();
-	}
-
-	function startEdit(project: Project) {
-		editingId = project.id;
-		editName = project.name;
-		editDescription = project.description;
-	}
-
-	function cancelEdit() {
-		editingId = null;
-		editName = '';
-		editDescription = '';
-	}
-
-	async function saveEdit(id: number) {
-		await backend.updateProject(ctx.token, id, editName, editDescription);
-		editingId = null;
-		await load();
-	}
-
-	async function remove(id: number) {
-		await backend.deleteProject(ctx.token, id);
 		await load();
 	}
 
@@ -119,81 +92,22 @@
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each projects as project}
-				{#if editingId === project.id}
-					<Card.Root class="border-border">
-						<Card.Header class="gap-4">
-							<div class="flex items-start justify-between gap-3">
-								<div class="min-w-0 flex-1">
-									<Card.Title>Edit project</Card.Title>
-									<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
-								</div>
-								<div class="flex shrink-0 gap-1">
-									<Button variant="ghost" size="sm" onclick={() => saveEdit(project.id)}>
-										<Check class="h-4 w-4" />
-									</Button>
-									<Button variant="ghost" size="sm" onclick={cancelEdit}>
-										<X class="h-4 w-4" />
-									</Button>
-								</div>
-							</div>
-						</Card.Header>
-						<Card.Content class="flex flex-col gap-4">
-							<div class="flex flex-col gap-1.5">
-								<Label for={`edit-project-name-${project.id}`}>Name</Label>
-								<Input id={`edit-project-name-${project.id}`} bind:value={editName} />
-							</div>
-							<div class="flex flex-col gap-1.5">
-								<Label for={`edit-project-description-${project.id}`}>Description</Label>
-								<Input
-									id={`edit-project-description-${project.id}`}
-									bind:value={editDescription}
-									placeholder="Optional"
-								/>
-							</div>
-						</Card.Content>
-					</Card.Root>
-				{:else}
-					<Card.Root
-						class="border-border cursor-pointer transition-colors hover:bg-muted/40"
-						onclick={() => (window.location.href = `/projects/${project.id}`)}
-					>
-						<Card.Header class="gap-4">
-							<div class="flex items-start justify-between gap-3">
-								<div class="min-w-0 flex-1">
-									<Card.Title class="truncate">{project.name}</Card.Title>
-									<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
-								</div>
-								<div class="flex shrink-0 gap-1">
-									<Button
-										variant="ghost"
-										size="sm"
-										onclick={(e) => {
-											e.stopPropagation();
-											startEdit(project);
-										}}
-									>
-										<Pencil class="h-4 w-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										onclick={(e) => {
-											e.stopPropagation();
-											remove(project.id);
-										}}
-									>
-										<Trash2 class="h-4 w-4" />
-									</Button>
-								</div>
-							</div>
-						</Card.Header>
-						<Card.Content>
-							<p class="min-h-12 text-sm text-muted-foreground">
-								{project.description || 'No description yet.'}
-							</p>
-						</Card.Content>
-					</Card.Root>
-				{/if}
+				<Card.Root
+					class="border-border cursor-pointer transition-colors hover:bg-muted/40"
+					onclick={() => (window.location.href = `/projects/${project.id}`)}
+				>
+					<Card.Header class="gap-4">
+						<div class="min-w-0 flex-1">
+							<Card.Title class="truncate">{project.name}</Card.Title>
+							<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+						</div>
+					</Card.Header>
+					<Card.Content>
+						<p class="min-h-12 text-sm text-muted-foreground">
+							{project.description || 'No description yet.'}
+						</p>
+					</Card.Content>
+				</Card.Root>
 			{/each}
 		</div>
 	{/if}
