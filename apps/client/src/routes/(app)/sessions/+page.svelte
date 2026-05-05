@@ -5,7 +5,6 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
 	import * as Select from '$lib/components/ui/select';
-	import Trash2 from 'lucide-svelte/icons/trash-2';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 
@@ -15,6 +14,8 @@
 	let entries = $state<TimeEntry[]>([]);
 	let selectedProjectId = $state<string>('all');
 	let now = $state(Date.now());
+	let deleteError = $state('');
+	let deletingEntryId = $state<number | null>(null);
 
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -60,8 +61,19 @@
 	}
 
 	async function handleDelete(id: number) {
-		await backend.deleteEntry(ctx.token, id);
-		await loadEntries();
+		if (!confirm('Remove this session?')) {
+			return;
+		}
+		deletingEntryId = id;
+		deleteError = '';
+		try {
+			await backend.deleteEntry(ctx.token, id);
+			await loadEntries();
+		} catch (e) {
+			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
+		} finally {
+			deletingEntryId = null;
+		}
 	}
 
 	async function handleTimerChange() {
@@ -107,6 +119,10 @@
 		</Select.Root>
 	</div>
 
+	{#if deleteError}
+		<p class="text-sm text-destructive">{deleteError}</p>
+	{/if}
+
 	{#if filteredEntries.length === 0}
 		<div class="flex justify-center py-16 text-muted-foreground text-sm">
 			No sessions yet.
@@ -117,11 +133,11 @@
 				<Table.Row>
 					<Table.Head>Project</Table.Head>
 					<Table.Head>User</Table.Head>
-					<Table.Head>Description</Table.Head>
+					<Table.Head>Task</Table.Head>
 					<Table.Head>Started</Table.Head>
 					<Table.Head>Stopped</Table.Head>
 					<Table.Head>Duration</Table.Head>
-					<Table.Head class="w-10"></Table.Head>
+					<Table.Head class="text-right">Actions</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -132,7 +148,7 @@
 					<Table.Row>
 						<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
 						<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
-						<Table.Cell class="text-muted-foreground">{entry.description || '—'}</Table.Cell>
+						<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 						<Table.Cell>{formatDate(entry.started_at)}</Table.Cell>
 						<Table.Cell>
 							{#if isRunning}
@@ -142,14 +158,15 @@
 							{/if}
 						</Table.Cell>
 						<Table.Cell class="font-mono text-sm">{formatDuration(durationMs)}</Table.Cell>
-						<Table.Cell>
+						<Table.Cell class="text-right">
 							<Button
 								variant="ghost"
-								size="icon"
+								size="sm"
 								onclick={() => handleDelete(entry.id)}
-								class="h-8 w-8 text-muted-foreground hover:text-destructive"
+								class="text-muted-foreground hover:text-destructive"
+								disabled={deletingEntryId === entry.id}
 							>
-								<Trash2 class="h-4 w-4" />
+								{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
 							</Button>
 						</Table.Cell>
 					</Table.Row>

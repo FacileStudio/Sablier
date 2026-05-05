@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount, onDestroy } from 'svelte';
-	import { backend, type Project, type TimeEntry } from '$lib/backend';
+	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -23,8 +23,12 @@
 
 	let drawerOpen = $state(false);
 	let selectedProjectId = $state('');
-	let description = $state('');
+	let tasks = $state<Task[]>([]);
+	let selectedTaskId = $state('');
+	let newTaskName = $state('');
+	let taskProjectId = $state('');
 	let starting = $state(false);
+	let taskLoading = $state(false);
 	let stopping = $state(false);
 	let error = $state('');
 
@@ -65,6 +69,61 @@
 
 	onDestroy(() => stopTicker());
 
+	$effect(() => {
+		const projectId = selectedProjectId;
+		if (projectId === taskProjectId) {
+			return;
+		}
+		taskProjectId = projectId;
+		selectedTaskId = '';
+		newTaskName = '';
+		if (!projectId) {
+			tasks = [];
+			error = '';
+			return;
+		}
+		taskLoading = true;
+		error = '';
+		void backend
+			.listTasks(ctx.token, Number(projectId))
+			.then((result) => {
+				if (selectedProjectId !== projectId) {
+					return;
+				}
+				tasks = result.tasks;
+			})
+			.catch((e) => {
+				if (selectedProjectId !== projectId) {
+					return;
+				}
+				error = e instanceof Error ? e.message : 'Failed to load tasks.';
+				tasks = [];
+			})
+			.finally(() => {
+				if (selectedProjectId !== projectId) {
+					return;
+				}
+				taskLoading = false;
+			});
+	});
+
+	async function resolveTaskId(projectId: number) {
+		const taskName = newTaskName.trim();
+		if (taskName !== '') {
+			const task = await backend.createTask(ctx.token, projectId, taskName);
+			if (!tasks.some((existing) => existing.id === task.id)) {
+				tasks = [...tasks, task].sort((a, b) => a.name.localeCompare(b.name));
+			}
+			selectedTaskId = String(task.id);
+			newTaskName = '';
+			return task.id;
+		}
+		if (!selectedTaskId) {
+			throw new Error('Pick a task or create one.');
+		}
+		return Number(selectedTaskId);
+	}
+
 	async function startTimer() {
 		if (!selectedProjectId) {
 			error = 'Pick a project first.';
@@ -73,9 +132,12 @@
 		error = '';
 		starting = true;
 		try {
-			running = await backend.startTimer(ctx.token, Number(selectedProjectId), description);
-			description = '';
+			const projectId = Number(selectedProjectId);
+			const taskId = await resolveTaskId(projectId);
+			running = await backend.startTimer(ctx.token, projectId, taskId);
 			selectedProjectId = '';
+			selectedTaskId = '';
+			newTaskName = '';
 			drawerOpen = false;
 			startTicker();
 			onchange?.();
@@ -142,16 +204,37 @@
 										<Select.Item value={String(project.id)}>{project.name}</Select.Item>
 									{/each}
 								</Select.Content>
-							</Select.Root>
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<Label for="timer-description-input">What are you working on?</Label>
-							<Input
-								id="timer-description-input"
-								placeholder="Description (optional)"
-								bind:value={description}
-							/>
-						</div>
+						</Select.Root>
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<Label for="timer-task-select">Task</Label>
+						<Select.Root type="single" bind:value={selectedTaskId}>
+							<Select.Trigger id="timer-task-select" class="w-full">
+								{#if selectedTaskId}
+									{tasks.find((task) => task.id === Number(selectedTaskId))?.name ?? 'Select a task'}
+								{:else if taskLoading}
+									Loading tasks…
+								{:else if !selectedProjectId}
+									Select a project first
+								{:else}
+									Select a task
+								{/if}
+							</Select.Trigger>
+							<Select.Content>
+								{#each tasks as task}
+									<Select.Item value={String(task.id)}>{task.name}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<Label for="timer-task-create-input">New task</Label>
+						<Input
+							id="timer-task-create-input"
+							placeholder="Create a task for this project"
+							bind:value={newTaskName}
+						/>
+					</div>
 						{#if error}
 							<p class="text-sm text-destructive">{error}</p>
 						{/if}

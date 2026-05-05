@@ -14,6 +14,8 @@
 	let error = $state('');
 	let project = $state<Project | null>(null);
 	let entries = $state<TimeEntry[]>([]);
+	let deletingEntryId = $state<number | null>(null);
+	let deleteError = $state('');
 
 	function formatDuration(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -61,6 +63,22 @@
 				)
 			: null
 	);
+
+	async function handleDelete(entryId: number) {
+		if (!confirm('Remove this session?')) {
+			return;
+		}
+		deletingEntryId = entryId;
+		deleteError = '';
+		try {
+			await backend.deleteEntry(ctx.token, entryId);
+			entries = entries.filter((entry) => entry.id !== entryId);
+		} catch (e) {
+			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
+		} finally {
+			deletingEntryId = null;
+		}
+	}
 
 	onMount(async () => {
 		try {
@@ -162,6 +180,10 @@
 					<Card.Title>Sessions</Card.Title>
 				</Card.Header>
 				<Card.Content>
+					{#if deleteError}
+						<p class="mb-4 text-sm text-destructive">{deleteError}</p>
+					{/if}
+
 					{#if sortedEntries.length === 0}
 						<p class="text-sm text-muted-foreground">No sessions yet.</p>
 					{:else}
@@ -169,18 +191,17 @@
 							<Table.Header>
 								<Table.Row>
 									<Table.Head>User</Table.Head>
-									<Table.Head>Description</Table.Head>
+									<Table.Head>Task</Table.Head>
 									<Table.Head>Started</Table.Head>
 									<Table.Head class="text-right">Duration</Table.Head>
+									<Table.Head class="text-right">Actions</Table.Head>
 								</Table.Row>
 							</Table.Header>
 							<Table.Body>
 								{#each sortedEntries as entry}
 									<Table.Row>
 										<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
-										<Table.Cell class="text-muted-foreground">
-											{entry.description || '—'}
-										</Table.Cell>
+										<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 										<Table.Cell class="text-muted-foreground">
 											{formatDate(entry.started_at)}
 										</Table.Cell>
@@ -200,6 +221,17 @@
 											{:else}
 												<span class="tabular-nums">{formatDuration(entryMs(entry))}</span>
 											{/if}
+										</Table.Cell>
+										<Table.Cell class="text-right">
+											<Button
+												variant="ghost"
+												size="sm"
+												class="text-muted-foreground hover:text-destructive"
+												onclick={() => handleDelete(entry.id)}
+												disabled={deletingEntryId === entry.id}
+											>
+												{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
+											</Button>
 										</Table.Cell>
 									</Table.Row>
 								{/each}

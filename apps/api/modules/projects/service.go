@@ -89,3 +89,48 @@ func (service *Service) deleteProject(ctx context.Context, userID string, projec
 	}
 	return nil
 }
+
+func (service *Service) listTasks(ctx context.Context, projectID int64) ([]schemas.Task, error) {
+	if _, err := service.projectExists(ctx, projectID); err != nil {
+		return nil, err
+	}
+	var records []schemas.Task
+	if err := service.orm.WithContext(ctx).Where("project_id = ?", projectID).Order("name asc").Find(&records).Error; err != nil {
+		return nil, errors.Internal("failed to list tasks", err)
+	}
+	return records, nil
+}
+
+func (service *Service) createTask(ctx context.Context, projectID int64, name string) (*schemas.Task, error) {
+	if _, err := service.projectExists(ctx, projectID); err != nil {
+		return nil, err
+	}
+	var existing schemas.Task
+	err := service.orm.WithContext(ctx).Where("project_id = ? AND lower(name) = lower(?)", projectID, name).First(&existing).Error
+	if err == nil {
+		return &existing, nil
+	}
+	if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.Internal("failed to check task", err)
+	}
+	record := &schemas.Task{
+		ProjectID: projectID,
+		Name:      name,
+	}
+	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
+		return nil, errors.Internal("failed to create task", err)
+	}
+	return record, nil
+}
+
+func (service *Service) projectExists(ctx context.Context, projectID int64) (*schemas.Project, error) {
+	var project schemas.Project
+	err := service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.NotFound("project not found")
+	}
+	if err != nil {
+		return nil, errors.Internal("failed to get project", err)
+	}
+	return &project, nil
+}

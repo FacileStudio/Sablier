@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { backend, type Project } from '$lib/backend';
+	import { backend, type Project, type Task } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -19,10 +19,14 @@
 
 	let drawerOpen = $state(false);
 	let selectedProjectId = $state('');
-	let description = $state('');
+	let tasks = $state<Task[]>([]);
+	let selectedTaskId = $state('');
+	let newTaskName = $state('');
+	let taskProjectId = $state('');
 	let startedAt = $state('');
 	let stoppedAt = $state('');
 	let saving = $state(false);
+	let taskLoading = $state(false);
 	let error = $state('');
 
 	function projectName(id: number): string {
@@ -35,10 +39,68 @@
 
 	function reset() {
 		selectedProjectId = '';
-		description = '';
+		tasks = [];
+		selectedTaskId = '';
+		newTaskName = '';
+		taskProjectId = '';
 		startedAt = '';
 		stoppedAt = '';
 		error = '';
+	}
+
+	$effect(() => {
+		const projectId = selectedProjectId;
+		if (projectId === taskProjectId) {
+			return;
+		}
+		taskProjectId = projectId;
+		selectedTaskId = '';
+		newTaskName = '';
+		if (!projectId) {
+			tasks = [];
+			error = '';
+			return;
+		}
+		taskLoading = true;
+		error = '';
+		void backend
+			.listTasks(ctx.token, Number(projectId))
+			.then((result) => {
+				if (selectedProjectId !== projectId) {
+					return;
+				}
+				tasks = result.tasks;
+			})
+			.catch((e) => {
+				if (selectedProjectId !== projectId) {
+					return;
+				}
+				error = e instanceof Error ? e.message : 'Failed to load tasks.';
+				tasks = [];
+			})
+			.finally(() => {
+				if (selectedProjectId !== projectId) {
+					return;
+				}
+				taskLoading = false;
+			});
+	});
+
+	async function resolveTaskId(projectId: number) {
+		const taskName = newTaskName.trim();
+		if (taskName !== '') {
+			const task = await backend.createTask(ctx.token, projectId, taskName);
+			if (!tasks.some((existing) => existing.id === task.id)) {
+				tasks = [...tasks, task].sort((a, b) => a.name.localeCompare(b.name));
+			}
+			selectedTaskId = String(task.id);
+			newTaskName = '';
+			return task.id;
+		}
+		if (!selectedTaskId) {
+			throw new Error('Pick a task or create one.');
+		}
+		return Number(selectedTaskId);
 	}
 
 	async function handleSave() {
@@ -63,7 +125,9 @@
 		error = '';
 		saving = true;
 		try {
-			await backend.createEntry(ctx.token, Number(selectedProjectId), description, startIso, stopIso);
+			const projectId = Number(selectedProjectId);
+			const taskId = await resolveTaskId(projectId);
+			await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso);
 			reset();
 			drawerOpen = false;
 			onchange?.();
@@ -123,11 +187,32 @@
 						</div>
 					</div>
 					<div class="flex flex-col gap-1.5">
-						<Label for="manual-description-input">Description</Label>
+						<Label for="manual-task-select">Task</Label>
+						<Select.Root type="single" bind:value={selectedTaskId}>
+							<Select.Trigger id="manual-task-select" class="w-full">
+								{#if selectedTaskId}
+									{tasks.find((task) => task.id === Number(selectedTaskId))?.name ?? 'Select a task'}
+								{:else if taskLoading}
+									Loading tasks…
+								{:else if !selectedProjectId}
+									Select a project first
+								{:else}
+									Select a task
+								{/if}
+							</Select.Trigger>
+							<Select.Content>
+								{#each tasks as task}
+									<Select.Item value={String(task.id)}>{task.name}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<Label for="manual-task-create-input">New task</Label>
 						<Input
-							id="manual-description-input"
-							placeholder="What did you work on? (optional)"
-							bind:value={description}
+							id="manual-task-create-input"
+							placeholder="Create a task for this project"
+							bind:value={newTaskName}
 						/>
 					</div>
 					{#if error}

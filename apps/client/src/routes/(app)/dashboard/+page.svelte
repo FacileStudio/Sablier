@@ -296,7 +296,7 @@
 						<Table.Row>
 							<Table.Head>Project</Table.Head>
 							<Table.Head>User</Table.Head>
-							<Table.Head>Description</Table.Head>
+							<Table.Head>Task</Table.Head>
 							<Table.Head>Started</Table.Head>
 							<Table.Head class="text-right">Duration</Table.Head>
 						</Table.Row>
@@ -306,9 +306,7 @@
 							<Table.Row>
 								<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
-								<Table.Cell class="text-muted-foreground">
-									{entry.description || '—'}
-								</Table.Cell>
+								<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
 								<Table.Cell class="text-right tabular-nums">{entryDuration(entry)}</Table.Cell>
 							</Table.Row>

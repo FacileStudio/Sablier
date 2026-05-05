@@ -26,6 +26,14 @@ export type Project = {
 	updated_at: string;
 };
 
+export type Task = {
+	id: number;
+	project_id: number;
+	name: string;
+	created_at: string;
+	updated_at: string;
+};
+
 export type UserSettings = {
 	webhook_url: string;
 	webhook_secret_header: string;
@@ -39,9 +47,10 @@ export type SettingsResponse = {
 export type TimeEntry = {
 	id: number;
 	project_id: number;
+	task_id: number;
+	task_name: string;
 	user_id: number;
 	user_email?: string;
-	description: string;
 	started_at: string;
 	stopped_at: string | null;
 	created_at: string;
@@ -162,6 +171,15 @@ export const backend = {
 	deleteProject(token: string, id: number) {
 		return apiFetch<{ deleted: boolean }>(`/projects/${id}`, { method: 'DELETE' }, token);
 	},
+	listTasks(token: string, projectId: number) {
+		return apiFetch<{ tasks: Task[] }>(`/projects/${projectId}/tasks`, {}, token);
+	},
+	createTask(token: string, projectId: number, name: string) {
+		return apiFetch<Task>(`/projects/${projectId}/tasks`, {
+			method: 'POST',
+			body: JSON.stringify({ name })
+		}, token);
+	},
 
 	listEntries(token: string, projectId?: number) {
 		const qs = projectId ? `?project_id=${projectId}` : '';
@@ -170,19 +188,19 @@ export const backend = {
 	getRunning(token: string) {
 		return apiFetch<{ entry: TimeEntry | null }>('/time-entries/running', {}, token);
 	},
-	startTimer(token: string, projectId: number, description: string) {
+	startTimer(token: string, projectId: number, taskId: number) {
 		return apiFetch<TimeEntry>('/time-entries/start', {
 			method: 'POST',
-			body: JSON.stringify({ project_id: projectId, description })
+			body: JSON.stringify({ project_id: projectId, task_id: taskId })
 		}, token);
 	},
 	stopTimer(token: string) {
 		return apiFetch<TimeEntry>('/time-entries/stop', { method: 'POST' }, token);
 	},
-	createEntry(token: string, projectId: number, description: string, startedAt: string, stoppedAt: string) {
+	createEntry(token: string, projectId: number, taskId: number, startedAt: string, stoppedAt: string) {
 		return apiFetch<TimeEntry>('/time-entries', {
 			method: 'POST',
-			body: JSON.stringify({ project_id: projectId, description, started_at: startedAt, stopped_at: stoppedAt })
+			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
 		}, token);
 	},
 	deleteEntry(token: string, id: number) {

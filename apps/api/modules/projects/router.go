@@ -89,5 +89,38 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			}
 			httpjson.WriteJSON(w, http.StatusOK, map[string]bool{"deleted": true})
 		})
+
+		router.Get("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
+			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+			if err != nil {
+				httpjson.WriteError(w, errors.Invalid("invalid project id"))
+				return
+			}
+			resp, err := service.controller.listTasks(request.Context(), id)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
+		router.Post("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
+			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+			if err != nil {
+				httpjson.WriteError(w, errors.Invalid("invalid project id"))
+				return
+			}
+			var req CreateTaskRequest
+			if err := httpjson.DecodeJSON(w, request, &req); err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			resp, err := service.controller.createTask(request.Context(), id, &req)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusCreated, resp)
+		})
 	})
 }

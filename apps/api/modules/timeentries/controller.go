@@ -17,14 +17,14 @@ func newController(service *Service) *Controller {
 
 func toResponse(e *schemas.TimeEntry) TimeEntryResponse {
 	return TimeEntryResponse{
-		ID:          e.ID,
-		ProjectID:   e.ProjectID,
-		UserID:      e.UserID,
-		Description: e.Description,
-		StartedAt:   e.StartedAt,
-		StoppedAt:   e.StoppedAt,
-		CreatedAt:   e.CreatedAt,
-		UpdatedAt:   e.UpdatedAt,
+		ID:        e.ID,
+		ProjectID: e.ProjectID,
+		TaskID:    e.TaskID,
+		UserID:    e.UserID,
+		StartedAt: e.StartedAt,
+		StoppedAt: e.StoppedAt,
+		CreatedAt: e.CreatedAt,
+		UpdatedAt: e.UpdatedAt,
 	}
 }
 
@@ -32,20 +32,25 @@ func (c *Controller) start(ctx context.Context, userID string, req *StartTimerRe
 	if req.ProjectID <= 0 {
 		return nil, errors.Invalid("project_id is required")
 	}
-	record, err := c.service.startTimer(ctx, userID, req.ProjectID, req.Description)
+	if req.TaskID <= 0 {
+		return nil, errors.Invalid("task_id is required")
+	}
+	record, taskName, err := c.service.startTimer(ctx, userID, req.ProjectID, req.TaskID)
 	if err != nil {
 		return nil, err
 	}
 	resp := toResponse(record)
+	resp.TaskName = taskName
 	return &resp, nil
 }
 
 func (c *Controller) stop(ctx context.Context, userID string) (*TimeEntryResponse, error) {
-	record, err := c.service.stopTimer(ctx, userID)
+	record, taskName, err := c.service.stopTimer(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	resp := toResponse(record)
+	resp.TaskName = taskName
 	return &resp, nil
 }
 
@@ -58,6 +63,7 @@ func (c *Controller) list(ctx context.Context, projectID int64) (*ListEntriesRes
 	for i, r := range records {
 		items[i] = toResponse(&r.TimeEntry)
 		items[i].UserEmail = r.UserEmail
+		items[i].TaskName = r.TaskName
 	}
 	return &ListEntriesResponse{Entries: items}, nil
 }
@@ -66,17 +72,21 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateEntry
 	if req.ProjectID <= 0 {
 		return nil, errors.Invalid("project_id is required")
 	}
+	if req.TaskID <= 0 {
+		return nil, errors.Invalid("task_id is required")
+	}
 	if req.StartedAt.IsZero() {
 		return nil, errors.Invalid("started_at is required")
 	}
 	if req.StoppedAt.IsZero() || req.StoppedAt.Before(req.StartedAt) {
 		return nil, errors.Invalid("stopped_at must be after started_at")
 	}
-	record, err := c.service.createEntry(ctx, userID, req.ProjectID, req.Description, req.StartedAt, req.StoppedAt)
+	record, taskName, err := c.service.createEntry(ctx, userID, req.ProjectID, req.TaskID, req.StartedAt, req.StoppedAt)
 	if err != nil {
 		return nil, err
 	}
 	resp := toResponse(record)
+	resp.TaskName = taskName
 	return &resp, nil
 }
 
@@ -84,11 +94,15 @@ func (c *Controller) update(ctx context.Context, userID string, entryID int64, r
 	if req.ProjectID <= 0 {
 		return nil, errors.Invalid("project_id is required")
 	}
-	record, err := c.service.updateEntry(ctx, userID, entryID, req)
+	if req.TaskID <= 0 {
+		return nil, errors.Invalid("task_id is required")
+	}
+	record, taskName, err := c.service.updateEntry(ctx, userID, entryID, req)
 	if err != nil {
 		return nil, err
 	}
 	resp := toResponse(record)
+	resp.TaskName = taskName
 	return &resp, nil
 }
 
@@ -97,7 +111,7 @@ func (c *Controller) delete(ctx context.Context, userID string, entryID int64) e
 }
 
 func (c *Controller) running(ctx context.Context, userID string) (*TimeEntryResponse, error) {
-	record, err := c.service.getRunningTimer(ctx, userID)
+	record, taskName, err := c.service.getRunningTimer(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,5 +119,6 @@ func (c *Controller) running(ctx context.Context, userID string) (*TimeEntryResp
 		return nil, nil
 	}
 	resp := toResponse(record)
+	resp.TaskName = taskName
 	return &resp, nil
 }

@@ -124,8 +124,9 @@
   "data": {
     "id": 42,
     "project_id": 7,
+    "task_id": 12,
+    "task_name": "Feature X",
     "user_id": 1,
-    "description": "Working on feature X",
     "started_at": "2026-05-05T10:00:00Z",
     "stopped_at": null | "2026-05-05T11:30:00Z"
   }

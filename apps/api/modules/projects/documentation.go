@@ -11,5 +11,7 @@ var Documentation = documentation.Module{
 		{Method: "GET", Path: "/projects/{id}", Summary: "Get project", Auth: "bearer token required"},
 		{Method: "PUT", Path: "/projects/{id}", Summary: "Update project", Auth: "bearer token required"},
 		{Method: "DELETE", Path: "/projects/{id}", Summary: "Delete project", Auth: "bearer token required"},
+		{Method: "GET", Path: "/projects/{id}/tasks", Summary: "List project tasks", Auth: "bearer token required"},
+		{Method: "POST", Path: "/projects/{id}/tasks", Summary: "Create project task", Auth: "bearer token required"},
 	},
 }
