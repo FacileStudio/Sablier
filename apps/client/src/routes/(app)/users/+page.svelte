@@ -42,7 +42,7 @@
 
 
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-6 p-6 w-full h-full">
 
 	<h1 class="text-2xl font-semibold">Users</h1>
     <div class="p-3 justify-between flex flex-col w-full h-full">
