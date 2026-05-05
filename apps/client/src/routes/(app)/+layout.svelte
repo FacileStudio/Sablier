@@ -2,7 +2,7 @@
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { backend } from '$lib/backend';
+	import { backend, type UserProfile } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
 	import { LayoutDashboard, Clock, FolderOpen, Users, LogOut, Settings } from 'lucide-svelte';
@@ -10,12 +10,32 @@
 	let { children } = $props();
 
 	let token = $state('');
-	let userEmail = $state('');
+	let user = $state<UserProfile | null>(null);
 	let loaded = $state(false);
+
+	function setUser(nextUser: UserProfile) {
+		user = nextUser;
+	}
+
+	function getInitials(value: string) {
+		const parts = value.trim().split(/\s+/).filter(Boolean);
+		if (parts.length === 0) {
+			return '?';
+		}
+		if (parts.length === 1) {
+			return parts[0].slice(0, 2).toUpperCase();
+		}
+		return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+	}
+
+	function userLabel(currentUser: UserProfile | null) {
+		return currentUser?.name?.trim() || currentUser?.email || '';
+	}
 
 	setContext('app', {
 		get token() { return token; },
-		get userEmail() { return userEmail; }
+		get user() { return user; },
+		setUser
 	});
 
 	onMount(async () => {
@@ -27,7 +47,7 @@
 		try {
 			const result = await backend.me(stored);
 			token = stored;
-			userEmail = result.user.email;
+			user = result.user;
 			loaded = true;
 		} catch {
 			goto('/login');
@@ -55,7 +75,6 @@
                 <img class="w-7" src="/logo.svg" alt="logo"  />
 				<span class="text-2xl font-bold font-heading tracking-tight">Sablier</span>
 			</div>
-			<Separator />
 			<nav class="flex flex-1 flex-col gap-1 p-2">
 				{#each navLinks as link}
 					{@const active = page.url.pathname === link.href}
@@ -71,8 +90,27 @@
 				{/each}
 			</nav>
 			<Separator />
-			<div class="flex flex-col gap-2 p-3">
-				<p class="truncate text-xs text-muted-foreground">{userEmail}</p>
+			<div class="flex flex-col gap-3 p-3">
+				<a
+					href="/profile"
+					class="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/40 p-2 transition-colors hover:bg-muted"
+				>
+					{#if user?.avatar_url}
+						<img
+							src={user.avatar_url}
+							alt={userLabel(user)}
+							class="h-11 w-11 rounded-full border border-border object-cover"
+						/>
+					{:else}
+						<div class="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-foreground text-sm font-semibold text-background">
+							{getInitials(userLabel(user))}
+						</div>
+					{/if}
+					<div class="min-w-0 flex-1">
+						<p class="truncate text-sm font-medium">{user?.name || 'Set your profile'}</p>
+						<p class="truncate text-xs text-muted-foreground">{user?.email}</p>
+					</div>
+				</a>
 				<Button variant="ghost" size="sm" class="w-full justify-start gap-2 border border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onclick={logout}>
 					<LogOut class="h-4 w-4" />
 					Logout

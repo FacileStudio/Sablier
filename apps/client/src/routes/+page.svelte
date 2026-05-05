@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { backend } from '$lib/backend';
 	import { Clock, Users, BarChart2, ArrowRight } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -10,8 +11,9 @@
 	const TOKEN_KEY = 'sablier.token';
 
 	let redirecting = $state(true);
+	let ssoOnly = $state(false);
 
-	onMount(() => {
+	onMount(async () => {
 		const token = $page.url.searchParams.get('token');
 		if (token) {
 			localStorage.setItem(TOKEN_KEY, token);
@@ -22,6 +24,12 @@
 			goto('/dashboard');
 			return;
 		}
+
+		try {
+			const cfg = await fetch(`${backend.baseUrl}/auth/config`).then((r) => r.json());
+			ssoOnly = cfg.sso_only ?? false;
+		} catch {}
+
 		redirecting = false;
 	});
 </script>
@@ -41,7 +49,9 @@
             </div>
 			<div class="flex items-center gap-2">
 				<Button variant="ghost" href="/login">Log in</Button>
-				<Button href="/login?tab=register">Get started</Button>
+				<Button href={ssoOnly ? '/login' : '/login?tab=register'}>
+					{ssoOnly ? 'Continue with SSO' : 'Get started'}
+				</Button>
 			</div>
 		</div>
 	</header>
@@ -56,8 +66,8 @@
 				see where your time goes, stay accountable.
 			</p>
 			<div class="mt-10 flex justify-center gap-3">
-				<Button size="lg" href="/login?tab=register">
-					Start tracking
+				<Button size="lg" href={ssoOnly ? '/login' : '/login?tab=register'}>
+					{ssoOnly ? 'Continue with SSO' : 'Start tracking'}
 					<ArrowRight class="ml-2 size-4" />
 				</Button>
 				<Button size="lg" variant="outline" href="/login">Log in</Button>
@@ -109,9 +119,15 @@
 		<Separator />
 
 		<section class="mx-auto max-w-5xl px-6 py-20 text-center">
-			<h2 class="text-3xl font-bold tracking-tight">Ready to start?</h2>
-			<p class="mt-4 text-muted-foreground">Free to use. No credit card required.</p>
-			<Button class="mt-8" size="lg" href="/login?tab=register">Create an account</Button>
+			<h2 class="text-3xl font-bold tracking-tight">
+				{ssoOnly ? 'Ready to sign in?' : 'Ready to start?'}
+			</h2>
+			<p class="mt-4 text-muted-foreground">
+				{ssoOnly ? 'Use your organization SSO to access Sablier.' : 'Free to use. No credit card required.'}
+			</p>
+			<Button class="mt-8" size="lg" href={ssoOnly ? '/login' : '/login?tab=register'}>
+				{ssoOnly ? 'Continue with SSO' : 'Create an account'}
+			</Button>
 		</section>
 	</main>
 

@@ -30,6 +30,7 @@
 			const cfg = await fetch(`${backend.baseUrl}/auth/config`).then(r => r.json());
 			ssoOnly = cfg.sso_only ?? false;
 			oidcEnabled = cfg.oidc_enabled ?? false;
+			if (ssoOnly) tab = 'login';
 		} catch {}
 		configLoaded = true;
 	});
@@ -53,7 +54,7 @@
 </script>
 
 <svelte:head>
-	<title>{tab === 'register' ? 'Create account' : 'Log in'} — Sablier</title>
+	<title>{!ssoOnly && tab === 'register' ? 'Create account' : 'Log in'} — Sablier</title>
 </svelte:head>
 
 <div class="flex min-h-screen">
@@ -81,10 +82,14 @@
 		<div class="w-full max-w-sm">
 			<div class="mb-8">
 				<h1 class="text-2xl font-bold font-heading tracking-tight text-foreground">
-					{tab === 'register' ? 'Create account' : 'Welcome back'}
+					{!ssoOnly && tab === 'register' ? 'Create account' : 'Welcome back'}
 				</h1>
 				<p class="mt-1.5 text-sm text-muted-foreground">
-					{tab === 'register' ? 'Sign up to start tracking time.' : 'Log in to your Sablier account.'}
+					{!ssoOnly && tab === 'register'
+						? 'Sign up to start tracking time.'
+						: ssoOnly
+							? 'Sign in with your organization account to access Sablier.'
+							: 'Log in to your Sablier account.'}
 				</p>
 			</div>
 
