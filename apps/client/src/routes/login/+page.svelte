@@ -54,79 +54,97 @@
 	<title>{tab === 'register' ? 'Create account' : 'Log in'} — Sablier</title>
 </svelte:head>
 
-<div class="grid min-h-screen place-items-center bg-background px-4 py-12">
-	<div class="w-full max-w-sm">
-	<a href="/" class="mb-8 block text-center text-xl font-semibold tracking-tight text-foreground">Sablier</a>
+<div class="flex min-h-screen">
+	<div class="hidden lg:flex lg:w-1/2 flex-col bg-black px-12 py-10">
+		<a href="/" class="flex items-center gap-3 mb-auto">
+			<img class="w-7" src="/logo-white.svg" alt="Sablier logo" />
+			<span class="text-xl font-bold font-heading tracking-tight text-white">Sablier</span>
+		</a>
 
-	<div class="rounded-xl border border-border bg-card p-6 shadow-sm">
-		<div class="mb-6">
-			<h1 class="text-lg font-semibold text-foreground">
-				{tab === 'register' ? 'Create account' : 'Welcome back'}
-			</h1>
-			<p class="mt-1 text-sm text-muted-foreground">
-				{tab === 'register' ? 'Sign up to start tracking time.' : 'Log in to your account.'}
+		<div class="mb-auto">
+			<h2 class="text-4xl font-bold font-heading text-white leading-tight tracking-tight">
+				Track time.<br />Ship faster.
+			</h2>
+			<p class="mt-4 text-sm text-white/50 max-w-xs leading-relaxed">
+				Simple, self-hosted time tracking for individuals and teams.
 			</p>
 		</div>
 
-		{#if !ssoOnly}
-			<div class="mb-6 flex rounded-md border border-border p-1">
-				<button
-					class="flex-1 rounded py-1.5 text-sm font-medium transition-colors {tab === 'login'
-						? 'bg-foreground text-background'
-						: 'text-muted-foreground hover:text-foreground'}"
-					onclick={() => { tab = 'login'; message = ''; }}
-				>
-					Log in
-				</button>
-				<button
-					class="flex-1 rounded py-1.5 text-sm font-medium transition-colors {tab === 'register'
-						? 'bg-foreground text-background'
-						: 'text-muted-foreground hover:text-foreground'}"
-					onclick={() => { tab = 'register'; message = ''; }}
-				>
-					Register
-				</button>
+		<p class="text-xs text-white/30">
+			© {new Date().getFullYear()} Sablier by Facile.
+		</p>
+	</div>
+
+	<div class="flex w-full lg:w-1/2 flex-col items-center justify-center px-8 py-12 bg-background">
+		<div class="w-full max-w-sm">
+			<div class="mb-8">
+				<h1 class="text-2xl font-bold font-heading tracking-tight text-foreground">
+					{tab === 'register' ? 'Create account' : 'Welcome back'}
+				</h1>
+				<p class="mt-1.5 text-sm text-muted-foreground">
+					{tab === 'register' ? 'Sign up to start tracking time.' : 'Log in to your Sablier account.'}
+				</p>
 			</div>
 
-			<form
-				onsubmit={(e) => { e.preventDefault(); submit(); }}
-				class="space-y-4"
-			>
-				<div class="space-y-1.5">
-					<Label for="email">Email</Label>
-					<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
-				</div>
-
-				<div class="space-y-1.5">
-					<Label for="password">Password</Label>
-					<Input id="password" type="password" bind:value={password} placeholder="••••••••" required />
-				</div>
-
-				{#if message}
-					<p class="text-sm text-destructive">{message}</p>
-				{/if}
-
-				<Button type="submit" class="w-full" disabled={busy}>
-					{tab === 'register' ? 'Create account' : 'Log in'}
-				</Button>
-			</form>
-		{/if}
-
-		{#if oidcEnabled}
 			{#if !ssoOnly}
-				<div class="mt-4 flex items-center gap-3">
-					<div class="h-px flex-1 bg-border"></div>
-					<span class="text-xs text-muted-foreground">or</span>
-					<div class="h-px flex-1 bg-border"></div>
+				<div class="mb-6 flex rounded-lg border border-border bg-muted p-1 gap-1">
+					<button
+						class="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors {tab === 'login'
+							? 'bg-background text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'}"
+						onclick={() => { tab = 'login'; message = ''; }}
+					>
+						Log in
+					</button>
+					<button
+						class="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors {tab === 'register'
+							? 'bg-background text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'}"
+						onclick={() => { tab = 'register'; message = ''; }}
+					>
+						Register
+					</button>
 				</div>
+
+				<form
+					onsubmit={(e) => { e.preventDefault(); submit(); }}
+					class="space-y-4"
+				>
+					<div class="space-y-1.5">
+						<Label for="email">Email</Label>
+						<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
+					</div>
+
+					<div class="space-y-1.5">
+						<Label for="password">Password</Label>
+						<Input id="password" type="password" bind:value={password} placeholder="••••••••" required />
+					</div>
+
+					{#if message}
+						<p class="text-sm text-destructive">{message}</p>
+					{/if}
+
+					<Button type="submit" class="w-full" disabled={busy}>
+						{tab === 'register' ? 'Create account' : 'Log in'}
+					</Button>
+				</form>
 			{/if}
 
-			<a href="{backend.baseUrl}/auth/oidc" class="mt-4 block">
-				<Button variant="outline" class="w-full" type="button">
-					Continue with SSO
-				</Button>
-			</a>
-		{/if}
-	</div>
+			{#if oidcEnabled}
+				{#if !ssoOnly}
+					<div class="my-5 flex items-center gap-3">
+						<div class="h-px flex-1 bg-border"></div>
+						<span class="text-xs text-muted-foreground">or</span>
+						<div class="h-px flex-1 bg-border"></div>
+					</div>
+				{/if}
+
+				<a href="{backend.baseUrl}/auth/oidc" class="block">
+					<Button variant="outline" class="w-full" type="button">
+						Continue with SSO
+					</Button>
+				</a>
+			{/if}
+		</div>
 	</div>
 </div>

@@ -53,7 +53,7 @@
 		<aside class="sticky top-0 flex h-screen w-56 flex-col border-r bg-background">
 			<div class="flex h-14 items-center px-4 gap-3">
                 <img class="w-7" src="/logo.svg" alt="logo"  />
-				<span class="text-2xl font-bold tracking-tight">Sablier</span>
+				<span class="text-2xl font-bold font-heading tracking-tight">Sablier</span>
 			</div>
 			<Separator />
 			<nav class="flex flex-1 flex-col gap-1 p-2">
