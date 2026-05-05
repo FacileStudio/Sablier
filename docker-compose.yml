@@ -19,8 +19,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/sablier?sslmode=disable
       PORT: "4000"
@@ -34,8 +34,8 @@ services:
     build:
       context: apps/client
       dockerfile: Dockerfile
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     depends_on:
       - api
 
