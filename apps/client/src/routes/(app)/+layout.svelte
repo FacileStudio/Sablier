@@ -51,7 +51,8 @@
 {#if loaded}
 	<div class="flex h-screen w-full overflow-hidden">
 		<aside class="sticky top-0 flex h-screen w-56 flex-col border-r bg-background">
-			<div class="flex h-14 items-center px-4">
+			<div class="flex h-14 items-center px-4 gap-3">
+                <img class="w-12" src="/favicon.svg" alt="Nook"  />
 				<span class="text-lg font-bold tracking-tight">Sablier</span>
 			</div>
 			<Separator />
