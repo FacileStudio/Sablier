@@ -38,25 +38,17 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	return record, nil
 }
 
-func (service *Service) listProjects(ctx context.Context, userID string) ([]schemas.Project, error) {
-	ownerID, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
+func (service *Service) listProjects(ctx context.Context) ([]schemas.Project, error) {
 	var records []schemas.Project
-	if err := service.orm.WithContext(ctx).Where("owner_id = ?", ownerID).Order("created_at desc").Find(&records).Error; err != nil {
+	if err := service.orm.WithContext(ctx).Order("created_at desc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list projects", err)
 	}
 	return records, nil
 }
 
-func (service *Service) getProject(ctx context.Context, userID string, projectID int64) (*schemas.Project, error) {
-	ownerID, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
+func (service *Service) getProject(ctx context.Context, projectID int64) (*schemas.Project, error) {
 	var record schemas.Project
-	err = service.orm.WithContext(ctx).Where("id = ? AND owner_id = ?", projectID, ownerID).First(&record).Error
+	err := service.orm.WithContext(ctx).Where("id = ?", projectID).First(&record).Error
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.NotFound("project not found")
 	}
@@ -66,8 +58,8 @@ func (service *Service) getProject(ctx context.Context, userID string, projectID
 	return &record, nil
 }
 
-func (service *Service) updateProject(ctx context.Context, userID string, projectID int64, name, description string) (*schemas.Project, error) {
-	record, err := service.getProject(ctx, userID, projectID)
+func (service *Service) updateProject(ctx context.Context, projectID int64, name, description string) (*schemas.Project, error) {
+	record, err := service.getProject(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +71,8 @@ func (service *Service) updateProject(ctx context.Context, userID string, projec
 	return record, nil
 }
 
-func (service *Service) deleteProject(ctx context.Context, userID string, projectID int64) error {
-	ownerID, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return errors.Invalid("invalid user id")
-	}
-	result := service.orm.WithContext(ctx).Where("id = ? AND owner_id = ?", projectID, ownerID).Delete(&schemas.Project{})
+func (service *Service) deleteProject(ctx context.Context, projectID int64) error {
+	result := service.orm.WithContext(ctx).Where("id = ?", projectID).Delete(&schemas.Project{})
 	if result.Error != nil {
 		return errors.Internal("failed to delete project", result.Error)
 	}
@@ -94,8 +82,8 @@ func (service *Service) deleteProject(ctx context.Context, userID string, projec
 	return nil
 }
 
-func (service *Service) listTasks(ctx context.Context, userID string, projectID int64) ([]schemas.Task, error) {
-	if _, err := service.getProject(ctx, userID, projectID); err != nil {
+func (service *Service) listTasks(ctx context.Context, projectID int64) ([]schemas.Task, error) {
+	if _, err := service.getProject(ctx, projectID); err != nil {
 		return nil, err
 	}
 	var records []schemas.Task
@@ -105,8 +93,8 @@ func (service *Service) listTasks(ctx context.Context, userID string, projectID 
 	return records, nil
 }
 
-func (service *Service) createTask(ctx context.Context, userID string, projectID int64, name string) (*schemas.Task, error) {
-	if _, err := service.getProject(ctx, userID, projectID); err != nil {
+func (service *Service) createTask(ctx context.Context, projectID int64, name string) (*schemas.Task, error) {
+	if _, err := service.getProject(ctx, projectID); err != nil {
 		return nil, err
 	}
 	var existing schemas.Task

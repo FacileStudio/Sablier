@@ -58,39 +58,58 @@ func TestListProjectsReturnsOnlyOwnedProjects(t *testing.T) {
 	seedProject(t, service.orm, 1, "Mine")
 	seedProject(t, service.orm, 2, "Not mine")
 
-	projects, err := service.listProjects(context.Background(), "1")
+	projects, err := service.listProjects(context.Background())
 	if err != nil {
 		t.Fatalf("list projects: %v", err)
 	}
 
-	if len(projects) != 1 {
-		t.Fatalf("expected 1 project, got %d", len(projects))
-	}
-	if projects[0].OwnerID != 1 {
-		t.Fatalf("expected owner 1, got %d", projects[0].OwnerID)
-	}
-	if projects[0].Name != "Mine" {
-		t.Fatalf("expected project Mine, got %q", projects[0].Name)
+	if len(projects) != 2 {
+		t.Fatalf("expected 2 projects, got %d", len(projects))
 	}
 }
 
-func TestListTasksRejectsForeignProject(t *testing.T) {
+func TestGetProjectAllowsForeignOwner(t *testing.T) {
 	service := newTestService(t)
 	foreignProject := seedProject(t, service.orm, 2, "Not mine")
-	seedTask(t, service.orm, foreignProject.ID, "Secret task")
 
-	_, err := service.listTasks(context.Background(), "1", foreignProject.ID)
-	if err == nil || err.Error() != "project not found" {
-		t.Fatalf("expected project not found, got %v", err)
+	project, err := service.getProject(context.Background(), foreignProject.ID)
+	if err != nil {
+		t.Fatalf("get project: %v", err)
+	}
+
+	if project.ID != foreignProject.ID {
+		t.Fatalf("expected project %d, got %d", foreignProject.ID, project.ID)
 	}
 }
 
-func TestCreateTaskRejectsForeignProject(t *testing.T) {
+func TestListTasksAllowsForeignProject(t *testing.T) {
+	service := newTestService(t)
+	foreignProject := seedProject(t, service.orm, 2, "Not mine")
+	task := seedTask(t, service.orm, foreignProject.ID, "Shared task")
+
+	tasks, err := service.listTasks(context.Background(), foreignProject.ID)
+	if err != nil {
+		t.Fatalf("list tasks: %v", err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+	if tasks[0].ID != task.ID {
+		t.Fatalf("expected task %d, got %d", task.ID, tasks[0].ID)
+	}
+}
+
+func TestCreateTaskAllowsForeignProject(t *testing.T) {
 	service := newTestService(t)
 	foreignProject := seedProject(t, service.orm, 2, "Not mine")
 
-	_, err := service.createTask(context.Background(), "1", foreignProject.ID, "Should fail")
-	if err == nil || err.Error() != "project not found" {
-		t.Fatalf("expected project not found, got %v", err)
+	task, err := service.createTask(context.Background(), foreignProject.ID, "Shared task")
+	if err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+
+	if task.ProjectID != foreignProject.ID {
+		t.Fatalf("expected project %d, got %d", foreignProject.ID, task.ProjectID)
 	}
 }

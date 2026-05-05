@@ -18,8 +18,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		router.Use(middleware.RequireAuth(authService))
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
-			resp, err := service.controller.list(request.Context(), identity.UserID)
+			resp, err := service.controller.list(request.Context())
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
@@ -43,13 +42,12 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		})
 
 		router.Get("/{id}", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
 				return
 			}
-			resp, err := service.controller.get(request.Context(), identity.UserID, id)
+			resp, err := service.controller.get(request.Context(), id)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
@@ -58,7 +56,6 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		})
 
 		router.Put("/{id}", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -69,7 +66,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 				httpjson.WriteError(w, err)
 				return
 			}
-			resp, err := service.controller.update(request.Context(), identity.UserID, id, &req)
+			resp, err := service.controller.update(request.Context(), id, &req)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
@@ -78,13 +75,12 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		})
 
 		router.Delete("/{id}", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
 				return
 			}
-			if err := service.controller.delete(request.Context(), identity.UserID, id); err != nil {
+			if err := service.controller.delete(request.Context(), id); err != nil {
 				httpjson.WriteError(w, err)
 				return
 			}
@@ -92,13 +88,12 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		})
 
 		router.Get("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
 				return
 			}
-			resp, err := service.controller.listTasks(request.Context(), identity.UserID, id)
+			resp, err := service.controller.listTasks(request.Context(), id)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
@@ -107,7 +102,6 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		})
 
 		router.Post("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -118,7 +112,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 				httpjson.WriteError(w, err)
 				return
 			}
-			resp, err := service.controller.createTask(request.Context(), identity.UserID, id, &req)
+			resp, err := service.controller.createTask(request.Context(), id, &req)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
