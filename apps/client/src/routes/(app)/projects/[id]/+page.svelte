@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
+	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import * as Card from '$lib/components/ui/card';
@@ -72,7 +73,7 @@
 	}
 
 	function userLabel(entry: TimeEntry) {
-		return entry.user_email?.trim() || `User ${entry.user_id}`;
+		return getEntryUserDisplayName(entry);
 	}
 
 	function aggregateUserTimeSegments(entryList: TimeEntry[]): UserTimeSegment[] {
@@ -88,7 +89,7 @@
 				if (!existing.color) {
 					existing.color = userColor(entry);
 				}
-				if (existing.label.startsWith('User ') && entry.user_email) {
+				if (existing.label.startsWith('User ') && (entry.user_name || entry.user_email)) {
 					existing.label = userLabel(entry);
 				}
 				continue;
@@ -470,7 +471,7 @@
 										<Table.Cell class="text-muted-foreground">
 											<div class="flex items-center gap-2">
 												<UserColorDot color={userColor(entry)} />
-												<span>{entry.user_email ?? '—'}</span>
+												<span>{getEntryUserDisplayName(entry)}</span>
 											</div>
 										</Table.Cell>
 										<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>

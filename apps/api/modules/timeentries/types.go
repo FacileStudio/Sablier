@@ -28,6 +28,7 @@ type TimeEntryResponse struct {
 	TaskName  string     `json:"task_name"`
 	UserID    int64      `json:"user_id"`
 	UserEmail string     `json:"user_email,omitempty"`
+	UserName  string     `json:"user_name,omitempty"`
 	UserColor string     `json:"user_color,omitempty"`
 	StartedAt time.Time  `json:"started_at"`
 	StoppedAt *time.Time `json:"stopped_at"`

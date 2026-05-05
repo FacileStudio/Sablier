@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
+	import { getUserDisplayName } from '$lib/user-display';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import * as Table from '$lib/components/ui/table';
 
@@ -21,7 +22,7 @@
 	}
 
 	function displayName(user: UserProfile) {
-		return user.name?.trim() || user.email;
+		return getUserDisplayName(user);
 	}
 
 	function userColor(user: UserProfile) {
@@ -46,7 +47,6 @@
 		<Table.Header>
 			<Table.Row>
 				<Table.Head>User</Table.Head>
-				<Table.Head>Email</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -69,21 +69,20 @@
 								<div class="min-w-0">
 									<div class="flex items-center gap-2">
 										<UserColorDot color={userColor(user)} />
-										<p class="truncate font-medium">{user.name || '—'}</p>
+										<p class="truncate font-medium">{displayName(user)}</p>
 									</div>
 								</div>
 							</div>
 						</Table.Cell>
-						<Table.Cell class="font-medium">{user.email}</Table.Cell>
 					</Table.Row>
 				{/each}
 			{:else if loading}
 				<Table.Row>
-					<Table.Cell colspan={2} class="text-center text-muted-foreground">Loading…</Table.Cell>
+					<Table.Cell colspan={1} class="text-center text-muted-foreground">Loading…</Table.Cell>
 				</Table.Row>
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan={2} class="text-center text-muted-foreground">No users yet.</Table.Cell>
+					<Table.Cell colspan={1} class="text-center text-muted-foreground">No users yet.</Table.Cell>
 				</Table.Row>
 			{/if}
 		</Table.Body>

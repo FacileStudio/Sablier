@@ -57,6 +57,7 @@ export type TimeEntry = {
 	task_id: number;
 	task_name: string;
 	user_id: number;
+	user_name?: string;
 	user_email?: string;
 	user_color?: string;
 	started_at: string;

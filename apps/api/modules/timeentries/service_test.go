@@ -71,12 +71,13 @@ func seedEntry(t *testing.T, orm *gorm.DB, projectID int64, taskID int64, userID
 	return entry
 }
 
-func seedUser(t *testing.T, orm *gorm.DB, id int64, email string, color string) schemas.User {
+func seedUser(t *testing.T, orm *gorm.DB, id int64, email string, name string, color string) schemas.User {
 	t.Helper()
 
 	user := schemas.User{
 		ID:           id,
 		Email:        email,
+		Name:         name,
 		Color:        color,
 		PasswordHash: "hash",
 	}
@@ -117,7 +118,7 @@ func TestDeleteEntryRejectsForeignOwner(t *testing.T) {
 
 func TestListEntriesIncludesUserColor(t *testing.T) {
 	service := newTestService(t)
-	user := seedUser(t, service.orm, 1, "jane@example.com", "AD9EF0")
+	user := seedUser(t, service.orm, 1, "jane@example.com", "Jane Doe", "AD9EF0")
 	project := seedProject(t, service.orm, user.ID)
 	task := seedTask(t, service.orm, project.ID)
 	seedEntry(t, service.orm, project.ID, task.ID, user.ID)
@@ -131,6 +132,9 @@ func TestListEntriesIncludesUserColor(t *testing.T) {
 	}
 	if records[0].UserEmail != user.Email {
 		t.Fatalf("expected user email %q, got %q", user.Email, records[0].UserEmail)
+	}
+	if records[0].UserName != user.Name {
+		t.Fatalf("expected user name %q, got %q", user.Name, records[0].UserName)
 	}
 	if records[0].UserColor != user.Color {
 		t.Fatalf("expected user color %q, got %q", user.Color, records[0].UserColor)

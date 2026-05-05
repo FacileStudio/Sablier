@@ -63,6 +63,7 @@ func (c *Controller) list(ctx context.Context, projectID int64) (*ListEntriesRes
 	for i, r := range records {
 		items[i] = toResponse(&r.TimeEntry)
 		items[i].UserEmail = r.UserEmail
+		items[i].UserName = r.UserName
 		items[i].UserColor = r.UserColor
 		items[i].TaskName = r.TaskName
 	}

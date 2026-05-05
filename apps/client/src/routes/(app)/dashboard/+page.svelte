@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
+	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
@@ -313,7 +314,7 @@
 								<Table.Cell class="text-muted-foreground">
 									<div class="flex items-center gap-2">
 										<UserColorDot color={userColor(entry)} />
-										<span>{entry.user_email ?? '—'}</span>
+										<span>{getEntryUserDisplayName(entry)}</span>
 									</div>
 								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
