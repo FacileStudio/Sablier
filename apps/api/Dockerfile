@@ -6,11 +6,11 @@ ARG TARGETARCH
 WORKDIR /repo/apps/api
 
 COPY apps/api/go.mod apps/api/go.sum ./
-RUN go mod download
+COPY apps/api/vendor ./vendor
 
 COPY apps/api ./
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} go build -o bin/api .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} go build -mod=vendor -o bin/api .
 
 FROM gcr.io/distroless/static-debian12
 
