@@ -1,7 +1,10 @@
 package users
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"net/http"
 	"strings"
 
 	"api/internal/authcontext"
@@ -22,16 +25,31 @@ func (controller *Controller) me(context context.Context) (*MeResponse, error) {
 		return nil, errors.Unauthorized("missing auth")
 	}
 
-	return &MeResponse{User: User{
-		ID:    identity.UserID,
-		Email: identity.Email,
-	}}, nil
+	user, err := controller.service.getUser(context, identity.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.Email == "" {
+		user.Email = identity.Email
+	}
+
+	return &MeResponse{User: *user}, nil
 }
 
 func (controller *Controller) updateMe(context context.Context, req *UpdateRequest) (*MeResponse, error) {
 	identity, ok := authcontext.IdentityFromContext(context)
 	if !ok {
 		return nil, errors.Unauthorized("missing auth")
+	}
+
+	var name *string
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		if len(trimmed) > 80 {
+			return nil, errors.Invalid("name must be at most 80 characters")
+		}
+		name = &trimmed
 	}
 
 	var email *string
@@ -51,11 +69,42 @@ func (controller *Controller) updateMe(context context.Context, req *UpdateReque
 		password = req.Password
 	}
 
-	if email == nil && password == nil {
+	if name == nil && email == nil && password == nil {
 		return nil, errors.Invalid("at least one field must be provided")
 	}
 
-	user, err := controller.service.updateUser(context, identity.UserID, email, password)
+	user, err := controller.service.updateUser(context, identity.UserID, name, email, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MeResponse{User: *user}, nil
+}
+
+func (controller *Controller) uploadAvatar(context context.Context, request *http.Request) (*MeResponse, error) {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
+		return nil, errors.Unauthorized("missing auth")
+	}
+
+	if err := request.ParseMultipartForm(5 << 20); err != nil {
+		return nil, errors.TooLarge("avatar file is too large")
+	}
+
+	file, _, err := request.FormFile("avatar")
+	if err != nil {
+		return nil, errors.Invalid("avatar file is required")
+	}
+	defer file.Close()
+
+	header := make([]byte, 512)
+	n, err := file.Read(header)
+	if err != nil && err != io.EOF {
+		return nil, errors.Internal("failed to read avatar file", err)
+	}
+
+	contentType := http.DetectContentType(header[:n])
+	user, err := controller.service.storeAvatar(context, identity.UserID, io.MultiReader(bytes.NewReader(header[:n]), file), contentType)
 	if err != nil {
 		return nil, err
 	}

@@ -17,5 +17,6 @@ FROM gcr.io/distroless/static-debian12
 COPY --from=build /repo/apps/api/bin/api /api
 
 EXPOSE 4000
+VOLUME ["/data"]
 
 ENTRYPOINT ["/api"]

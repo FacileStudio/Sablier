@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-
 type OIDCConfig struct {
 	Issuer       string
 	ClientID     string
@@ -21,6 +20,7 @@ type Config struct {
 	Port               string
 	CORSAllowedOrigins []string
 	LogLevel           string
+	StorageDir         string
 	OIDC               *OIDCConfig
 	SSOOnly            bool
 }
@@ -30,6 +30,7 @@ func Load() (Config, error) {
 		DatabaseURL: valueOrDefault("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/sablier?sslmode=disable"),
 		Port:        valueOrDefault("PORT", "4000"),
 		LogLevel:    valueOrDefault("LOG_LEVEL", "info"),
+		StorageDir:  valueOrDefault("STORAGE_DIR", "./data"),
 		CORSAllowedOrigins: csvOrDefault("DOMAINS", []string{
 			"http://localhost:3000",
 			"http://127.0.0.1:3000",

@@ -25,6 +25,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
       PORT: ${PORT:-4000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      STORAGE_DIR: ${STORAGE_DIR:-/data}
       DOMAINS: ${DOMAINS:-http://localhost:3000,http://127.0.0.1:3000}
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
@@ -35,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - api_data:/data
 
   client:
     build:
@@ -51,3 +54,5 @@ services:
 volumes:
   db_data:
     name: sablier_db_data
+  api_data:
+    name: sablier_api_data

@@ -6,11 +6,15 @@ export type AuthResponse = {
 	token: string;
 };
 
+export type UserProfile = {
+	id: string;
+	email: string;
+	name: string;
+	avatar_url: string;
+};
+
 export type MeResponse = {
-	user: {
-		id: string;
-		email: string;
-	};
+	user: UserProfile;
 };
 
 export type Project = {
@@ -69,6 +73,23 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, token?: stri
 	return (await response.json()) as T;
 }
 
+function normalizeUser(user: UserProfile): UserProfile {
+	return {
+		...user,
+		avatar_url: resolveFileUrl(user.avatar_url)
+	};
+}
+
+function resolveFileUrl(path: string) {
+	if (!path) {
+		return '';
+	}
+	if (/^https?:\/\//.test(path)) {
+		return path;
+	}
+	return `${backendBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 export const backend = {
 	baseUrl: backendBaseUrl,
 
@@ -85,7 +106,39 @@ export const backend = {
 		});
 	},
 	me(token: string) {
-		return apiFetch<MeResponse>('/users/me', {}, token);
+		return apiFetch<MeResponse>('/users/me', {}, token).then((result) => ({
+			user: normalizeUser(result.user)
+		}));
+	},
+	updateMe(token: string, payload: { name?: string; email?: string; password?: string }) {
+		return apiFetch<MeResponse>('/users/me', {
+			method: 'PATCH',
+			body: JSON.stringify(payload)
+		}, token).then((result) => ({
+			user: normalizeUser(result.user)
+		}));
+	},
+	async uploadAvatar(token: string, file: File) {
+		const formData = new FormData();
+		formData.set('avatar', file);
+		const headers = new Headers();
+		headers.set('Authorization', `Bearer ${token}`);
+		const response = await fetch(`${backendBaseUrl}/users/me/avatar`, {
+			method: 'POST',
+			body: formData,
+			headers
+		});
+		if (!response.ok) {
+			let payload: ApiErrorPayload | undefined;
+			try {
+				payload = (await response.json()) as ApiErrorPayload;
+			} catch {
+				payload = undefined;
+			}
+			throw new Error(payload?.error?.message || `Request failed with status ${response.status}`);
+		}
+		const result = (await response.json()) as MeResponse;
+		return { user: normalizeUser(result.user) };
 	},
 
 	listProjects(token: string) {

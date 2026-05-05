@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -46,6 +47,10 @@ func main() {
 		appLogger.Error("failed to run migrations", slog.Any("error", err))
 		return
 	}
+	if err := os.MkdirAll(filepath.Join(appEnv.StorageDir, "avatars"), 0o755); err != nil {
+		appLogger.Error("failed to prepare storage", slog.Any("error", err))
+		return
+	}
 	sqlDB, err := db.DB()
 	if err != nil {
 		appLogger.Error("failed to access database handle", slog.Any("error", err))
@@ -60,7 +65,7 @@ func main() {
 	authService := auth.NewService(db)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
-	userService := users.NewService(db)
+	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
@@ -94,6 +99,7 @@ func main() {
 	router.Get("/docs", func(w http.ResponseWriter, request *http.Request) {
 		httpjson.WriteJSON(w, http.StatusOK, docs)
 	})
+	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
 	auth.RegisterRoutes(router, authService, appEnv)
 	projects.RegisterRoutes(router, projectService, authService)

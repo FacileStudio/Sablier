@@ -71,7 +71,11 @@ curl -sS http://localhost:4000/users/me \
 curl -sS -X PATCH http://localhost:4000/users/me \
   -H 'content-type: application/json' \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"email":"updated@example.com","password":"newpassword123"}'
+  -d '{"name":"Jane Doe","email":"updated@example.com","password":"newpassword123"}'
+
+curl -sS -X POST http://localhost:4000/users/me/avatar \
+  -H "Authorization: Bearer $TOKEN" \
+  -F avatar=@./avatar.png
 ```
 
 Events:
