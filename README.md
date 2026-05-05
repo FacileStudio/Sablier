@@ -1,61 +1,77 @@
 # Sablier
 
-Sablier is a small monorepo with:
+Sablier is a monorepo containing a Go API and a SvelteKit frontend.
 
-- `apps/api`: Go API
+- `apps/api`: Go backend
 - `apps/client`: SvelteKit frontend
-
-The repo is managed with [`mise`](https://mise.jdx.dev/) so tool versions and common tasks are shared from the repository itself.
-That includes a `mise`-managed Postgres toolchain for the local dev database.
 
 ## Quick Start
 
-1. Install and activate `mise` for your shell.
-2. Trust this repository config:
+### 1. Prerequisites
 
-   ```sh
-   mise trust
-   ```
+- [Go 1.24+](https://go.dev/dl/)
+- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Docker](https://www.docker.com/)
 
-3. Install the repo toolchains:
+### 2. Infrastructure
 
-   ```sh
-   mise install
-   ```
+Start the development database using Docker Compose:
 
-4. Start the repo-local dev Postgres database:
+```sh
+docker compose up db -d
+```
 
-   ```sh
-   mise run db-up
-   ```
+The database will be available at `localhost:5432`.
 
-5. Start both apps:
+### 3. API Setup
 
-   ```sh
-   mise run dev
-   ```
+Navigate to the API directory and start the server:
 
-The repo Postgres task starts a local cluster on `127.0.0.1:5433`. Copy `apps/api/.env.example` to `apps/api/.env` if you want local overrides.
+```sh
+cd apps/api
+go run main.go
+```
+
+The API server runs on `http://localhost:4000` by default. It will automatically run database migrations on startup.
+
+### 4. Frontend Setup
+
+Navigate to the client directory, install dependencies, and start the development server:
+
+```sh
+cd apps/client
+npm install
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173` (or `http://localhost:3000` depending on your local config).
+
+## Environment Configuration
+
+Both the API and Client can be configured via environment variables.
+
+- **API**: See `apps/api/.env.example`. Since the API does not load `.env` files automatically, ensure variables are exported in your shell or provided via a tool like `direnv`.
+- **Client**: See `apps/client/.env.example` (or `apps/api/.env.example` for shared values). SvelteKit/Vite will load `.env` files automatically.
+
+## Docker Compose
+
+To run the entire stack (API, Client, and DB) using Docker:
+
+```sh
+docker compose up --build
+```
 
 ## Common Commands
 
-```sh
-mise tasks ls --all          # show all repo and app tasks
-mise run bootstrap           # install app dependencies
-mise run db-up              # start the repo-local Postgres database on 127.0.0.1:5433
-mise run db-down            # stop the repo-local Postgres database
-mise run dev                 # run API + client dev servers
-mise run build               # build API + client
-mise run check               # run API + client checks
-mise //apps/api:build        # build apps/api/bin/api
-docker build -f apps/api/Dockerfile -t sablier-api .
-mise //apps/api:dev          # run only the API
-mise //apps/client:dev       # run only the frontend
-mise //apps/client:build     # build only the frontend
-```
+### API (`apps/api`)
 
-If your local `mise` install does not pick up monorepo tasks automatically, enable experimental features in your shell before running commands:
+- `go run main.go`: Run the API in development mode.
+- `go build -o bin/api .`: Build the API binary.
+- `go test ./...`: Run API tests.
 
-```sh
-export MISE_EXPERIMENTAL=1
-```
+### Client (`apps/client`)
+
+- `npm run dev`: Start the development server.
+- `npm run build`: Build the frontend for production.
+- `npm run check`: Run type and svelte checks.
+- `npm run preview`: Preview the production build locally.
