@@ -155,7 +155,7 @@
 						</Table.Row>
 					{:else}
 						<Table.Row
-							class="cursor-pointer hover:bg-muted/50"
+							class="cursor-pointer hover:bg-muted"
 							onclick={() => (window.location.href = `/projects/${project.id}`)}
 						>
 							<Table.Cell class="font-medium">{project.name}</Table.Cell>
