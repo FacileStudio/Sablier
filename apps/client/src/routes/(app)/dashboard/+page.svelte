@@ -322,7 +322,7 @@
 							<div class="flex flex-col gap-[2px]">
 								{#each week as day}
 									<div
-										class="w-full aspect-square rounded-[2px] transition-opacity hover:opacity-70 cursor-default {activityLevelClass(day.level, day.isFuture)}"
+										class="w-full aspect-square rounded transition-opacity hover:opacity-70 cursor-default {activityLevelClass(day.level, day.isFuture)}"
 										title="{day.label} — {formatMinutes(day.minutes)}"
 									></div>
 								{/each}
