@@ -18,6 +18,7 @@ import (
 	"api/internal/middleware"
 	"api/modules/auth"
 	"api/modules/projects"
+	"api/modules/settings"
 	"api/modules/timeentries"
 	"api/modules/users"
 	"api/schemas"
@@ -60,12 +61,14 @@ func main() {
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db)
+	settingsService := settings.NewService(db)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
 			auth.Documentation,
 			projects.Documentation,
 			timeentries.Documentation,
 			users.Documentation,
+			settings.Documentation,
 		},
 	}
 
@@ -96,6 +99,7 @@ func main() {
 	projects.RegisterRoutes(router, projectService, authService)
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
+	settings.RegisterRoutes(router, settingsService, authService)
 
 	addr := ":" + appEnv.Port
 	server := &http.Server{

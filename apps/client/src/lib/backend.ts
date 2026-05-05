@@ -22,6 +22,14 @@ export type Project = {
 	updated_at: string;
 };
 
+export type UserSettings = {
+	webhook_url: string;
+};
+
+export type SettingsResponse = {
+	settings: UserSettings;
+};
+
 export type TimeEntry = {
 	id: number;
 	project_id: number;
@@ -86,6 +94,12 @@ export const backend = {
 			body: JSON.stringify({ name, description })
 		}, token);
 	},
+	updateProject(token: string, id: number, name: string, description: string) {
+		return apiFetch<Project>(`/projects/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify({ name, description })
+		}, token);
+	},
 	deleteProject(token: string, id: number) {
 		return apiFetch<{ deleted: boolean }>(`/projects/${id}`, { method: 'DELETE' }, token);
 	},
@@ -108,5 +122,15 @@ export const backend = {
 	},
 	deleteEntry(token: string, id: number) {
 		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);
+	},
+
+	getSettings(token: string) {
+		return apiFetch<SettingsResponse>('/settings/', {}, token);
+	},
+	updateSettings(token: string, webhookUrl: string) {
+		return apiFetch<SettingsResponse>('/settings/', {
+			method: 'PUT',
+			body: JSON.stringify({ webhook_url: webhookUrl })
+		}, token);
 	}
 };

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"api/internal/errors"
+	"api/internal/webhook"
 	"api/schemas"
 
 	"gorm.io/gorm"
@@ -47,6 +48,7 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, errors.Internal("failed to start timer", err)
 	}
+	service.fireWebhook(ctx, uid, "timer_started", record)
 	return record, nil
 }
 
@@ -70,6 +72,7 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, errors.Internal("failed to stop timer", err)
 	}
+	service.fireWebhook(ctx, uid, "timer_stopped", &record)
 	return &record, nil
 }
 
@@ -147,6 +150,20 @@ func (service *Service) deleteEntry(ctx context.Context, userID string, entryID 
 		return errors.NotFound("time entry not found")
 	}
 	return nil
+}
+
+func (service *Service) fireWebhook(ctx context.Context, userID int64, event string, entry *schemas.TimeEntry) {
+	var setting schemas.UserSetting
+	if err := service.orm.WithContext(ctx).Where("user_id = ?", userID).First(&setting).Error; err != nil {
+		return
+	}
+	if setting.WebhookURL == "" {
+		return
+	}
+	webhook.Fire(setting.WebhookURL, webhook.Payload{
+		Event: event,
+		Data:  entry,
+	})
 }
 
 func (service *Service) getRunningTimer(ctx context.Context, userID string) (*schemas.TimeEntry, error) {

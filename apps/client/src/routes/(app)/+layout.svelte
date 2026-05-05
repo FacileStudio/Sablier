@@ -5,7 +5,7 @@
 	import { backend } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { LayoutDashboard, Clock, FolderOpen, Users, LogOut } from 'lucide-svelte';
+	import { LayoutDashboard, Clock, FolderOpen, Users, LogOut, Settings } from 'lucide-svelte';
 
 	let { children } = $props();
 
@@ -43,7 +43,8 @@
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/sessions', label: 'Sessions', icon: Clock },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
-		{ href: '/users', label: 'Users', icon: Users }
+		{ href: '/users', label: 'Users', icon: Users },
+		{ href: '/settings', label: 'Settings', icon: Settings }
 	];
 </script>
 
@@ -71,7 +72,7 @@
 			<Separator />
 			<div class="flex flex-col gap-2 p-3">
 				<p class="truncate text-xs text-muted-foreground">{userEmail}</p>
-				<Button variant="ghost" size="sm" class="w-full justify-start gap-2" onclick={logout}>
+				<Button variant="ghost" size="sm" class="w-full justify-start gap-2 border border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onclick={logout}>
 					<LogOut class="h-4 w-4" />
 					Logout
 				</Button>

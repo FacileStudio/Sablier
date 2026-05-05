@@ -6,7 +6,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
-	import { Plus, Trash2 } from 'lucide-svelte';
+	import { Plus, Trash2, Pencil, Check, X } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -14,6 +14,10 @@
 	let showForm = $state(false);
 	let name = $state('');
 	let description = $state('');
+
+	let editingId = $state<number | null>(null);
+	let editName = $state('');
+	let editDescription = $state('');
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString('en-US', {
@@ -36,7 +40,25 @@
 		await load();
 	}
 
-	async function remove(id: string) {
+	function startEdit(project: Project) {
+		editingId = project.id;
+		editName = project.name;
+		editDescription = project.description;
+	}
+
+	function cancelEdit() {
+		editingId = null;
+		editName = '';
+		editDescription = '';
+	}
+
+	async function saveEdit(id: number) {
+		await backend.updateProject(ctx.token, id, editName, editDescription);
+		editingId = null;
+		await load();
+	}
+
+	async function remove(id: number) {
 		await backend.deleteProject(ctx.token, id);
 		await load();
 	}
@@ -48,7 +70,7 @@
 	<title>Projects — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-6 p-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">Projects</h1>
 		<Button variant="outline" onclick={() => (showForm = !showForm)}>
@@ -106,26 +128,47 @@
 					<Table.Head>Name</Table.Head>
 					<Table.Head>Description</Table.Head>
 					<Table.Head>Created</Table.Head>
-					<Table.Head class="w-12"></Table.Head>
+					<Table.Head class="w-24"></Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
 				{#each projects as project}
 					<Table.Row>
-						<Table.Cell class="font-medium">{project.name}</Table.Cell>
-						<Table.Cell class="text-muted-foreground">
-							{project.description || '—'}
-						</Table.Cell>
-						<Table.Cell>{formatDate(project.createdAt)}</Table.Cell>
-						<Table.Cell>
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => remove(project.id)}
-							>
-								<Trash2 class="h-4 w-4" />
-							</Button>
-						</Table.Cell>
+						{#if editingId === project.id}
+							<Table.Cell>
+								<Input bind:value={editName} class="h-8" />
+							</Table.Cell>
+							<Table.Cell>
+								<Input bind:value={editDescription} class="h-8" />
+							</Table.Cell>
+							<Table.Cell>{formatDate(project.created_at)}</Table.Cell>
+							<Table.Cell>
+								<div class="flex gap-1">
+									<Button variant="ghost" size="sm" onclick={() => saveEdit(project.id)}>
+										<Check class="h-4 w-4" />
+									</Button>
+									<Button variant="ghost" size="sm" onclick={cancelEdit}>
+										<X class="h-4 w-4" />
+									</Button>
+								</div>
+							</Table.Cell>
+						{:else}
+							<Table.Cell class="font-medium">{project.name}</Table.Cell>
+							<Table.Cell class="text-muted-foreground">
+								{project.description || '—'}
+							</Table.Cell>
+							<Table.Cell>{formatDate(project.created_at)}</Table.Cell>
+							<Table.Cell>
+								<div class="flex gap-1">
+									<Button variant="ghost" size="sm" onclick={() => startEdit(project)}>
+										<Pencil class="h-4 w-4" />
+									</Button>
+									<Button variant="ghost" size="sm" onclick={() => remove(project.id)}>
+										<Trash2 class="h-4 w-4" />
+									</Button>
+								</div>
+							</Table.Cell>
+						{/if}
 					</Table.Row>
 				{/each}
 			</Table.Body>
