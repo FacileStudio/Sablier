@@ -7,7 +7,10 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Table from '$lib/components/ui/table';
+	import * as Drawer from '$lib/components/ui/drawer';
 	import { Play, Square, Clock } from 'lucide-svelte';
+
+	let drawerOpen = $state(false);
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -121,6 +124,7 @@
 			entries = [running, ...entries];
 			description = '';
 			selectedProjectId = '';
+			drawerOpen = false;
 			startTicker();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to start timer.';
@@ -254,9 +258,80 @@
 </svelte:head>
 
 <div class="flex flex-col gap-6 p-6">
-	<div>
-		<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
-		<p class="text-sm text-muted-foreground">{todayDate}</p>
+	<div class="flex items-start justify-between">
+		<div>
+			<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
+			<p class="text-sm text-muted-foreground">{todayDate}</p>
+		</div>
+
+		{#if running}
+			<div class="flex items-center gap-4">
+				<div class="text-right">
+					<span class="tabular-nums leading-none" style="font-family: var(--font-heading); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed)}</span>
+					<p class="text-xs text-muted-foreground mt-0.5">{projectName(running.project_id)}</p>
+				</div>
+				<Button
+					class="gap-2 h-10 px-5 bg-red-600 hover:bg-red-700 text-white border-0"
+					onclick={stopTimer}
+					disabled={stopping}
+				>
+					<Square class="h-4 w-4" />
+					{stopping ? 'Stopping…' : 'Stop'}
+				</Button>
+			</div>
+		{:else}
+			<Drawer.Root bind:open={drawerOpen} direction="bottom">
+				<Drawer.Trigger>
+					<Button class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
+						<Play class="h-4 w-4" />
+						Start
+					</Button>
+				</Drawer.Trigger>
+				<Drawer.Portal>
+					<Drawer.Overlay class="fixed inset-0 bg-black/40" />
+					<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
+						<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
+						<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
+							<Drawer.Header class="p-0">
+								<Drawer.Title>Start a timer</Drawer.Title>
+							</Drawer.Header>
+							<div class="flex flex-col gap-4">
+								<div class="flex flex-col gap-1.5">
+									<Label for="project-select">Project</Label>
+									<Select.Root type="single" bind:value={selectedProjectId}>
+										<Select.Trigger id="project-select" class="w-full">
+											{selectedProjectId
+												? projectName(Number(selectedProjectId))
+												: 'Select a project'}
+										</Select.Trigger>
+										<Select.Content>
+											{#each projects as project}
+												<Select.Item value={String(project.id)}>{project.name}</Select.Item>
+											{/each}
+										</Select.Content>
+									</Select.Root>
+								</div>
+								<div class="flex flex-col gap-1.5">
+									<Label for="description-input">What are you working on?</Label>
+									<Input
+										id="description-input"
+										placeholder="Description (optional)"
+										bind:value={description}
+									/>
+								</div>
+								{#if error}
+									<p class="text-sm text-destructive">{error}</p>
+								{/if}
+								<Button class="gap-2 w-full h-12 text-base" onclick={startTimer} disabled={starting}>
+									<Play class="h-4 w-4" />
+									{starting ? 'Starting…' : 'Start timer'}
+								</Button>
+							</div>
+						</div>
+					</Drawer.Content>
+				</Drawer.Portal>
+			</Drawer.Root>
+		{/if}
 	</div>
 
 	<div class="grid grid-cols-3 gap-4">
@@ -340,77 +415,6 @@
 				<div class="h-3 w-3 rounded-[2px] bg-green-700 dark:bg-green-400"></div>
 				<span>More</span>
 			</div>
-		</Card.Content>
-	</Card.Root>
-
-	<Card.Root>
-		<Card.Header>
-			<Card.Title>Timer</Card.Title>
-		</Card.Header>
-		<Card.Content>
-			{#if running}
-				<div class="flex items-center justify-between gap-8">
-					<div class="flex flex-col gap-4">
-						<div class="flex flex-col gap-1 text-sm">
-							<span class="font-medium">{projectName(running.project_id)}</span>
-							{#if running.description}
-								<span class="text-muted-foreground">{running.description}</span>
-							{/if}
-						</div>
-						{#if error}
-							<p class="text-sm text-destructive">{error}</p>
-						{/if}
-						<div>
-							<Button
-								class="gap-3 h-14 px-8 text-lg bg-red-600 hover:bg-red-700 text-white border-0"
-								onclick={stopTimer}
-								disabled={stopping}
-							>
-								<Square class="h-5 w-5" />
-								{stopping ? 'Stopping…' : 'Stop'}
-							</Button>
-						</div>
-					</div>
-					<span class="tabular-nums leading-none shrink-0" style="font-family: var(--font-heading); font-size: clamp(4rem, 12vw, 9rem); font-weight: 700;">{formatDuration(elapsed)}</span>
-				</div>
-			{:else}
-				<div class="flex flex-col gap-4">
-					<div class="grid grid-cols-2 gap-4">
-						<div class="flex flex-col gap-1.5">
-							<Label for="project-select">Project</Label>
-							<Select.Root type="single" bind:value={selectedProjectId}>
-								<Select.Trigger id="project-select" class="w-full">
-									{selectedProjectId
-										? projectName(Number(selectedProjectId))
-										: 'Select a project'}
-								</Select.Trigger>
-								<Select.Content>
-									{#each projects as project}
-										<Select.Item value={String(project.id)}>{project.name}</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<Label for="description-input">Description</Label>
-							<Input
-								id="description-input"
-								placeholder="What are you working on?"
-								bind:value={description}
-							/>
-						</div>
-					</div>
-					{#if error}
-						<p class="text-sm text-destructive">{error}</p>
-					{/if}
-					<div>
-						<Button class="gap-3 h-14 px-8 text-lg" onclick={startTimer} disabled={starting}>
-							<Play class="h-5 w-5" />
-							{starting ? 'Starting…' : 'Start'}
-						</Button>
-					</div>
-				</div>
-			{/if}
 		</Card.Content>
 	</Card.Root>
 
