@@ -12,13 +12,7 @@ ENV NPM_CONFIG_FETCH_RETRIES=5
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# FIX: Force public DNS and test connectivity before installing
-# We overwrite /etc/resolv.conf just before npm install to bypass Tailscale/Headscale
-RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
-    echo "nameserver 1.1.1.1" >> /etc/resolv.conf && \
-    echo "Checking connectivity..." && \
-    getent hosts registry.npmjs.org && \
-    npm install
+RUN npm install
 
 COPY . .
 
