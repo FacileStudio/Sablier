@@ -1,8 +1,25 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { Clock, Users, BarChart2, ArrowRight } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
+
+	const TOKEN_KEY = 'sablier.token';
+
+	onMount(() => {
+		const token = $page.url.searchParams.get('token');
+		if (token) {
+			localStorage.setItem(TOKEN_KEY, token);
+			goto('/dashboard');
+			return;
+		}
+		if (localStorage.getItem(TOKEN_KEY)) {
+			goto('/dashboard');
+		}
+	});
 </script>
 
 <svelte:head>

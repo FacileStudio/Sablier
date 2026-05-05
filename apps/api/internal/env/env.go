@@ -22,6 +22,7 @@ type Config struct {
 	CORSAllowedOrigins []string
 	LogLevel           string
 	OIDC               *OIDCConfig
+	SSOOnly            bool
 }
 
 func Load() (Config, error) {
@@ -47,6 +48,8 @@ func Load() (Config, error) {
 	if err := validateLogLevel(env.LogLevel); err != nil {
 		return Config{}, err
 	}
+
+	env.SSOOnly = strings.ToLower(os.Getenv("SSO_ONLY")) == "true"
 
 	if issuer := os.Getenv("OIDC_ISSUER"); issuer != "" {
 		clientID := os.Getenv("OIDC_CLIENT_ID")

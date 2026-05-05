@@ -14,14 +14,22 @@
 	let password = $state('');
 	let message = $state('');
 	let busy = $state(false);
+	let ssoOnly = $state(false);
+	let oidcEnabled = $state(false);
 
-	onMount(() => {
+	onMount(async () => {
 		if (localStorage.getItem(TOKEN_KEY)) {
 			goto('/dashboard');
 			return;
 		}
 		const raw = $page.url.searchParams.get('tab');
 		if (raw === 'register') tab = 'register';
+
+		try {
+			const cfg = await fetch(`${backend.baseUrl}/auth/config`).then(r => r.json());
+			ssoOnly = cfg.sso_only ?? false;
+			oidcEnabled = cfg.oidc_enabled ?? false;
+		} catch {}
 	});
 
 	async function submit() {
@@ -60,74 +68,65 @@
 			</p>
 		</div>
 
-		<div class="mb-6 flex rounded-md border border-border p-1">
-			<button
-				class="flex-1 rounded py-1.5 text-sm font-medium transition-colors {tab === 'login'
-					? 'bg-foreground text-background'
-					: 'text-muted-foreground hover:text-foreground'}"
-				onclick={() => {
-					tab = 'login';
-					message = '';
-				}}
-			>
-				Log in
-			</button>
-			<button
-				class="flex-1 rounded py-1.5 text-sm font-medium transition-colors {tab === 'register'
-					? 'bg-foreground text-background'
-					: 'text-muted-foreground hover:text-foreground'}"
-				onclick={() => {
-					tab = 'register';
-					message = '';
-				}}
-			>
-				Register
-			</button>
-		</div>
-
-		<form
-			onsubmit={(e) => {
-				e.preventDefault();
-				submit();
-			}}
-			class="space-y-4"
-		>
-			<div class="space-y-1.5">
-				<Label for="email">Email</Label>
-				<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
+		{#if !ssoOnly}
+			<div class="mb-6 flex rounded-md border border-border p-1">
+				<button
+					class="flex-1 rounded py-1.5 text-sm font-medium transition-colors {tab === 'login'
+						? 'bg-foreground text-background'
+						: 'text-muted-foreground hover:text-foreground'}"
+					onclick={() => { tab = 'login'; message = ''; }}
+				>
+					Log in
+				</button>
+				<button
+					class="flex-1 rounded py-1.5 text-sm font-medium transition-colors {tab === 'register'
+						? 'bg-foreground text-background'
+						: 'text-muted-foreground hover:text-foreground'}"
+					onclick={() => { tab = 'register'; message = ''; }}
+				>
+					Register
+				</button>
 			</div>
 
-			<div class="space-y-1.5">
-				<Label for="password">Password</Label>
-				<Input
-					id="password"
-					type="password"
-					bind:value={password}
-					placeholder="••••••••"
-					required
-				/>
-			</div>
+			<form
+				onsubmit={(e) => { e.preventDefault(); submit(); }}
+				class="space-y-4"
+			>
+				<div class="space-y-1.5">
+					<Label for="email">Email</Label>
+					<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
+				</div>
 
-			{#if message}
-				<p class="text-sm text-destructive">{message}</p>
+				<div class="space-y-1.5">
+					<Label for="password">Password</Label>
+					<Input id="password" type="password" bind:value={password} placeholder="••••••••" required />
+				</div>
+
+				{#if message}
+					<p class="text-sm text-destructive">{message}</p>
+				{/if}
+
+				<Button type="submit" class="w-full" disabled={busy}>
+					{tab === 'register' ? 'Create account' : 'Log in'}
+				</Button>
+			</form>
+		{/if}
+
+		{#if oidcEnabled}
+			{#if !ssoOnly}
+				<div class="mt-4 flex items-center gap-3">
+					<div class="h-px flex-1 bg-border"></div>
+					<span class="text-xs text-muted-foreground">or</span>
+					<div class="h-px flex-1 bg-border"></div>
+				</div>
 			{/if}
 
-			<Button type="submit" class="w-full" disabled={busy}>
-				{tab === 'register' ? 'Create account' : 'Log in'}
-			</Button>
-		</form>
-
-		<div class="mt-4 flex items-center gap-3">
-			<div class="h-px flex-1 bg-border"></div>
-			<span class="text-xs text-muted-foreground">or</span>
-			<div class="h-px flex-1 bg-border"></div>
-		</div>
-
-		<a href="{backend.baseUrl}/auth/oidc" class="mt-4 block">
-			<Button variant="outline" class="w-full" type="button">
-				Continue with SSO
-			</Button>
-		</a>
+			<a href="{backend.baseUrl}/auth/oidc" class="mt-4 block">
+				<Button variant="outline" class="w-full" type="button">
+					Continue with SSO
+				</Button>
+			</a>
+		{/if}
 	</div>
 	</div>
 </div>
