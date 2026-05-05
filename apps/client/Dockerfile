@@ -1,26 +1,17 @@
-# Use full Node.js Debian image for robust networking
-FROM node:22 AS build
+FROM oven/bun:1 AS build
 
 WORKDIR /app
 
-# npm configuration
-ENV NPM_CONFIG_MAXSOCKETS=1
-ENV NPM_CONFIG_AUDIT=false
-ENV NPM_CONFIG_FUND=false
-ENV NPM_CONFIG_FETCH_RETRIES=5
+COPY package.json bun.lockb* ./
 
-# Copy package files
-COPY package.json package-lock.json* ./
-
-RUN npm install
+RUN bun install --ignore-scripts
 
 COPY . .
 
-# Build-time argument for the API URL
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-RUN npm run build
+RUN bunx svelte-kit sync && bun run build
 
 FROM nginx:alpine
 
