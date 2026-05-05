@@ -155,6 +155,17 @@ func (service *Service) deleteEntry(ctx context.Context, userID string, entryID 
 	return nil
 }
 
+type webhookTimeEntry struct {
+	ID          int64      `json:"id"`
+	ProjectID   int64      `json:"project_id"`
+	ProjectName string     `json:"project_name"`
+	UserID      int64      `json:"user_id"`
+	UserEmail   string     `json:"user_email"`
+	Description string     `json:"description"`
+	StartedAt   time.Time  `json:"started_at"`
+	StoppedAt   *time.Time `json:"stopped_at"`
+}
+
 func (service *Service) fireWebhook(ctx context.Context, userID int64, event string, entry *schemas.TimeEntry) {
 	var setting schemas.UserSetting
 	if err := service.orm.WithContext(ctx).Where("user_id = ?", userID).First(&setting).Error; err != nil {
@@ -163,9 +174,27 @@ func (service *Service) fireWebhook(ctx context.Context, userID int64, event str
 	if setting.WebhookURL == "" {
 		return
 	}
+
+	var user schemas.User
+	service.orm.WithContext(ctx).Where("id = ?", userID).First(&user)
+
+	var project schemas.Project
+	service.orm.WithContext(ctx).Where("id = ?", entry.ProjectID).First(&project)
+
+	data := &webhookTimeEntry{
+		ID:          entry.ID,
+		ProjectID:   entry.ProjectID,
+		ProjectName: project.Name,
+		UserID:      entry.UserID,
+		UserEmail:   user.Email,
+		Description: entry.Description,
+		StartedAt:   entry.StartedAt,
+		StoppedAt:   entry.StoppedAt,
+	}
+
 	webhook.Fire(setting.WebhookURL, setting.WebhookSecretHeader, setting.WebhookSecretValue, webhook.Payload{
 		Event: event,
-		Data:  entry,
+		Data:  data,
 	})
 }
 
