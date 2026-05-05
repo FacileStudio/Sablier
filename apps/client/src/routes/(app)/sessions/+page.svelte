@@ -18,6 +18,12 @@
 
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
+	let filteredEntries = $derived(
+		selectedProjectId === 'all'
+			? entries
+			: entries.filter((e) => String(e.project_id) === selectedProjectId)
+	);
+
 	function formatDuration(ms: number): string {
 		const totalSecs = Math.floor(ms / 1000);
 		const h = Math.floor(totalSecs / 3600);
@@ -39,8 +45,8 @@
 		return projects.find((p) => p.id === id)?.name ?? '—';
 	}
 
-	async function loadEntries(projectId?: number) {
-		const result = await backend.listEntries(ctx.token, projectId);
+	async function loadEntries() {
+		const result = await backend.listEntries(ctx.token);
 		entries = result.entries;
 	}
 
@@ -55,20 +61,11 @@
 
 	async function handleDelete(id: number) {
 		await backend.deleteEntry(ctx.token, id);
-		const pid = selectedProjectId !== 'all' ? Number(selectedProjectId) : undefined;
-		await loadEntries(pid);
-	}
-
-	async function handleProjectChange(value: string | undefined) {
-		if (value === undefined) return;
-		selectedProjectId = value;
-		const pid = value !== 'all' ? Number(value) : undefined;
-		await loadEntries(pid);
+		await loadEntries();
 	}
 
 	async function handleTimerChange() {
-		const pid = selectedProjectId !== 'all' ? Number(selectedProjectId) : undefined;
-		await loadEntries(pid);
+		await loadEntries();
 	}
 
 	onMount(async () => {
@@ -93,7 +90,7 @@
 	</div>
 
 	<div class="flex items-center gap-3">
-		<Select.Root value={selectedProjectId} onValueChange={handleProjectChange}>
+		<Select.Root type="single" bind:value={selectedProjectId}>
 			<Select.Trigger class="w-48">
 				{#if selectedProjectId === 'all'}
 					All projects
@@ -110,7 +107,7 @@
 		</Select.Root>
 	</div>
 
-	{#if entries.length === 0}
+	{#if filteredEntries.length === 0}
 		<div class="flex justify-center py-16 text-muted-foreground text-sm">
 			No sessions yet.
 		</div>
@@ -128,7 +125,7 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each entries as entry}
+				{#each filteredEntries as entry}
 					{@const isRunning = entry.stopped_at === null}
 					{@const startMs = new Date(entry.started_at).getTime()}
 					{@const durationMs = isRunning ? now - startMs : new Date(entry.stopped_at!).getTime() - startMs}
