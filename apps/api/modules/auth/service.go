@@ -133,6 +133,29 @@ func (service *Service) Authenticate(context context.Context, authorization stri
 	return service.authenticateRequest(context, authorization)
 }
 
+func (service *Service) upsertOIDCUser(context context.Context, email string) (userID string, token string, err error) {
+	var record schemas.User
+	err = service.orm.WithContext(context).Where("email = ?", email).First(&record).Error
+	if err != nil && !stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return "", "", errors.Internal("failed to look up user", err)
+	}
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		record = schemas.User{Email: email}
+		if err := service.orm.WithContext(context).Create(&record).Error; err != nil {
+			return "", "", errors.Internal("failed to create user", err)
+		}
+	}
+
+	token, err = authcrypto.NewToken()
+	if err != nil {
+		return "", "", errors.Internal("failed to create session", err)
+	}
+	if err := service.insertSession(context, token, record.ID); err != nil {
+		return "", "", err
+	}
+	return strconv.FormatInt(record.ID, 10), token, nil
+}
+
 func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])

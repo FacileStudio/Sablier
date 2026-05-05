@@ -28,7 +28,7 @@ mise :dev
 ```
 
 The server listens on `:4000` by default. Set `PORT` to override it.
-By default CORS allows local frontend origins on ports `3000` and `5173`. Override with `CORS_ALLOWED_ORIGINS` as a comma-separated list.
+By default CORS allows local frontend origins on ports `3000` and `5173`. Override with `DOMAINS` as a comma-separated list of allowed origins.
 Set `LOG_LEVEL` to one of `debug`, `info`, `warn`, or `error`.
 
 On startup the app runs GORM auto-migrations for all tables.

@@ -7,28 +7,34 @@ import (
 	"strings"
 )
 
+
+type OIDCConfig struct {
+	Issuer       string
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+	SuccessURL   string
+}
+
 type Config struct {
 	DatabaseURL        string
 	Port               string
 	CORSAllowedOrigins []string
 	LogLevel           string
+	OIDC               *OIDCConfig
 }
 
 func Load() (Config, error) {
 	env := Config{
-		DatabaseURL: os.Getenv("DATABASE_URL"),
+		DatabaseURL: valueOrDefault("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/sablier?sslmode=disable"),
 		Port:        valueOrDefault("PORT", "4000"),
 		LogLevel:    valueOrDefault("LOG_LEVEL", "info"),
-		CORSAllowedOrigins: csvOrDefault("CORS_ALLOWED_ORIGINS", []string{
+		CORSAllowedOrigins: csvOrDefault("DOMAINS", []string{
 			"http://localhost:3000",
 			"http://127.0.0.1:3000",
 			"http://localhost:5173",
 			"http://127.0.0.1:5173",
 		}),
-	}
-
-	if env.DatabaseURL == "" {
-		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
 
 	port, err := strconv.Atoi(env.Port)
@@ -40,6 +46,26 @@ func Load() (Config, error) {
 	}
 	if err := validateLogLevel(env.LogLevel); err != nil {
 		return Config{}, err
+	}
+
+	if issuer := os.Getenv("OIDC_ISSUER"); issuer != "" {
+		clientID := os.Getenv("OIDC_CLIENT_ID")
+		clientSecret := os.Getenv("OIDC_CLIENT_SECRET")
+		redirectURL := os.Getenv("OIDC_REDIRECT_URL")
+		if clientID == "" || clientSecret == "" || redirectURL == "" {
+			return Config{}, fmt.Errorf("OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, and OIDC_REDIRECT_URL are required when OIDC_ISSUER is set")
+		}
+		successURL := os.Getenv("OIDC_SUCCESS_URL")
+		if successURL == "" && len(env.CORSAllowedOrigins) > 0 {
+			successURL = env.CORSAllowedOrigins[0]
+		}
+		env.OIDC = &OIDCConfig{
+			Issuer:       issuer,
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			SuccessURL:   successURL,
+		}
 	}
 
 	return env, nil
@@ -74,7 +100,7 @@ func csvOrDefault(key string, fallback []string) []string {
 
 func validateOrigins(origins []string) error {
 	if len(origins) == 0 {
-		return fmt.Errorf("CORS_ALLOWED_ORIGINS must contain at least one origin")
+		return fmt.Errorf("DOMAINS must contain at least one origin")
 	}
 
 	for _, origin := range origins {
@@ -84,7 +110,7 @@ func validateOrigins(origins []string) error {
 		if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
 			continue
 		}
-		return fmt.Errorf("CORS_ALLOWED_ORIGINS contains invalid origin %q", origin)
+		return fmt.Errorf("DOMAINS contains invalid origin %q", origin)
 	}
 
 	return nil

@@ -13,43 +13,28 @@ export type MeResponse = {
 	};
 };
 
-export type EventRecord = {
+export type Project = {
 	id: number;
 	name: string;
-	starts: string;
-	ends?: string;
-	owner_id: string;
+	description: string;
+	owner_id: number;
+	created_at: string;
+	updated_at: string;
 };
 
-export type ListEventsResponse = {
-	events: EventRecord[];
-};
-
-export type GenerateTicketResponse = {
-	code: string;
-	ticket: {
-		id: number;
-		event_id: number;
-		status: string;
-		used_at?: string;
-	};
-};
-
-export type ValidateTicketResponse = {
-	valid: boolean;
-	status: string;
-	ticket: {
-		id: number;
-		event_id: number;
-		status: string;
-		used_at?: string;
-	};
+export type TimeEntry = {
+	id: number;
+	project_id: number;
+	user_id: number;
+	description: string;
+	started_at: string;
+	stopped_at: string | null;
+	created_at: string;
+	updated_at: string;
 };
 
 type ApiErrorPayload = {
-	error?: {
-		message?: string;
-	};
+	error?: { message?: string };
 };
 
 async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
@@ -60,7 +45,6 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, token?: stri
 	if (token) {
 		headers.set('Authorization', `Bearer ${token}`);
 	}
-
 	const response = await fetch(`${backendBaseUrl}${path}`, { ...options, headers });
 	if (!response.ok) {
 		let payload: ApiErrorPayload | undefined;
@@ -76,6 +60,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, token?: stri
 
 export const backend = {
 	baseUrl: backendBaseUrl,
+
 	register(email: string, password: string) {
 		return apiFetch<AuthResponse>('/auth/register', {
 			method: 'POST',
@@ -91,30 +76,37 @@ export const backend = {
 	me(token: string) {
 		return apiFetch<MeResponse>('/users/me', {}, token);
 	},
-	listEvents() {
-		return apiFetch<ListEventsResponse>('/events');
+
+	listProjects(token: string) {
+		return apiFetch<{ projects: Project[] }>('/projects', {}, token);
 	},
-	createEvent(token: string, payload: { name: string; starts: string; ends?: string }) {
-		return apiFetch<{ id: number }>(
-			'/events',
-			{ method: 'POST', body: JSON.stringify(payload) },
-			token
-		);
-	},
-	generateTicket(token: string, eventId: number) {
-		return apiFetch<GenerateTicketResponse>(`/events/${eventId}/tickets`, { method: 'POST' }, token);
-	},
-	validateTicket(code: string) {
-		return apiFetch<ValidateTicketResponse>('/tickets/validate', {
+	createProject(token: string, name: string, description: string) {
+		return apiFetch<Project>('/projects', {
 			method: 'POST',
-			body: JSON.stringify({ code })
-		});
+			body: JSON.stringify({ name, description })
+		}, token);
 	},
-	checkInTicket(token: string, code: string) {
-		return apiFetch<{ ticket: ValidateTicketResponse['ticket'] }>(
-			'/tickets/checkin',
-			{ method: 'POST', body: JSON.stringify({ code }) },
-			token
-		);
+	deleteProject(token: string, id: number) {
+		return apiFetch<{ deleted: boolean }>(`/projects/${id}`, { method: 'DELETE' }, token);
+	},
+
+	listEntries(token: string, projectId?: number) {
+		const qs = projectId ? `?project_id=${projectId}` : '';
+		return apiFetch<{ entries: TimeEntry[] }>(`/time-entries${qs}`, {}, token);
+	},
+	getRunning(token: string) {
+		return apiFetch<{ entry: TimeEntry | null }>('/time-entries/running', {}, token);
+	},
+	startTimer(token: string, projectId: number, description: string) {
+		return apiFetch<TimeEntry>('/time-entries/start', {
+			method: 'POST',
+			body: JSON.stringify({ project_id: projectId, description })
+		}, token);
+	},
+	stopTimer(token: string) {
+		return apiFetch<TimeEntry>('/time-entries/stop', { method: 'POST' }, token);
+	},
+	deleteEntry(token: string, id: number) {
+		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);
 	}
 };

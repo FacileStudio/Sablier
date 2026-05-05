@@ -17,8 +17,8 @@ import (
 	"api/internal/logger"
 	"api/internal/middleware"
 	"api/modules/auth"
-	"api/modules/events"
-	"api/modules/tickets"
+	"api/modules/projects"
+	"api/modules/timeentries"
 	"api/modules/users"
 	"api/schemas"
 
@@ -57,14 +57,14 @@ func main() {
 	}()
 
 	authService := auth.NewService(db)
-	eventService := events.NewService(db)
-	ticketService := tickets.NewService(db, eventService)
+	projectService := projects.NewService(db)
+	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
 			auth.Documentation,
-			events.Documentation,
-			tickets.Documentation,
+			projects.Documentation,
+			timeentries.Documentation,
 			users.Documentation,
 		},
 	}
@@ -77,32 +77,24 @@ func main() {
 	router.Use(chimiddleware.Recoverer)
 
 	router.Get("/health", func(w http.ResponseWriter, request *http.Request) {
-		httpjson.WriteJSON(w, http.StatusOK, map[string]string{
-			"status": "ok",
-		})
+		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	router.Get("/ready", func(w http.ResponseWriter, request *http.Request) {
 		readinessContext, cancel := context.WithTimeout(request.Context(), 2*time.Second)
 		defer cancel()
-
 		if err := sqlDB.PingContext(readinessContext); err != nil {
-			httpjson.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{
-				"status": "not_ready",
-			})
+			httpjson.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
 			return
 		}
-
-		httpjson.WriteJSON(w, http.StatusOK, map[string]string{
-			"status": "ready",
-		})
+		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 	router.Get("/docs", func(w http.ResponseWriter, request *http.Request) {
 		httpjson.WriteJSON(w, http.StatusOK, docs)
 	})
 
-	auth.RegisterRoutes(router, authService)
-	events.RegisterRoutes(router, eventService, authService)
-	tickets.RegisterRoutes(router, ticketService, authService)
+	auth.RegisterRoutes(router, authService, appEnv)
+	projects.RegisterRoutes(router, projectService, authService)
+	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 
 	addr := ":" + appEnv.Port
@@ -132,7 +124,6 @@ func main() {
 		appLogger.Info("server shutting down")
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-
 		if err := server.Shutdown(shutdownContext); err != nil {
 			appLogger.Error("server shutdown failed", slog.Any("error", err))
 			return

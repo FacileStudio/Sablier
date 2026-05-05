@@ -1,32 +1,16 @@
-FROM debian:12-slim AS build
+FROM golang:1.24-alpine AS build
 
 ARG TARGETOS=linux
 ARG TARGETARCH
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV MISE_EXPERIMENTAL=1
-ENV MISE_INSTALL_PATH=/usr/local/bin/mise
-ENV PATH=/root/.local/bin:/usr/local/bin:${PATH}
+WORKDIR /repo/apps/api
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
-    && rm -rf /var/lib/apt/lists/*
+COPY apps/api/go.mod apps/api/go.sum ./
+RUN go mod download
 
-RUN curl https://mise.run | sh
+COPY apps/api ./
 
-WORKDIR /repo
-
-COPY mise.toml mise.lock ./
-COPY apps/api/mise.toml apps/api/go.mod apps/api/go.sum ./apps/api/
-
-RUN mise trust /repo/mise.toml \
-    && mise trust /repo/apps/api/mise.toml \
-    && mise install go
-
-COPY apps/api ./apps/api
-
-RUN cd /repo/apps/api \
-    && CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} mise :build
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} go build -o bin/api .
 
 FROM gcr.io/distroless/static-debian12
 
