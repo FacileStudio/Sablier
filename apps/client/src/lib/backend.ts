@@ -126,6 +126,12 @@ export const backend = {
 	stopTimer(token: string) {
 		return apiFetch<TimeEntry>('/time-entries/stop', { method: 'POST' }, token);
 	},
+	createEntry(token: string, projectId: number, description: string, startedAt: string, stoppedAt: string) {
+		return apiFetch<TimeEntry>('/time-entries', {
+			method: 'POST',
+			body: JSON.stringify({ project_id: projectId, description, started_at: startedAt, stopped_at: stoppedAt })
+		}, token);
+	},
 	deleteEntry(token: string, id: number) {
 		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);
 	},

@@ -7,6 +7,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import Trash2 from 'lucide-svelte/icons/trash-2';
 	import TimerControl from '$lib/components/TimerControl.svelte';
+	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -85,7 +86,10 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">Sessions</h1>
-		<TimerControl {projects} onchange={handleTimerChange} />
+		<div class="flex items-center gap-3">
+			<ManualSessionDrawer {projects} onchange={handleTimerChange} />
+			<TimerControl {projects} onchange={handleTimerChange} />
+		</div>
 	</div>
 
 	<div class="flex items-center gap-3">
