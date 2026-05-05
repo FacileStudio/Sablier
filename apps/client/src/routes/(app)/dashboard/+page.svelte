@@ -236,9 +236,9 @@
 		}
 
 		const monthHeaders = weeks.map((week) => {
-			const monthStart = week.find((d) => new Date(d.key).getDate() <= 7);
-			if (monthStart) {
-				return new Date(monthStart.key).toLocaleString(undefined, { month: 'short' });
+			const first = week.find((d) => new Date(d.key).getDate() === 1);
+			if (first) {
+				return new Date(first.key).toLocaleString(undefined, { month: 'short' });
 			}
 			return '';
 		});
@@ -246,7 +246,7 @@
 		const totalMinutes = [...dayMinutes.values()].reduce((a, b) => a + b, 0);
 		const activeDays = [...dayMinutes.values()].filter((m) => m > 0).length;
 
-		return { weeks, monthHeaders, totalMinutes: Math.round(totalMinutes), activeDays };
+		return { weeks, monthHeaders, totalMinutes: Math.round(totalMinutes), activeDays, numWeeks: weeks.length };
 	});
 </script>
 
@@ -303,51 +303,42 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			<div class="overflow-x-auto pb-1">
-				<div class="flex gap-0.5" style="min-width: max-content;">
-					<div class="flex flex-col gap-0.5 mr-2 shrink-0">
-						<div class="h-4"></div>
-						{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel}
-							<div class="h-3 w-7 text-right text-[10px] leading-3 text-muted-foreground">
-								{dayLabel}
+			<div class="flex w-full gap-1.5">
+				<div class="flex flex-col justify-around shrink-0 text-[10px] text-muted-foreground text-right pb-[2px]">
+					{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel}
+						<span>{dayLabel}</span>
+					{/each}
+				</div>
+				<div class="flex-1 min-w-0">
+					<div class="grid mb-[3px]" style="grid-template-columns: repeat({activityData.numWeeks}, 1fr); gap: 2px;">
+						{#each activityData.weeks as _week, i}
+							<div class="text-[10px] text-muted-foreground overflow-hidden whitespace-nowrap leading-none">
+								{activityData.monthHeaders[i] ?? ''}
 							</div>
-							{#if dayLabel !== ''}
-								<div class="h-0.5"></div>
-							{/if}
 						{/each}
 					</div>
-
-					<div>
-						<div class="flex gap-0.5 mb-1 h-4">
-							{#each activityData.weeks as _week, i}
-								<div class="w-3 text-[10px] leading-4 text-muted-foreground shrink-0 overflow-visible whitespace-nowrap">
-									{activityData.monthHeaders[i] ?? ''}
-								</div>
-							{/each}
-						</div>
-						<div class="flex gap-0.5">
-							{#each activityData.weeks as week}
-								<div class="flex flex-col gap-0.5">
-									{#each week as day}
-										<div
-											class="h-3 w-3 rounded-sm transition-opacity hover:opacity-80 cursor-default {activityLevelClass(day.level, day.isFuture)}"
-											title="{day.label} — {formatMinutes(day.minutes)}"
-										></div>
-									{/each}
-								</div>
-							{/each}
-						</div>
+					<div class="grid" style="grid-template-columns: repeat({activityData.numWeeks}, 1fr); gap: 2px;">
+						{#each activityData.weeks as week}
+							<div class="flex flex-col gap-[2px]">
+								{#each week as day}
+									<div
+										class="w-full aspect-square rounded-[2px] transition-opacity hover:opacity-70 cursor-default {activityLevelClass(day.level, day.isFuture)}"
+										title="{day.label} — {formatMinutes(day.minutes)}"
+									></div>
+								{/each}
+							</div>
+						{/each}
 					</div>
 				</div>
 			</div>
 
 			<div class="flex items-center gap-1.5 mt-3 text-[11px] text-muted-foreground">
 				<span>Less</span>
-				<div class="h-3 w-3 rounded-sm bg-muted"></div>
-				<div class="h-3 w-3 rounded-sm bg-green-200 dark:bg-green-900"></div>
-				<div class="h-3 w-3 rounded-sm bg-green-400 dark:bg-green-700"></div>
-				<div class="h-3 w-3 rounded-sm bg-green-500 dark:bg-green-600"></div>
-				<div class="h-3 w-3 rounded-sm bg-green-700 dark:bg-green-400"></div>
+				<div class="h-3 w-3 rounded-[2px] bg-muted"></div>
+				<div class="h-3 w-3 rounded-[2px] bg-green-200 dark:bg-green-900"></div>
+				<div class="h-3 w-3 rounded-[2px] bg-green-400 dark:bg-green-700"></div>
+				<div class="h-3 w-3 rounded-[2px] bg-green-500 dark:bg-green-600"></div>
+				<div class="h-3 w-3 rounded-[2px] bg-green-700 dark:bg-green-400"></div>
 				<span>More</span>
 			</div>
 		</Card.Content>
