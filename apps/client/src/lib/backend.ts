@@ -1,4 +1,5 @@
-const backendBaseUrl = '/api';
+const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ||
+	'http://localhost:4000';
 
 export type AuthResponse = {
 	user_id: string;
