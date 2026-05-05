@@ -87,8 +87,8 @@
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">Sessions</h1>
 		<div class="flex items-center gap-3">
-			<ManualSessionDrawer {projects} onchange={handleTimerChange} />
 			<TimerControl {projects} onchange={handleTimerChange} />
+			<ManualSessionDrawer {projects} onchange={handleTimerChange} />
 		</div>
 	</div>
 
