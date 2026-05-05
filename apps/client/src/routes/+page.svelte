@@ -35,7 +35,10 @@
 <div class="min-h-screen bg-background text-foreground">
 	<header class="border-b border-border">
 		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-			<span class="text-lg font-semibold tracking-tight">Sablier</span>
+            <div class="flex h-14 items-center gap-3">
+                <img class="w-7" src="/logo.svg" alt="logo"  />
+                <span class="text-2xl font-bold tracking-tight">Sablier</span>
+            </div>
 			<div class="flex items-center gap-2">
 				<Button variant="ghost" href="/login">Log in</Button>
 				<Button href="/login?tab=register">Get started</Button>
@@ -114,7 +117,7 @@
 
 	<footer class="border-t border-border">
 		<div class="mx-auto max-w-5xl px-6 py-6 text-sm text-muted-foreground">
-			© {new Date().getFullYear()} Sablier
+			© {new Date().getFullYear()} Sablier by <a href="https://facile.studio">Facile.</a>
 		</div>
 	</footer>
 </div>
