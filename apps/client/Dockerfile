@@ -1,14 +1,7 @@
-FROM node:22-alpine
+FROM nginx:alpine
 
-WORKDIR /app
+COPY build /usr/share/nginx/html
 
-COPY build ./build
-COPY package.json ./package.json
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 3000
-
-ENV HOST=0.0.0.0
-ENV PORT=3000
-ENV NODE_ENV=production
-
-CMD ["node", "build"]
+EXPOSE 80
