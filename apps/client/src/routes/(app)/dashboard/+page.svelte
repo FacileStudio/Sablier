@@ -310,14 +310,14 @@
 					{/each}
 				</div>
 				<div class="flex-1 min-w-0">
-					<div class="grid mb-[3px]" style="grid-template-columns: repeat({activityData.numWeeks}, 1fr); gap: 2px;">
+					<div class="grid mb-[3px]" style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;">
 						{#each activityData.weeks as _week, i}
 							<div class="text-[10px] text-muted-foreground overflow-hidden whitespace-nowrap leading-none">
 								{activityData.monthHeaders[i] ?? ''}
 							</div>
 						{/each}
 					</div>
-					<div class="grid" style="grid-template-columns: repeat({activityData.numWeeks}, 1fr); gap: 2px;">
+					<div class="grid" style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;">
 						{#each activityData.weeks as week}
 							<div class="flex flex-col gap-[2px]">
 								{#each week as day}
