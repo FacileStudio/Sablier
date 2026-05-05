@@ -350,7 +350,7 @@
 		</Card.Header>
 		<Card.Content>
 			{#if running}
-				<div class="flex flex-col gap-4">
+				<div class="flex flex-col gap-6">
 					<div class="flex items-center gap-3">
 						<Badge variant="outline" class="gap-1.5 border-foreground font-medium">
 							<span class="relative flex h-2 w-2">
@@ -361,8 +361,8 @@
 							</span>
 							Running
 						</Badge>
-						<span class="text-xl font-bold tabular-nums">{formatDuration(elapsed)}</span>
 					</div>
+					<span class="tabular-nums leading-none" style="font-family: var(--font-heading); font-size: clamp(4rem, 12vw, 9rem); font-weight: 700;">{formatDuration(elapsed)}</span>
 					<div class="flex flex-col gap-1 text-sm">
 						<span class="font-medium">{projectName(running.project_id)}</span>
 						{#if running.description}
@@ -374,12 +374,11 @@
 					{/if}
 					<div>
 						<Button
-							variant="outline"
-							class="gap-2"
+							class="gap-3 h-14 px-8 text-lg bg-red-600 hover:bg-red-700 text-white border-0"
 							onclick={stopTimer}
 							disabled={stopping}
 						>
-							<Square class="h-4 w-4" />
+							<Square class="h-5 w-5" />
 							{stopping ? 'Stopping…' : 'Stop'}
 						</Button>
 					</div>
@@ -415,8 +414,8 @@
 						<p class="text-sm text-destructive">{error}</p>
 					{/if}
 					<div>
-						<Button class="gap-2" onclick={startTimer} disabled={starting}>
-							<Play class="h-4 w-4" />
+						<Button class="gap-3 h-14 px-8 text-lg" onclick={startTimer} disabled={starting}>
+							<Play class="h-5 w-5" />
 							{starting ? 'Starting…' : 'Start'}
 						</Button>
 					</div>
