@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { backend, type Project, type Task } from '$lib/backend';
+	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -20,14 +21,14 @@
 	let drawerOpen = $state(false);
 	let selectedProjectId = $state('');
 	let tasks = $state<Task[]>([]);
-	let selectedTaskId = $state('');
-	let newTaskName = $state('');
+	let taskName = $state('');
 	let taskProjectId = $state('');
 	let startedAt = $state('');
 	let stoppedAt = $state('');
 	let saving = $state(false);
 	let taskLoading = $state(false);
 	let error = $state('');
+	const taskSuggestionsId = 'manual-task-suggestions';
 
 	function projectName(id: number): string {
 		return projects.find((p) => p.id === id)?.name ?? String(id);
@@ -40,8 +41,7 @@
 	function reset() {
 		selectedProjectId = '';
 		tasks = [];
-		selectedTaskId = '';
-		newTaskName = '';
+		taskName = '';
 		taskProjectId = '';
 		startedAt = '';
 		stoppedAt = '';
@@ -54,8 +54,7 @@
 			return;
 		}
 		taskProjectId = projectId;
-		selectedTaskId = '';
-		newTaskName = '';
+		taskName = '';
 		if (!projectId) {
 			tasks = [];
 			error = '';
@@ -87,20 +86,19 @@
 	});
 
 	async function resolveTaskId(projectId: number) {
-		const taskName = newTaskName.trim();
-		if (taskName !== '') {
-			const task = await backend.createTask(ctx.token, projectId, taskName);
-			if (!tasks.some((existing) => existing.id === task.id)) {
-				tasks = [...tasks, task].sort((a, b) => a.name.localeCompare(b.name));
-			}
-			selectedTaskId = String(task.id);
-			newTaskName = '';
-			return task.id;
+		const trimmedTaskName = taskName.trim();
+		if (!trimmedTaskName) {
+			throw new Error('Type a task name.');
 		}
-		if (!selectedTaskId) {
-			throw new Error('Pick a task or create one.');
+		const existingTask = findTaskByName(tasks, trimmedTaskName);
+		if (existingTask) {
+			taskName = existingTask.name;
+			return existingTask.id;
 		}
-		return Number(selectedTaskId);
+		const task = await backend.createTask(ctx.token, projectId, trimmedTaskName);
+		tasks = upsertTask(tasks, task);
+		taskName = task.name;
+		return task.id;
 	}
 
 	async function handleSave() {
@@ -187,33 +185,30 @@
 						</div>
 					</div>
 					<div class="flex flex-col gap-1.5">
-						<Label for="manual-task-select">Task</Label>
-						<Select.Root type="single" bind:value={selectedTaskId}>
-							<Select.Trigger id="manual-task-select" class="w-full">
-								{#if selectedTaskId}
-									{tasks.find((task) => task.id === Number(selectedTaskId))?.name ?? 'Select a task'}
-								{:else if taskLoading}
-									Loading tasks…
-								{:else if !selectedProjectId}
-									Select a project first
-								{:else}
-									Select a task
-								{/if}
-							</Select.Trigger>
-							<Select.Content>
-								{#each tasks as task}
-									<Select.Item value={String(task.id)}>{task.name}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
-					</div>
-					<div class="flex flex-col gap-1.5">
-						<Label for="manual-task-create-input">New task</Label>
+						<Label for="manual-task-input">Task</Label>
 						<Input
-							id="manual-task-create-input"
-							placeholder="Create a task for this project"
-							bind:value={newTaskName}
+							id="manual-task-input"
+							list={selectedProjectId ? taskSuggestionsId : undefined}
+							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+							bind:value={taskName}
+							disabled={!selectedProjectId}
 						/>
+						{#if selectedProjectId}
+							<datalist id={taskSuggestionsId}>
+								{#each tasks as task}
+									<option value={task.name}></option>
+								{/each}
+							</datalist>
+							<p class="text-sm text-muted-foreground">
+								{#if taskLoading}
+									Loading task suggestions…
+								{:else if tasks.length}
+									Pick an existing task from suggestions or type a new one.
+								{:else}
+									No tasks yet. Type a name to create the first one.
+								{/if}
+							</p>
+						{/if}
 					</div>
 					{#if error}
 						<p class="text-sm text-destructive">{error}</p>
