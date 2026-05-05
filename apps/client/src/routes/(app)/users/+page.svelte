@@ -40,51 +40,75 @@
 	<title>Users — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
-	<h1 class="text-2xl font-semibold">Users</h1>
+<div class="p-3 justify-between flex flex-col w-full h-full">
+{#each users as user (user.id)}
+<div class="flex items-center gap-3"> -->
+{#if user.avatar_url}
+    <img
+        src={user.avatar_url}
+        alt={displayName(user)}
+        class="h-10 w-10 rounded-full border border-border object-cover"
+    />
+    {:else}
+        <div class="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-foreground text-xs font-semibold text-background">
+            {getInitials(displayName(user))}
+        </div>
+    {/if}
+    <div class="min-w-0">
+        <div class="flex items-center gap-2">
+            <UserColorDot color={userColor(user)} />
+            <p class="truncate font-medium">{displayName(user)}</p>
+        </div>
+    </div>
+</div>
+{/each}
+</div>
 
-	<Table.Root>
-		<Table.Header>
-			<Table.Row>
-				<Table.Head>User</Table.Head>
-			</Table.Row>
-		</Table.Header>
-		<Table.Body>
-			{#if users.length > 0}
-				{#each users as user (user.id)}
-					<Table.Row>
-						<Table.Cell>
-							<div class="flex items-center gap-3">
-								{#if user.avatar_url}
-									<img
-										src={user.avatar_url}
-										alt={displayName(user)}
-										class="h-10 w-10 rounded-full border border-border object-cover"
-									/>
-								{:else}
-									<div class="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-foreground text-xs font-semibold text-background">
-										{getInitials(displayName(user))}
-									</div>
-								{/if}
-								<div class="min-w-0">
-									<div class="flex items-center gap-2">
-										<UserColorDot color={userColor(user)} />
-										<p class="truncate font-medium">{displayName(user)}</p>
-									</div>
-								</div>
-							</div>
-						</Table.Cell>
-					</Table.Row>
-				{/each}
-			{:else if loading}
-				<Table.Row>
-					<Table.Cell colspan={1} class="text-center text-muted-foreground">Loading…</Table.Cell>
-				</Table.Row>
-			{:else}
-				<Table.Row>
-					<Table.Cell colspan={1} class="text-center text-muted-foreground">No users yet.</Table.Cell>
-				</Table.Row>
-			{/if}
-		</Table.Body>
-	</Table.Root>
+<div class="flex flex-col gap-6 p-6">
+	<!-- <h1 class="text-2xl font-semibold">Users</h1> -->
+	<!---->
+	<!-- <Table.Root> -->
+	<!-- 	<Table.Header> -->
+	<!-- 		<Table.Row> -->
+	<!-- 			<Table.Head>User</Table.Head> -->
+	<!-- 		</Table.Row> -->
+	<!-- 	</Table.Header> -->
+	<!-- 	<Table.Body> -->
+	<!-- 		{#if users.length > 0} -->
+	<!-- 			{#each users as user (user.id)} -->
+	<!-- 				<Table.Row> -->
+	<!-- 					<Table.Cell> -->
+	<!-- 						<div class="flex items-center gap-3"> -->
+	<!-- 							{#if user.avatar_url} -->
+	<!-- 								<img -->
+	<!-- 									src={user.avatar_url} -->
+	<!-- 									alt={displayName(user)} -->
+	<!-- 									class="h-10 w-10 rounded-full border border-border object-cover" -->
+	<!-- 								/> -->
+	<!-- 							{:else} -->
+	<!-- 								<div class="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-foreground text-xs font-semibold text-background"> -->
+	<!-- 									{getInitials(displayName(user))} -->
+	<!-- 								</div> -->
+	<!-- 							{/if} -->
+	<!-- 							<div class="min-w-0"> -->
+	<!-- 								<div class="flex items-center gap-2"> -->
+	<!-- 									<UserColorDot color={userColor(user)} /> -->
+	<!-- 									<p class="truncate font-medium">{displayName(user)}</p> -->
+	<!-- 								</div> -->
+	<!-- 							</div> -->
+	<!-- 						</div> -->
+	<!-- 					</Table.Cell> -->
+	<!-- 				</Table.Row> -->
+	<!-- 			{/each} -->
+	<!-- 		{:else if loading} -->
+	<!-- 			<Table.Row> -->
+	<!-- 				<Table.Cell colspan={1} class="text-center text-muted-foreground">Loading…</Table.Cell> -->
+	<!-- 			</Table.Row> -->
+	<!-- 		{:else} -->
+	<!-- 			<Table.Row> -->
+	<!-- 				<Table.Cell colspan={1} class="text-center text-muted-foreground">No users yet.</Table.Cell> -->
+	<!-- 			</Table.Row> -->
+	<!-- 		{/if} -->
+	<!-- 	</Table.Body> -->
+	<!-- </Table.Root> -->
 </div>
