@@ -115,7 +115,7 @@
 		</section>
 	</main>
 
-	<footer class="border-t border-border text-center bg-[#0A0A0A] text-muted">
+	<footer class="border-t border-border text-center text-muted">
 		<div class="mx-auto max-w-5xl px-6 py-6 text-sm text-muted-foreground">
 			© {new Date().getFullYear()} Sablier by <a href="https://facile.studio" class="underline hover:cursor-pointer font-semibold">Facile.</a>
 		</div>
