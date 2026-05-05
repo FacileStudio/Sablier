@@ -22,10 +22,15 @@ services:
     expose:
       - "4000"
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/sablier?sslmode=disable
-      PORT: "4000"
-      LOG_LEVEL: info
-      DOMAINS: http://localhost:3000,http://127.0.0.1:3000
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
+      PORT: ${PORT:-4000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DOMAINS: ${DOMAINS:-http://localhost:3000,http://127.0.0.1:3000}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
+      OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
     depends_on:
       db:
         condition: service_healthy
