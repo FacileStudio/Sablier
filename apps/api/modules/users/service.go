@@ -100,11 +100,6 @@ func (service *Service) storeAvatar(context context.Context, userID string, read
 		return nil, errors.Internal("failed to parse user id", err)
 	}
 
-	extension, ok := avatarExtension(contentType)
-	if !ok {
-		return nil, errors.Invalid("avatar must be a PNG, JPEG, GIF, or WebP image")
-	}
-
 	var record schemas.User
 	if err := service.orm.WithContext(context).Where("id = ?", id).First(&record).Error; err != nil {
 		if stderrors.Is(err, gorm.ErrRecordNotFound) {
@@ -113,24 +108,9 @@ func (service *Service) storeAvatar(context context.Context, userID string, read
 		return nil, errors.Internal("failed to read user", err)
 	}
 
-	filename := fmt.Sprintf("user-%d-%d%s", id, time.Now().UnixNano(), extension)
-	relativePath := filepath.Join("avatars", filename)
-	absolutePath := filepath.Join(service.storageDir, relativePath)
-
-	if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
-		return nil, errors.Internal("failed to prepare avatar storage", err)
-	}
-
-	file, err := os.Create(absolutePath)
+	relativePath, absolutePath, err := service.persistAvatarFile(id, reader, contentType)
 	if err != nil {
-		return nil, errors.Internal("failed to create avatar file", err)
-	}
-	if _, err := io.Copy(file, reader); err != nil {
-		_ = file.Close()
-		return nil, errors.Internal("failed to write avatar file", err)
-	}
-	if err := file.Close(); err != nil {
-		return nil, errors.Internal("failed to finalize avatar file", err)
+		return nil, err
 	}
 
 	newAvatarURL := "/files/" + strings.ReplaceAll(relativePath, string(filepath.Separator), "/")
@@ -143,14 +123,47 @@ func (service *Service) storeAvatar(context context.Context, userID string, read
 	}
 
 	if oldAvatarURL != "" {
-		oldPath := strings.TrimPrefix(oldAvatarURL, "/files/")
-		oldAbsolutePath := filepath.Join(service.storageDir, filepath.Clean(oldPath))
-		if strings.HasPrefix(oldAbsolutePath, filepath.Clean(filepath.Join(service.storageDir, "avatars"))) {
-			_ = os.Remove(oldAbsolutePath)
-		}
+		service.removeAvatarFile(oldAvatarURL)
 	}
 
 	return mapUser(record), nil
+}
+
+func (service *Service) persistAvatarFile(userID int64, reader io.Reader, contentType string) (string, string, error) {
+	extension, ok := avatarExtension(contentType)
+	if !ok {
+		return "", "", errors.Invalid("avatar must be a PNG, JPEG, GIF, or WebP image")
+	}
+
+	filename := fmt.Sprintf("user-%d-%d%s", userID, time.Now().UnixNano(), extension)
+	relativePath := filepath.Join("avatars", filename)
+	absolutePath := filepath.Join(service.storageDir, relativePath)
+
+	if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
+		return "", "", errors.Internal("failed to prepare avatar storage", err)
+	}
+
+	file, err := os.Create(absolutePath)
+	if err != nil {
+		return "", "", errors.Internal("failed to create avatar file", err)
+	}
+	if _, err := io.Copy(file, reader); err != nil {
+		_ = file.Close()
+		return "", "", errors.Internal("failed to write avatar file", err)
+	}
+	if err := file.Close(); err != nil {
+		return "", "", errors.Internal("failed to finalize avatar file", err)
+	}
+
+	return relativePath, absolutePath, nil
+}
+
+func (service *Service) removeAvatarFile(avatarURL string) {
+	oldPath := strings.TrimPrefix(avatarURL, "/files/")
+	oldAbsolutePath := filepath.Join(service.storageDir, filepath.Clean(oldPath))
+	if strings.HasPrefix(oldAbsolutePath, filepath.Clean(filepath.Join(service.storageDir, "avatars"))) {
+		_ = os.Remove(oldAbsolutePath)
+	}
 }
 
 func mapUser(record schemas.User) *User {
