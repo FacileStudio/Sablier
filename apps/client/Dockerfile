@@ -1,9 +1,12 @@
-FROM oven/bun:1-alpine AS build
+# Use Debian-based Bun image for better stability and glibc support
+FROM oven/bun:1 AS build
 
 WORKDIR /app
 
 # Copy lockfile and package.json for caching
 COPY package.json bun.lock ./
+
+# Increasing timeout and using standard Debian image helps with hangs on Dokploy/Docker
 RUN bun install --frozen-lockfile
 
 COPY . .
