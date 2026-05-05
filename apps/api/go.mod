@@ -3,10 +3,10 @@ module api
 go 1.24.0
 
 require (
-	github.com/coreos/go-oidc/v3 v3.18.0
+	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/go-chi/chi/v5 v5.2.3
 	golang.org/x/crypto v0.42.0
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.21.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
