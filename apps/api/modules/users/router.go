@@ -12,6 +12,15 @@ import (
 
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/users", func(router chi.Router) {
+		router.With(middleware.RequireAuth(authService)).Get("/", func(w http.ResponseWriter, request *http.Request) {
+			resp, err := service.controller.list(request.Context())
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
 		router.With(middleware.RequireAuth(authService)).Get("/me", func(w http.ResponseWriter, request *http.Request) {
 			resp, err := service.controller.me(request.Context())
 			if err != nil {

@@ -47,6 +47,20 @@ func (service *Service) getUser(context context.Context, userID string) (*User, 
 	return mapUser(record), nil
 }
 
+func (service *Service) listUsers(context context.Context) ([]User, error) {
+	var records []schemas.User
+	if err := service.orm.WithContext(context).Order("name asc, email asc, id asc").Find(&records).Error; err != nil {
+		return nil, errors.Internal("failed to list users", err)
+	}
+
+	users := make([]User, 0, len(records))
+	for _, record := range records {
+		users = append(users, *mapUser(record))
+	}
+
+	return users, nil
+}
+
 func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, password *string) (*User, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {

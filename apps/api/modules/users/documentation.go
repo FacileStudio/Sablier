@@ -4,8 +4,20 @@ import documentation "api/internal/documentation"
 
 var Documentation = documentation.Module{
 	Name:        "users",
-	Description: "Current-user retrieval and update routes.",
+	Description: "User listing plus current-user retrieval and update routes.",
 	Routes: []documentation.Route{
+		{
+			Method:       "GET",
+			Path:         "/users",
+			Summary:      "List users",
+			Description:  "Returns all authenticated users with profile metadata.",
+			Auth:         "bearer token required",
+			ResponseBody: "ListResponse",
+			Errors: []documentation.Error{
+				{Status: 401, Code: "unauthenticated", Description: "Authorization header is missing or invalid."},
+				{Status: 500, Code: "internal", Description: "Unexpected server error."},
+			},
+		},
 		{
 			Method:       "GET",
 			Path:         "/users/me",

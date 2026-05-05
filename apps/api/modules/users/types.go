@@ -11,6 +11,10 @@ type MeResponse struct {
 	User User `json:"user"`
 }
 
+type ListResponse struct {
+	Users []User `json:"users"`
+}
+
 type UpdateRequest struct {
 	Name     *string `json:"name"`
 	Email    *string `json:"email"`

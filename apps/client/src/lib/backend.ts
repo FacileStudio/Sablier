@@ -17,6 +17,10 @@ export type MeResponse = {
 	user: UserProfile;
 };
 
+export type UsersResponse = {
+	users: UserProfile[];
+};
+
 export type Project = {
 	id: number;
 	name: string;
@@ -117,6 +121,11 @@ export const backend = {
 	me(token: string) {
 		return apiFetch<MeResponse>('/users/me', {}, token).then((result) => ({
 			user: normalizeUser(result.user)
+		}));
+	},
+	listUsers(token: string) {
+		return apiFetch<UsersResponse>('/users', {}, token).then((result) => ({
+			users: result.users.map(normalizeUser)
 		}));
 	},
 	updateMe(token: string, payload: { name?: string; email?: string; password?: string }) {

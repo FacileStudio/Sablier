@@ -19,6 +19,19 @@ func newController(service *Service) *Controller {
 	return &Controller{service: service}
 }
 
+func (controller *Controller) list(context context.Context) (*ListResponse, error) {
+	if _, ok := authcontext.IdentityFromContext(context); !ok {
+		return nil, errors.Unauthorized("missing auth")
+	}
+
+	users, err := controller.service.listUsers(context)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListResponse{Users: users}, nil
+}
+
 func (controller *Controller) me(context context.Context) (*MeResponse, error) {
 	identity, ok := authcontext.IdentityFromContext(context)
 	if !ok {
