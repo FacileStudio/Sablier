@@ -6,7 +6,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { USER_COLORS, normalizeUserColor } from '$lib/user-colors';
+	import { USER_COLORS, normalizeUserColor, userColorLabel } from '$lib/user-colors';
 
 	const ctx = getContext<{
 		token: string;
@@ -164,7 +164,7 @@
 								aria-pressed={color === option}
 							>
 								<UserColorDot color={option} class="h-3 w-3" />
-								{option.replace('#', '')}
+								{userColorLabel(option)}
 							</button>
 						{/each}
 					</div>
