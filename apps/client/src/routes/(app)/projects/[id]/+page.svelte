@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { backend, type Project, type TimeEntry } from '$lib/backend';
+	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
@@ -13,6 +13,7 @@
 	let loading = $state(true);
 	let error = $state('');
 	let project = $state<Project | null>(null);
+	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
 	let deletingEntryId = $state<number | null>(null);
 	let deleteError = $state('');
@@ -64,6 +65,26 @@
 			: null
 	);
 
+	const tasksWithStats = $derived(
+		[...tasks]
+			.sort((a, b) => a.name.localeCompare(b.name))
+			.map((task) => {
+				const taskEntries = entries.filter((entry) => entry.task_id === task.id);
+				const taskTotalMs = taskEntries.reduce((acc, entry) => acc + entryMs(entry), 0);
+				return {
+					...task,
+					sessionCount: taskEntries.length,
+					totalMs: taskTotalMs,
+					lastStartedAt:
+						taskEntries.length > 0
+							? taskEntries.reduce((latest, entry) =>
+									new Date(entry.started_at) > new Date(latest.started_at) ? entry : latest
+								).started_at
+							: null
+				};
+			})
+	);
+
 	async function handleDelete(entryId: number) {
 		if (!confirm('Remove this session?')) {
 			return;
@@ -83,11 +104,13 @@
 	onMount(async () => {
 		try {
 			const id = Number(page.params.id);
-			const [proj, ents] = await Promise.all([
+			const [proj, taskResult, ents] = await Promise.all([
 				backend.getProject(ctx.token, id),
+				backend.listTasks(ctx.token, id),
 				backend.listEntries(ctx.token, id)
 			]);
 			project = proj;
+			tasks = taskResult.tasks;
 			entries = ents.entries;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load project.';
@@ -138,12 +161,12 @@
 
 				<Card.Root>
 					<Card.Header class="pb-2">
-						<Card.Title class="text-sm font-medium text-muted-foreground">Sessions</Card.Title>
+						<Card.Title class="text-sm font-medium text-muted-foreground">Tasks</Card.Title>
 					</Card.Header>
 					<Card.Content>
 						<div class="flex items-center gap-2">
 							<BarChart3 class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold">{entries.length}</span>
+							<span class="text-2xl font-bold">{tasks.length}</span>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -174,6 +197,38 @@
 					</Card.Content>
 				</Card.Root>
 			</div>
+
+			<Card.Root class="mt-6">
+				<Card.Header>
+					<Card.Title>Tasks</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					{#if tasksWithStats.length === 0}
+						<p class="text-sm text-muted-foreground">No tasks yet.</p>
+					{:else}
+						<div class="space-y-3">
+							{#each tasksWithStats as task}
+								<div class="rounded-xl border p-4">
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="truncate font-medium">{task.name}</p>
+											<p class="mt-1 text-sm text-muted-foreground">
+												{task.sessionCount} {task.sessionCount === 1 ? 'session' : 'sessions'}
+											</p>
+										</div>
+										<Badge variant="secondary" class="tabular-nums">
+											{formatDuration(task.totalMs)}
+										</Badge>
+									</div>
+									<p class="mt-2 text-xs text-muted-foreground">
+										{task.lastStartedAt ? `Last session ${formatDate(task.lastStartedAt)}` : 'No sessions on this task yet'}
+									</p>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</Card.Content>
+			</Card.Root>
 
 			<Card.Root class="mt-6">
 				<Card.Header>
