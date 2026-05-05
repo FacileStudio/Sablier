@@ -2,16 +2,16 @@
 	import { getContext, onMount } from 'svelte';
 	import { backend, type Project } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
+	import * as Drawer from '$lib/components/ui/drawer';
 	import { Plus, Trash2, Pencil, Check, X } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
 	let projects = $state<Project[]>([]);
-	let showForm = $state(false);
+	let drawerOpen = $state(false);
 	let name = $state('');
 	let description = $state('');
 
@@ -36,7 +36,7 @@
 		await backend.createProject(ctx.token, name, description);
 		name = '';
 		description = '';
-		showForm = false;
+		drawerOpen = false;
 		await load();
 	}
 
@@ -73,51 +73,46 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">Projects</h1>
-		<Button variant="outline" onclick={() => (showForm = !showForm)}>
-			<Plus class="mr-2 h-4 w-4" />
-			New project
-		</Button>
-	</div>
-
-	{#if showForm}
-		<Card.Root>
-			<Card.Header>
-				<span class="font-medium">Create project</span>
-			</Card.Header>
-			<Card.Content>
-				<form
-					class="flex flex-col gap-4"
-					onsubmit={(e) => {
-						e.preventDefault();
-						create();
-					}}
-				>
-					<div class="flex flex-col gap-1.5">
-						<Label for="name">Name</Label>
-						<Input id="name" bind:value={name} required />
-					</div>
-					<div class="flex flex-col gap-1.5">
-						<Label for="description">Description</Label>
-						<Input id="description" bind:value={description} />
-					</div>
-					<div class="flex gap-2">
-						<Button type="submit">Create</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							onclick={() => {
-								showForm = false;
-								name = '';
-								description = '';
+		<Drawer.Root bind:open={drawerOpen} direction="bottom">
+			<Drawer.Trigger>
+				<Button variant="outline" onclick={() => (drawerOpen = true)}>
+					<Plus class="mr-2 h-4 w-4" />
+					New project
+				</Button>
+			</Drawer.Trigger>
+			<Drawer.Portal>
+				<Drawer.Overlay class="fixed inset-0 bg-black/40" />
+				<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
+					<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
+					<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
+						<Drawer.Header class="p-0">
+							<Drawer.Title>New project</Drawer.Title>
+						</Drawer.Header>
+						<form
+							class="flex flex-col gap-4"
+							onsubmit={(e) => {
+								e.preventDefault();
+								create();
 							}}
 						>
-							Cancel
-						</Button>
+							<div class="flex flex-col gap-1.5">
+								<Label for="proj-name">Name</Label>
+								<Input id="proj-name" bind:value={name} required />
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<Label for="proj-description">Description</Label>
+								<Input id="proj-description" bind:value={description} placeholder="Optional" />
+							</div>
+							<Button type="submit" class="w-full h-12 text-base">
+								<Plus class="h-4 w-4 mr-2" />
+								Create project
+							</Button>
+						</form>
 					</div>
-				</form>
-			</Card.Content>
-		</Card.Root>
-	{/if}
+				</Drawer.Content>
+			</Drawer.Portal>
+		</Drawer.Root>
+	</div>
 
 	{#if projects.length === 0}
 		<p class="text-muted-foreground text-center py-12">No projects yet.</p>
