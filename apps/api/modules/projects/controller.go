@@ -50,8 +50,8 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateProje
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context) (*ListProjectsResponse, error) {
-	records, err := c.service.listProjects(ctx)
+func (c *Controller) list(ctx context.Context, userID string) (*ListProjectsResponse, error) {
+	records, err := c.service.listProjects(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +88,8 @@ func (c *Controller) delete(ctx context.Context, userID string, projectID int64)
 	return c.service.deleteProject(ctx, userID, projectID)
 }
 
-func (c *Controller) listTasks(ctx context.Context, projectID int64) (*ListTasksResponse, error) {
-	records, err := c.service.listTasks(ctx, projectID)
+func (c *Controller) listTasks(ctx context.Context, userID string, projectID int64) (*ListTasksResponse, error) {
+	records, err := c.service.listTasks(ctx, userID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -100,12 +100,12 @@ func (c *Controller) listTasks(ctx context.Context, projectID int64) (*ListTasks
 	return &ListTasksResponse{Tasks: items}, nil
 }
 
-func (c *Controller) createTask(ctx context.Context, projectID int64, req *CreateTaskRequest) (*TaskResponse, error) {
+func (c *Controller) createTask(ctx context.Context, userID string, projectID int64, req *CreateTaskRequest) (*TaskResponse, error) {
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return nil, errors.Invalid("task name is required")
 	}
-	record, err := c.service.createTask(ctx, projectID, name)
+	record, err := c.service.createTask(ctx, userID, projectID, name)
 	if err != nil {
 		return nil, err
 	}
