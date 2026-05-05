@@ -7,7 +7,6 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Table from '$lib/components/ui/table';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Play, Square, Clock } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
@@ -350,38 +349,29 @@
 		</Card.Header>
 		<Card.Content>
 			{#if running}
-				<div class="flex flex-col gap-6">
-					<div class="flex items-center gap-3">
-						<Badge variant="outline" class="gap-1.5 border-foreground font-medium">
-							<span class="relative flex h-2 w-2">
-								<span
-									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-75"
-								></span>
-								<span class="relative inline-flex h-2 w-2 rounded-full bg-foreground"></span>
-							</span>
-							Running
-						</Badge>
-					</div>
-					<span class="tabular-nums leading-none" style="font-family: var(--font-heading); font-size: clamp(4rem, 12vw, 9rem); font-weight: 700;">{formatDuration(elapsed)}</span>
-					<div class="flex flex-col gap-1 text-sm">
-						<span class="font-medium">{projectName(running.project_id)}</span>
-						{#if running.description}
-							<span class="text-muted-foreground">{running.description}</span>
+				<div class="flex items-center justify-between gap-8">
+					<div class="flex flex-col gap-4">
+						<div class="flex flex-col gap-1 text-sm">
+							<span class="font-medium">{projectName(running.project_id)}</span>
+							{#if running.description}
+								<span class="text-muted-foreground">{running.description}</span>
+							{/if}
+						</div>
+						{#if error}
+							<p class="text-sm text-destructive">{error}</p>
 						{/if}
+						<div>
+							<Button
+								class="gap-3 h-14 px-8 text-lg bg-red-600 hover:bg-red-700 text-white border-0"
+								onclick={stopTimer}
+								disabled={stopping}
+							>
+								<Square class="h-5 w-5" />
+								{stopping ? 'Stopping…' : 'Stop'}
+							</Button>
+						</div>
 					</div>
-					{#if error}
-						<p class="text-sm text-destructive">{error}</p>
-					{/if}
-					<div>
-						<Button
-							class="gap-3 h-14 px-8 text-lg bg-red-600 hover:bg-red-700 text-white border-0"
-							onclick={stopTimer}
-							disabled={stopping}
-						>
-							<Square class="h-5 w-5" />
-							{stopping ? 'Stopping…' : 'Stop'}
-						</Button>
-					</div>
+					<span class="tabular-nums leading-none shrink-0" style="font-family: var(--font-heading); font-size: clamp(4rem, 12vw, 9rem); font-weight: 700;">{formatDuration(elapsed)}</span>
 				</div>
 			{:else}
 				<div class="flex flex-col gap-4">
