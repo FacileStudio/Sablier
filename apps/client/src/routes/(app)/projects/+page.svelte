@@ -2,9 +2,9 @@
 	import { getContext, onMount } from 'svelte';
 	import { backend, type Project } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import * as Table from '$lib/components/ui/table';
 	import * as Drawer from '$lib/components/ui/drawer';
 	import { Plus, Trash2, Pencil, Check, X } from 'lucide-svelte';
 
@@ -117,28 +117,17 @@
 	{#if projects.length === 0}
 		<p class="text-muted-foreground text-center py-12">No projects yet.</p>
 	{:else}
-		<Table.Root>
-			<Table.Header>
-				<Table.Row>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Description</Table.Head>
-					<Table.Head>Created</Table.Head>
-					<Table.Head class="w-24"></Table.Head>
-				</Table.Row>
-			</Table.Header>
-			<Table.Body>
-				{#each projects as project}
-					{#if editingId === project.id}
-						<Table.Row>
-							<Table.Cell>
-								<Input bind:value={editName} class="h-8" />
-							</Table.Cell>
-							<Table.Cell>
-								<Input bind:value={editDescription} class="h-8" />
-							</Table.Cell>
-							<Table.Cell>{formatDate(project.created_at)}</Table.Cell>
-							<Table.Cell>
-								<div class="flex gap-1">
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			{#each projects as project}
+				{#if editingId === project.id}
+					<Card.Root class="border-border">
+						<Card.Header class="gap-4">
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0 flex-1">
+									<Card.Title>Edit project</Card.Title>
+									<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+								</div>
+								<div class="flex shrink-0 gap-1">
 									<Button variant="ghost" size="sm" onclick={() => saveEdit(project.id)}>
 										<Check class="h-4 w-4" />
 									</Button>
@@ -146,32 +135,66 @@
 										<X class="h-4 w-4" />
 									</Button>
 								</div>
-							</Table.Cell>
-						</Table.Row>
-					{:else}
-						<Table.Row
-							class="cursor-pointer hover:bg-muted"
-							onclick={() => (window.location.href = `/projects/${project.id}`)}
-						>
-							<Table.Cell class="font-medium">{project.name}</Table.Cell>
-							<Table.Cell class="text-muted-foreground">
-								{project.description || '—'}
-							</Table.Cell>
-							<Table.Cell>{formatDate(project.created_at)}</Table.Cell>
-							<Table.Cell onclick={(e) => e.stopPropagation()}>
-								<div class="flex gap-1">
-									<Button variant="ghost" size="sm" onclick={() => startEdit(project)}>
+							</div>
+						</Card.Header>
+						<Card.Content class="flex flex-col gap-4">
+							<div class="flex flex-col gap-1.5">
+								<Label for={`edit-project-name-${project.id}`}>Name</Label>
+								<Input id={`edit-project-name-${project.id}`} bind:value={editName} />
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<Label for={`edit-project-description-${project.id}`}>Description</Label>
+								<Input
+									id={`edit-project-description-${project.id}`}
+									bind:value={editDescription}
+									placeholder="Optional"
+								/>
+							</div>
+						</Card.Content>
+					</Card.Root>
+				{:else}
+					<Card.Root
+						class="border-border cursor-pointer transition-colors hover:bg-muted/40"
+						onclick={() => (window.location.href = `/projects/${project.id}`)}
+					>
+						<Card.Header class="gap-4">
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0 flex-1">
+									<Card.Title class="truncate">{project.name}</Card.Title>
+									<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+								</div>
+								<div class="flex shrink-0 gap-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										onclick={(e) => {
+											e.stopPropagation();
+											startEdit(project);
+										}}
+									>
 										<Pencil class="h-4 w-4" />
 									</Button>
-									<Button variant="ghost" size="sm" onclick={() => remove(project.id)}>
+									<Button
+										variant="ghost"
+										size="sm"
+										onclick={(e) => {
+											e.stopPropagation();
+											remove(project.id);
+										}}
+									>
 										<Trash2 class="h-4 w-4" />
 									</Button>
 								</div>
-							</Table.Cell>
-						</Table.Row>
-					{/if}
-				{/each}
-			</Table.Body>
-		</Table.Root>
+							</div>
+						</Card.Header>
+						<Card.Content>
+							<p class="min-h-12 text-sm text-muted-foreground">
+								{project.description || 'No description yet.'}
+							</p>
+						</Card.Content>
+					</Card.Root>
+				{/if}
+			{/each}
+		</div>
 	{/if}
 </div>
