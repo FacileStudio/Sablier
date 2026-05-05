@@ -328,11 +328,14 @@
 				</Card.Root>
 			</div>
 
-			<Card.Root class="mt-6">
-				<Card.Header>
-					<Card.Title>Tasks</Card.Title>
-				</Card.Header>
-				<Card.Content>
+			<section class="mt-6">
+				<div class="mb-4 flex items-start justify-between gap-3">
+					<h2 class="text-lg font-semibold">Tasks</h2>
+					<p class="text-right text-xs text-muted-foreground">
+						Time shown is total time spent per task.
+					</p>
+				</div>
+				<div>
 					{#if tasksWithStats.length === 0}
 						<p class="text-sm text-muted-foreground">No tasks yet.</p>
 					{:else}
@@ -357,14 +360,14 @@
 							{/each}
 						</div>
 					{/if}
-				</Card.Content>
-			</Card.Root>
+				</div>
+			</section>
 
-			<Card.Root class="mt-6">
-				<Card.Header>
-					<Card.Title>Sessions</Card.Title>
-				</Card.Header>
-				<Card.Content>
+			<section class="mt-6">
+				<div class="mb-4">
+					<h2 class="text-lg font-semibold">Sessions</h2>
+				</div>
+				<div>
 					{#if deleteError}
 						<p class="mb-4 text-sm text-destructive">{deleteError}</p>
 					{/if}
@@ -423,8 +426,8 @@
 							</Table.Body>
 						</Table.Root>
 					{/if}
-				</Card.Content>
-			</Card.Root>
+				</div>
+			</section>
 		{/if}
 	</div>
 </div>
