@@ -49,14 +49,15 @@ func (c *Controller) stop(ctx context.Context, userID string) (*TimeEntryRespons
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context, userID string, projectID int64) (*ListEntriesResponse, error) {
-	records, err := c.service.listEntries(ctx, userID, projectID)
+func (c *Controller) list(ctx context.Context, projectID int64) (*ListEntriesResponse, error) {
+	records, err := c.service.listEntries(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]TimeEntryResponse, len(records))
 	for i, r := range records {
-		items[i] = toResponse(&r)
+		items[i] = toResponse(&r.TimeEntry)
+		items[i].UserEmail = r.UserEmail
 	}
 	return &ListEntriesResponse{Entries: items}, nil
 }

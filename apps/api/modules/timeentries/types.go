@@ -25,6 +25,7 @@ type TimeEntryResponse struct {
 	ID          int64      `json:"id"`
 	ProjectID   int64      `json:"project_id"`
 	UserID      int64      `json:"user_id"`
+	UserEmail   string     `json:"user_email,omitempty"`
 	Description string     `json:"description"`
 	StartedAt   time.Time  `json:"started_at"`
 	StoppedAt   *time.Time `json:"stopped_at"`

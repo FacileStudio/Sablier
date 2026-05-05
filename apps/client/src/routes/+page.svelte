@@ -9,6 +9,8 @@
 
 	const TOKEN_KEY = 'sablier.token';
 
+	let redirecting = $state(true);
+
 	onMount(() => {
 		const token = $page.url.searchParams.get('token');
 		if (token) {
@@ -18,7 +20,9 @@
 		}
 		if (localStorage.getItem(TOKEN_KEY)) {
 			goto('/dashboard');
+			return;
 		}
+		redirecting = false;
 	});
 </script>
 
@@ -27,6 +31,7 @@
 	<meta name="description" content="Simple, fast time tracking for teams." />
 </svelte:head>
 
+{#if !redirecting}
 <div class="min-h-screen bg-background text-foreground">
 	<header class="border-b border-border">
 		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
@@ -113,3 +118,4 @@
 		</div>
 	</footer>
 </div>
+{/if}

@@ -76,18 +76,21 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	return &record, nil
 }
 
-func (service *Service) listEntries(ctx context.Context, userID string, projectID int64) ([]schemas.TimeEntry, error) {
-	uid, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
+type timeEntryRow struct {
+	schemas.TimeEntry
+	UserEmail string
+}
 
-	query := service.orm.WithContext(ctx).Where("user_id = ?", uid)
+func (service *Service) listEntries(ctx context.Context, projectID int64) ([]timeEntryRow, error) {
+	query := service.orm.WithContext(ctx).
+		Model(&schemas.TimeEntry{}).
+		Select("time_entries.*, users.email as user_email").
+		Joins("JOIN users ON users.id = time_entries.user_id")
 	if projectID > 0 {
-		query = query.Where("project_id = ?", projectID)
+		query = query.Where("time_entries.project_id = ?", projectID)
 	}
-	var records []schemas.TimeEntry
-	if err := query.Order("started_at desc").Limit(100).Find(&records).Error; err != nil {
+	var records []timeEntryRow
+	if err := query.Order("time_entries.started_at desc").Limit(100).Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list entries", err)
 	}
 	return records, nil

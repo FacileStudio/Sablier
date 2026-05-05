@@ -50,8 +50,7 @@
 		<Card.Header>
 			<Card.Title>Webhook</Card.Title>
 			<Card.Description>
-				Sablier will POST a JSON event to this URL when a timer starts or stops. Use this to
-				integrate with tools like Nook.
+				Sablier will POST a JSON event to this URL when a timer starts or stops.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="flex flex-col gap-4">
@@ -60,7 +59,7 @@
 				<Input
 					id="webhook-url"
 					type="url"
-					placeholder="https://your-nook-instance/webhooks/sablier"
+					placeholder="https://your-app.example.com/webhooks/sablier"
 					bind:value={webhookUrl}
 				/>
 			</div>

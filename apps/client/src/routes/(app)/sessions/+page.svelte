@@ -129,6 +129,7 @@
 			<Table.Header>
 				<Table.Row>
 					<Table.Head>Project</Table.Head>
+					<Table.Head>User</Table.Head>
 					<Table.Head>Description</Table.Head>
 					<Table.Head>Started</Table.Head>
 					<Table.Head>Stopped</Table.Head>
@@ -143,6 +144,7 @@
 					{@const durationMs = isRunning ? now - startMs : new Date(entry.stopped_at!).getTime() - startMs}
 					<Table.Row>
 						<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
+						<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
 						<Table.Cell class="text-muted-foreground">{entry.description || '—'}</Table.Cell>
 						<Table.Cell>{formatDate(entry.started_at)}</Table.Cell>
 						<Table.Cell>

@@ -34,6 +34,7 @@ export type TimeEntry = {
 	id: number;
 	project_id: number;
 	user_id: number;
+	user_email?: string;
 	description: string;
 	started_at: string;
 	stopped_at: string | null;

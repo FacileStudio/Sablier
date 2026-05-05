@@ -18,8 +18,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		router.Use(middleware.RequireAuth(authService))
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
-			resp, err := service.controller.list(request.Context(), identity.UserID)
+			resp, err := service.controller.list(request.Context())
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return

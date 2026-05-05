@@ -57,7 +57,7 @@
 	}
 
 	function todayTotal(): string {
-		const todayEntries = entries.filter((e) => isToday(e.started_at));
+		const todayEntries = entries.filter((e) => isToday(e.started_at) && e.id !== running?.id);
 		let ms = todayEntries.reduce((acc, e) => {
 			const start = new Date(e.started_at).getTime();
 			const end = e.stopped_at ? new Date(e.stopped_at).getTime() : Date.now();
@@ -82,9 +82,9 @@
 	function startTicker() {
 		stopTicker();
 		if (running) {
-			elapsed = Date.now() - new Date(running.started_at).getTime();
+			elapsed = Math.max(0, Date.now() - new Date(running.started_at).getTime());
 			ticker = setInterval(() => {
-				elapsed = Date.now() - new Date(running!.started_at).getTime();
+				elapsed = Math.max(0, Date.now() - new Date(running!.started_at).getTime());
 			}, 1000);
 		}
 	}

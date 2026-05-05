@@ -38,13 +38,9 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	return record, nil
 }
 
-func (service *Service) listProjects(ctx context.Context, userID string) ([]schemas.Project, error) {
-	ownerID, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
+func (service *Service) listProjects(ctx context.Context) ([]schemas.Project, error) {
 	var records []schemas.Project
-	if err := service.orm.WithContext(ctx).Where("owner_id = ?", ownerID).Order("created_at desc").Find(&records).Error; err != nil {
+	if err := service.orm.WithContext(ctx).Order("created_at desc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list projects", err)
 	}
 	return records, nil

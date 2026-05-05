@@ -18,7 +18,6 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		router.Use(middleware.RequireAuth(authService))
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
-			identity, _ := authcontext.IdentityFromContext(request.Context())
 			var projectID int64
 			if raw := request.URL.Query().Get("project_id"); raw != "" {
 				id, err := strconv.ParseInt(raw, 10, 64)
@@ -28,7 +27,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 				}
 				projectID = id
 			}
-			resp, err := service.controller.list(request.Context(), identity.UserID, projectID)
+			resp, err := service.controller.list(request.Context(), projectID)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
