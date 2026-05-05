@@ -88,13 +88,14 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 type timeEntryRow struct {
 	schemas.TimeEntry
 	UserEmail string
+	UserColor string
 	TaskName  string
 }
 
 func (service *Service) listEntries(ctx context.Context, projectID int64) ([]timeEntryRow, error) {
 	query := service.orm.WithContext(ctx).
 		Model(&schemas.TimeEntry{}).
-		Select("time_entries.*, users.email as user_email, tasks.name as task_name").
+		Select("time_entries.*, users.email as user_email, users.color as user_color, tasks.name as task_name").
 		Joins("JOIN users ON users.id = time_entries.user_id").
 		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id")
 	if projectID > 0 {

@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
+	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { USER_COLORS, normalizeUserColor } from '$lib/user-colors';
 
 	const ctx = getContext<{
 		token: string;
@@ -13,6 +15,7 @@
 	}>('app');
 
 	let name = $state(ctx.user?.name ?? '');
+	let color = $state(normalizeUserColor(ctx.user?.color));
 	let saving = $state(false);
 	let uploading = $state(false);
 	let message = $state('');
@@ -21,6 +24,7 @@
 
 	$effect(() => {
 		name = ctx.user?.name ?? '';
+		color = normalizeUserColor(ctx.user?.color);
 	});
 
 	function getInitials(value: string) {
@@ -44,7 +48,7 @@
 		message = '';
 
 		try {
-			const result = await backend.updateMe(ctx.token, { name });
+			const result = await backend.updateMe(ctx.token, { name, color: normalizeUserColor(color) });
 			ctx.setUser(result.user);
 			message = 'Profile saved.';
 		} catch (err) {
@@ -139,6 +143,31 @@
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
 					<Input id="email" value={ctx.user?.email ?? ''} disabled />
+				</div>
+
+				<div class="space-y-2">
+					<Label>Color</Label>
+					<div class="flex flex-wrap gap-2">
+						{#each USER_COLORS as option}
+							<button
+								type="button"
+								class={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+									color === option
+										? 'border-foreground bg-foreground text-background'
+										: 'border-border bg-background hover:border-foreground/30 hover:bg-muted/40'
+								}`}
+								onclick={() => {
+									color = option;
+									message = '';
+									error = '';
+								}}
+								aria-pressed={color === option}
+							>
+								<UserColorDot color={option} class="h-3 w-3" />
+								{option.replace('#', '')}
+							</button>
+						{/each}
+					</div>
 				</div>
 
 				{#if error}

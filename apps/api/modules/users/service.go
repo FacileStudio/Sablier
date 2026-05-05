@@ -13,6 +13,7 @@ import (
 
 	"api/internal/authcrypto"
 	"api/internal/errors"
+	"api/internal/usercolor"
 	"api/schemas"
 
 	"gorm.io/gorm"
@@ -43,11 +44,18 @@ func (service *Service) getUser(context context.Context, userID string) (*User, 
 		}
 		return nil, errors.Internal("failed to read user", err)
 	}
+	if err := service.ensureUserColor(context, &record); err != nil {
+		return nil, err
+	}
 
 	return mapUser(record), nil
 }
 
 func (service *Service) listUsers(context context.Context) ([]User, error) {
+	if err := usercolor.BackfillMissing(context, service.orm); err != nil {
+		return nil, errors.Internal("failed to backfill user colors", err)
+	}
+
 	var records []schemas.User
 	if err := service.orm.WithContext(context).Order("name asc, email asc, id asc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list users", err)
@@ -61,7 +69,7 @@ func (service *Service) listUsers(context context.Context) ([]User, error) {
 	return users, nil
 }
 
-func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, password *string) (*User, error) {
+func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, password *string, color *string) (*User, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Internal("failed to parse user id", err)
@@ -81,6 +89,9 @@ func (service *Service) updateUser(context context.Context, userID string, name 
 		}
 		updates["password_hash"] = hash
 	}
+	if color != nil {
+		updates["color"] = *color
+	}
 
 	result := service.orm.WithContext(context).
 		Model(&schemas.User{}).
@@ -99,13 +110,11 @@ func (service *Service) updateUser(context context.Context, userID string, name 
 		}
 		return nil, errors.Internal("failed to read user", err)
 	}
+	if err := service.ensureUserColor(context, &record); err != nil {
+		return nil, err
+	}
 
-	return &User{
-		ID:        strconv.FormatInt(record.ID, 10),
-		Email:     record.Email,
-		Name:      record.Name,
-		AvatarURL: record.AvatarURL,
-	}, nil
+	return mapUser(record), nil
 }
 
 func (service *Service) storeAvatar(context context.Context, userID string, reader io.Reader, contentType string) (*User, error) {
@@ -138,6 +147,10 @@ func (service *Service) storeAvatar(context context.Context, userID string, read
 
 	if oldAvatarURL != "" {
 		service.removeAvatarFile(oldAvatarURL)
+	}
+
+	if err := service.ensureUserColor(context, &record); err != nil {
+		return nil, err
 	}
 
 	return mapUser(record), nil
@@ -180,12 +193,31 @@ func (service *Service) removeAvatarFile(avatarURL string) {
 	}
 }
 
+func (service *Service) ensureUserColor(context context.Context, record *schemas.User) error {
+	color, ok := usercolor.Normalize(record.Color)
+	if ok && record.Color == color {
+		return nil
+	}
+
+	color, err := usercolor.EnsureForUser(context, service.orm, record.ID)
+	if err != nil {
+		if stderrors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.NotFound("user not found")
+		}
+		return errors.Internal("failed to assign user color", err)
+	}
+
+	record.Color = color
+	return nil
+}
+
 func mapUser(record schemas.User) *User {
 	return &User{
 		ID:        strconv.FormatInt(record.ID, 10),
 		Email:     record.Email,
 		Name:      record.Name,
 		AvatarURL: record.AvatarURL,
+		Color:     record.Color,
 	}
 }
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
+	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Clock } from 'lucide-svelte';
@@ -59,6 +60,10 @@
 		const start = new Date(e.started_at).getTime();
 		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
 		return formatDuration(end - start);
+	}
+
+	function userColor(entry: TimeEntry) {
+		return (entry as TimeEntry & { user_color?: string }).user_color;
 	}
 
 	async function loadEntries() {
@@ -305,7 +310,12 @@
 						{#each recentEntries as entry}
 							<Table.Row>
 								<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
-								<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
+								<Table.Cell class="text-muted-foreground">
+									<div class="flex items-center gap-2">
+										<UserColorDot color={userColor(entry)} />
+										<span>{entry.user_email ?? '—'}</span>
+									</div>
+								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
 								<Table.Cell class="text-right tabular-nums">{entryDuration(entry)}</Table.Cell>

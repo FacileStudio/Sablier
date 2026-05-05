@@ -9,6 +9,7 @@ import (
 
 	"api/internal/authcontext"
 	"api/internal/errors"
+	"api/internal/usercolor"
 )
 
 type Controller struct {
@@ -82,11 +83,20 @@ func (controller *Controller) updateMe(context context.Context, req *UpdateReque
 		password = req.Password
 	}
 
-	if name == nil && email == nil && password == nil {
+	var color *string
+	if req.Color != nil {
+		normalized, ok := usercolor.Normalize(*req.Color)
+		if !ok {
+			return nil, errors.Invalid("color must be one of: AD9EF0, F09ED6, EE7E89, EEB47E, A9EE7E, 7EEEDB")
+		}
+		color = &normalized
+	}
+
+	if name == nil && email == nil && password == nil && color == nil {
 		return nil, errors.Invalid("at least one field must be provided")
 	}
 
-	user, err := controller.service.updateUser(context, identity.UserID, name, email, password)
+	user, err := controller.service.updateUser(context, identity.UserID, name, email, password, color)
 	if err != nil {
 		return nil, err
 	}

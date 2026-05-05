@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
+	import UserColorDot from '$lib/components/UserColorDot.svelte';
+	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
@@ -26,6 +28,13 @@
 	let deletingProject = $state(false);
 	let deletingEntryId = $state<number | null>(null);
 	let deleteError = $state('');
+
+	type UserTimeSegment = {
+		key: string;
+		label: string;
+		color?: string;
+		ms: number;
+	};
 
 	function formatDuration(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -58,9 +67,49 @@
 		return end - start;
 	}
 
+	function userColor(entry: TimeEntry) {
+		return (entry as TimeEntry & { user_color?: string }).user_color;
+	}
+
+	function userLabel(entry: TimeEntry) {
+		return entry.user_email?.trim() || `User ${entry.user_id}`;
+	}
+
+	function aggregateUserTimeSegments(entryList: TimeEntry[]): UserTimeSegment[] {
+		const segments = new Map<string, UserTimeSegment>();
+
+		for (const entry of entryList) {
+			const key = String(entry.user_id ?? entry.user_email ?? entry.id);
+			const existing = segments.get(key);
+			const ms = entryMs(entry);
+
+			if (existing) {
+				existing.ms += ms;
+				if (!existing.color) {
+					existing.color = userColor(entry);
+				}
+				if (existing.label.startsWith('User ') && entry.user_email) {
+					existing.label = userLabel(entry);
+				}
+				continue;
+			}
+
+			segments.set(key, {
+				key,
+				label: userLabel(entry),
+				color: userColor(entry),
+				ms
+			});
+		}
+
+		return [...segments.values()].sort((a, b) => b.ms - a.ms || a.label.localeCompare(b.label));
+	}
+
 	const sortedEntries = $derived(
 		[...entries].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
 	);
+
+	const projectUserSegments = $derived(aggregateUserTimeSegments(entries));
 
 	const totalMs = $derived(entries.reduce((acc, e) => acc + entryMs(e), 0));
 
@@ -84,6 +133,7 @@
 					...task,
 					sessionCount: taskEntries.length,
 					totalMs: taskTotalMs,
+					userSegments: aggregateUserTimeSegments(taskEntries),
 					lastStartedAt:
 						taskEntries.length > 0
 							? taskEntries.reduce((latest, entry) =>
@@ -328,6 +378,28 @@
 				</Card.Root>
 			</div>
 
+			<section class="mt-6 rounded-2xl border p-5">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<h2 class="text-lg font-semibold">User Repartition</h2>
+						<p class="text-sm text-muted-foreground">
+							Whole-project split by tracked time per user.
+						</p>
+					</div>
+					<Badge variant="outline" class="w-fit tabular-nums">
+						{formatDuration(totalMs)}
+					</Badge>
+				</div>
+
+				<div class="mt-4">
+					{#if projectUserSegments.length === 0}
+						<p class="text-sm text-muted-foreground">No tracked time yet.</p>
+					{:else}
+						<UserColorSplitBar segments={projectUserSegments} barClass="h-4" />
+					{/if}
+				</div>
+			</section>
+
 			<section class="mt-6">
 				<div class="mb-4 flex items-start justify-between gap-3">
 					<h2 class="text-lg font-semibold">Tasks</h2>
@@ -352,6 +424,13 @@
 										<Badge variant="secondary" class="tabular-nums">
 											{formatDuration(task.totalMs)}
 										</Badge>
+									</div>
+									<div class="mt-3">
+										{#if task.userSegments.length > 0}
+											<UserColorSplitBar segments={task.userSegments} />
+										{:else}
+											<div class="h-3 w-full rounded-full border border-border bg-muted/40"></div>
+										{/if}
 									</div>
 									<p class="mt-2 text-xs text-muted-foreground">
 										{task.lastStartedAt ? `Last session ${formatDate(task.lastStartedAt)}` : 'No sessions on this task yet'}
@@ -388,7 +467,12 @@
 							<Table.Body>
 								{#each sortedEntries as entry}
 									<Table.Row>
-										<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
+										<Table.Cell class="text-muted-foreground">
+											<div class="flex items-center gap-2">
+												<UserColorDot color={userColor(entry)} />
+												<span>{entry.user_email ?? '—'}</span>
+											</div>
+										</Table.Cell>
 										<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 										<Table.Cell class="text-muted-foreground">
 											{formatDate(entry.started_at)}

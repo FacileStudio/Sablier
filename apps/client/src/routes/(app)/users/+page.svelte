@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
+	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import * as Table from '$lib/components/ui/table';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
@@ -21,6 +22,10 @@
 
 	function displayName(user: UserProfile) {
 		return user.name?.trim() || user.email;
+	}
+
+	function userColor(user: UserProfile) {
+		return (user as UserProfile & { color?: string }).color;
 	}
 
 	onMount(async () => {
@@ -62,7 +67,10 @@
 									</div>
 								{/if}
 								<div class="min-w-0">
-									<p class="truncate font-medium">{user.name || '—'}</p>
+									<div class="flex items-center gap-2">
+										<UserColorDot color={userColor(user)} />
+										<p class="truncate font-medium">{user.name || '—'}</p>
+									</div>
 								</div>
 							</div>
 						</Table.Cell>

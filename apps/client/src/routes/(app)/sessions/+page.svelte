@@ -3,6 +3,7 @@
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
+	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as Select from '$lib/components/ui/select';
 	import TimerControl from '$lib/components/TimerControl.svelte';
@@ -44,6 +45,10 @@
 
 	function projectName(id: number): string {
 		return projects.find((p) => p.id === id)?.name ?? '—';
+	}
+
+	function userColor(entry: TimeEntry) {
+		return (entry as TimeEntry & { user_color?: string }).user_color;
 	}
 
 	async function loadEntries() {
@@ -147,7 +152,12 @@
 					{@const durationMs = isRunning ? now - startMs : new Date(entry.stopped_at!).getTime() - startMs}
 					<Table.Row>
 						<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
-						<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
+						<Table.Cell class="text-muted-foreground">
+							<div class="flex items-center gap-2">
+								<UserColorDot color={userColor(entry)} />
+								<span>{entry.user_email ?? '—'}</span>
+							</div>
+						</Table.Cell>
 						<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 						<Table.Cell>{formatDate(entry.started_at)}</Table.Cell>
 						<Table.Cell>

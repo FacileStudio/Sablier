@@ -5,6 +5,7 @@ type User struct {
 	Email     string `json:"email"`
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatar_url"`
+	Color     string `json:"color"`
 }
 
 type MeResponse struct {
@@ -19,4 +20,5 @@ type UpdateRequest struct {
 	Name     *string `json:"name"`
 	Email    *string `json:"email"`
 	Password *string `json:"password"`
+	Color    *string `json:"color"`
 }

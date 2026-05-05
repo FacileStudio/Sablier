@@ -34,7 +34,7 @@ var Documentation = documentation.Module{
 			Method:       "PATCH",
 			Path:         "/users/me",
 			Summary:      "Update the current user",
-			Description:  "Updates the authenticated user's name, email, and/or password.",
+			Description:  "Updates the authenticated user's name, email, password, and/or pastel color.",
 			Auth:         "bearer token required",
 			RequestBody:  "UpdateRequest",
 			ResponseBody: "MeResponse",

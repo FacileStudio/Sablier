@@ -19,7 +19,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open test database: %v", err)
 	}
 
-	err = orm.AutoMigrate(&schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{})
+	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{})
 	if err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
@@ -71,6 +71,21 @@ func seedEntry(t *testing.T, orm *gorm.DB, projectID int64, taskID int64, userID
 	return entry
 }
 
+func seedUser(t *testing.T, orm *gorm.DB, id int64, email string, color string) schemas.User {
+	t.Helper()
+
+	user := schemas.User{
+		ID:           id,
+		Email:        email,
+		Color:        color,
+		PasswordHash: "hash",
+	}
+	if err := orm.Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	return user
+}
+
 func TestUpdateEntryRejectsForeignOwner(t *testing.T) {
 	service := newTestService(t)
 	project := seedProject(t, service.orm, 1)
@@ -97,6 +112,28 @@ func TestDeleteEntryRejectsForeignOwner(t *testing.T) {
 	err := service.deleteEntry(context.Background(), "2", entry.ID)
 	if err == nil || err.Error() != "time entry not found" {
 		t.Fatalf("expected time entry not found, got %v", err)
+	}
+}
+
+func TestListEntriesIncludesUserColor(t *testing.T) {
+	service := newTestService(t)
+	user := seedUser(t, service.orm, 1, "jane@example.com", "AD9EF0")
+	project := seedProject(t, service.orm, user.ID)
+	task := seedTask(t, service.orm, project.ID)
+	seedEntry(t, service.orm, project.ID, task.ID, user.ID)
+
+	records, err := service.listEntries(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("list entries: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	if records[0].UserEmail != user.Email {
+		t.Fatalf("expected user email %q, got %q", user.Email, records[0].UserEmail)
+	}
+	if records[0].UserColor != user.Color {
+		t.Fatalf("expected user color %q, got %q", user.Color, records[0].UserColor)
 	}
 }
 

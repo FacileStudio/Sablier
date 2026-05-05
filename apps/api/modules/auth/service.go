@@ -11,6 +11,7 @@ import (
 
 	"api/internal/authcrypto"
 	"api/internal/errors"
+	"api/internal/usercolor"
 	"api/schemas"
 
 	"gorm.io/gorm"
@@ -33,8 +34,14 @@ func (service *Service) registerUser(context context.Context, email string, pass
 		return "", "", errors.Invalid("invalid password")
 	}
 
+	color, err := usercolor.NextAvailable(context, service.orm)
+	if err != nil {
+		return "", "", errors.Internal("failed to choose user color", err)
+	}
+
 	record := &schemas.User{
 		Email:        email,
+		Color:        color,
 		PasswordHash: hash,
 	}
 	if err := service.orm.WithContext(context).Create(record).Error; err != nil {
@@ -140,7 +147,11 @@ func (service *Service) upsertOIDCUser(context context.Context, email string) (u
 		return "", "", errors.Internal("failed to look up user", err)
 	}
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		record = schemas.User{Email: email}
+		color, colorErr := usercolor.NextAvailable(context, service.orm)
+		if colorErr != nil {
+			return "", "", errors.Internal("failed to choose user color", colorErr)
+		}
+		record = schemas.User{Email: email, Color: color}
 		if err := service.orm.WithContext(context).Create(&record).Error; err != nil {
 			return "", "", errors.Internal("failed to create user", err)
 		}

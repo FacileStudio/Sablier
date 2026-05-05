@@ -1,3 +1,5 @@
+import { normalizeUserColor } from '$lib/user-colors';
+
 const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ||
 	'http://localhost:4000';
 
@@ -11,6 +13,7 @@ export type UserProfile = {
 	email: string;
 	name: string;
 	avatar_url: string;
+	color: string;
 };
 
 export type MeResponse = {
@@ -55,6 +58,7 @@ export type TimeEntry = {
 	task_name: string;
 	user_id: number;
 	user_email?: string;
+	user_color?: string;
 	started_at: string;
 	stopped_at: string | null;
 	created_at: string;
@@ -89,6 +93,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, token?: stri
 function normalizeUser(user: UserProfile): UserProfile {
 	return {
 		...user,
+		color: normalizeUserColor(user.color),
 		avatar_url: resolveFileUrl(user.avatar_url)
 	};
 }
@@ -128,7 +133,7 @@ export const backend = {
 			users: result.users.map(normalizeUser)
 		}));
 	},
-	updateMe(token: string, payload: { name?: string; email?: string; password?: string }) {
+	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string }) {
 		return apiFetch<MeResponse>('/users/me', {
 			method: 'PATCH',
 			body: JSON.stringify(payload)
