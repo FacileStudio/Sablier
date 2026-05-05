@@ -1,21 +1,26 @@
-# Switch to node:alpine for the build stage as its DNS handling sometimes differs on Dokploy
-FROM node:22-alpine AS build
+# Use full Node.js Debian image (not slim, not alpine) for the most robust networking/DNS stack
+FROM node:22 AS build
 
 WORKDIR /app
 
-# Conservative npm configuration to prevent socket exhaustion and networking hangs
-# - maxsockets=1: Limit to one connection at a time
-# - loglevel=verbose: Show exactly where it hangs
-# - audit/fund=false: Reduce extra network requests
+# Diagnostic: Check DNS configuration and connectivity
+RUN cat /etc/resolv.conf && \
+    (getent hosts registry.npmjs.org || echo "DNS Resolution Failed")
+
+# Conservative npm configuration
+# - maxsockets=1: Limit to one connection to avoid overwhelming weak host DNS/networks
+# - fetch-retries=5: Be more patient with transient DNS failures
 ENV NPM_CONFIG_MAXSOCKETS=1
-ENV NPM_CONFIG_LOGLEVEL=verbose
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 ENV NPM_CONFIG_AUDIT=false
 ENV NPM_CONFIG_FUND=false
 
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Run install with verbose output to identify the exact point of failure
+# Run install - the full debian image handles DNS much better than alpine in restricted VPCs
 RUN npm install
 
 COPY . .
