@@ -6,6 +6,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import * as Select from '$lib/components/ui/select';
 	import Trash2 from 'lucide-svelte/icons/trash-2';
+	import TimerControl from '$lib/components/TimerControl.svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -37,20 +38,6 @@
 		return projects.find((p) => p.id === id)?.name ?? '—';
 	}
 
-	function hasRunning(): boolean {
-		return entries.some((e) => e.stopped_at === null);
-	}
-
-	function todayTotalMs(): number {
-		const today = new Date().toDateString();
-		return entries.reduce((acc, e) => {
-			const start = new Date(e.started_at);
-			if (start.toDateString() !== today) return acc;
-			const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
-			return acc + (end - start.getTime());
-		}, 0);
-	}
-
 	async function loadEntries(projectId?: number) {
 		const result = await backend.listEntries(ctx.token, projectId);
 		entries = result.entries;
@@ -78,16 +65,17 @@
 		await loadEntries(pid);
 	}
 
+	async function handleTimerChange() {
+		const pid = selectedProjectId !== 'all' ? Number(selectedProjectId) : undefined;
+		await loadEntries(pid);
+	}
+
 	onMount(async () => {
 		await loadAll();
-		ticker = setInterval(() => {
-			if (hasRunning()) now = Date.now();
-		}, 1000);
+		ticker = setInterval(() => { now = Date.now(); }, 1000);
 	});
 
-	onDestroy(() => {
-		clearInterval(ticker);
-	});
+	onDestroy(() => clearInterval(ticker));
 </script>
 
 <svelte:head>
@@ -97,9 +85,7 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">Sessions</h1>
-		<Badge variant="outline" class="text-sm font-mono">
-			{formatDuration(todayTotalMs())} today
-		</Badge>
+		<TimerControl {projects} onchange={handleTimerChange} />
 	</div>
 
 	<div class="flex items-center gap-3">
