@@ -133,8 +133,8 @@
 			</Table.Header>
 			<Table.Body>
 				{#each projects as project}
-					<Table.Row>
-						{#if editingId === project.id}
+					{#if editingId === project.id}
+						<Table.Row>
 							<Table.Cell>
 								<Input bind:value={editName} class="h-8" />
 							</Table.Cell>
@@ -152,15 +152,18 @@
 									</Button>
 								</div>
 							</Table.Cell>
-						{:else}
-							<Table.Cell class="font-medium">
-								<a href="/projects/{project.id}" class="hover:underline underline-offset-4">{project.name}</a>
-							</Table.Cell>
+						</Table.Row>
+					{:else}
+						<Table.Row
+							class="cursor-pointer hover:bg-muted/50"
+							onclick={() => (window.location.href = `/projects/${project.id}`)}
+						>
+							<Table.Cell class="font-medium">{project.name}</Table.Cell>
 							<Table.Cell class="text-muted-foreground">
 								{project.description || '—'}
 							</Table.Cell>
 							<Table.Cell>{formatDate(project.created_at)}</Table.Cell>
-							<Table.Cell>
+							<Table.Cell onclick={(e) => e.stopPropagation()}>
 								<div class="flex gap-1">
 									<Button variant="ghost" size="sm" onclick={() => startEdit(project)}>
 										<Pencil class="h-4 w-4" />
@@ -170,8 +173,8 @@
 									</Button>
 								</div>
 							</Table.Cell>
-						{/if}
-					</Table.Row>
+						</Table.Row>
+					{/if}
 				{/each}
 			</Table.Body>
 		</Table.Root>
