@@ -1,12 +1,21 @@
-# Use Node.js for building as its network stack is more stable in restricted environments like Dokploy
-FROM node:22-slim AS build
+# Switch to node:alpine for the build stage as its DNS handling sometimes differs on Dokploy
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json if it exists
+# Conservative npm configuration to prevent socket exhaustion and networking hangs
+# - maxsockets=1: Limit to one connection at a time
+# - loglevel=verbose: Show exactly where it hangs
+# - audit/fund=false: Reduce extra network requests
+ENV NPM_CONFIG_MAXSOCKETS=1
+ENV NPM_CONFIG_LOGLEVEL=verbose
+ENV NPM_CONFIG_AUDIT=false
+ENV NPM_CONFIG_FUND=false
+
+# Copy package files
 COPY package.json package-lock.json* ./
 
-# npm is much more tolerant of network issues/Docker BuildKit edge cases than Bun's Zig-based stack
+# Run install with verbose output to identify the exact point of failure
 RUN npm install
 
 COPY . .
