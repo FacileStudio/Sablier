@@ -153,7 +153,9 @@
 								</div>
 							</Table.Cell>
 						{:else}
-							<Table.Cell class="font-medium">{project.name}</Table.Cell>
+							<Table.Cell class="font-medium">
+								<a href="/projects/{project.id}" class="hover:underline underline-offset-4">{project.name}</a>
+							</Table.Cell>
 							<Table.Cell class="text-muted-foreground">
 								{project.description || '—'}
 							</Table.Cell>

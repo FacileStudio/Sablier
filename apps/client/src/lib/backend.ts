@@ -89,6 +89,9 @@ export const backend = {
 	listProjects(token: string) {
 		return apiFetch<{ projects: Project[] }>('/projects', {}, token);
 	},
+	getProject(token: string, id: number) {
+		return apiFetch<Project>(`/projects/${id}`, {}, token);
+	},
 	createProject(token: string, name: string, description: string) {
 		return apiFetch<Project>('/projects', {
 			method: 'POST',
