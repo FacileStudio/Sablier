@@ -16,6 +16,7 @@
 	let busy = $state(false);
 	let ssoOnly = $state(false);
 	let oidcEnabled = $state(false);
+	let configLoaded = $state(false);
 
 	onMount(async () => {
 		if (localStorage.getItem(TOKEN_KEY)) {
@@ -30,6 +31,7 @@
 			ssoOnly = cfg.sso_only ?? false;
 			oidcEnabled = cfg.oidc_enabled ?? false;
 		} catch {}
+		configLoaded = true;
 	});
 
 	async function submit() {
@@ -86,64 +88,68 @@
 				</p>
 			</div>
 
-			{#if !ssoOnly}
-				<div class="mb-6 flex rounded-lg border border-border bg-muted p-1 gap-1">
-					<button
-						class="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors {tab === 'login'
-							? 'bg-background text-foreground shadow-sm'
-							: 'text-muted-foreground hover:text-foreground'}"
-						onclick={() => { tab = 'login'; message = ''; }}
-					>
-						Log in
-					</button>
-					<button
-						class="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors {tab === 'register'
-							? 'bg-background text-foreground shadow-sm'
-							: 'text-muted-foreground hover:text-foreground'}"
-						onclick={() => { tab = 'register'; message = ''; }}
-					>
-						Register
-					</button>
-				</div>
-
-				<form
-					onsubmit={(e) => { e.preventDefault(); submit(); }}
-					class="space-y-4"
-				>
-					<div class="space-y-1.5">
-						<Label for="email">Email</Label>
-						<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
-					</div>
-
-					<div class="space-y-1.5">
-						<Label for="password">Password</Label>
-						<Input id="password" type="password" bind:value={password} placeholder="••••••••" required />
-					</div>
-
-					{#if message}
-						<p class="text-sm text-destructive">{message}</p>
-					{/if}
-
-					<Button type="submit" class="w-full" disabled={busy}>
-						{tab === 'register' ? 'Create account' : 'Log in'}
-					</Button>
-				</form>
-			{/if}
-
-			{#if oidcEnabled}
+			{#if !configLoaded}
+				<div class="h-40"></div>
+			{:else}
 				{#if !ssoOnly}
-					<div class="my-5 flex items-center gap-3">
-						<div class="h-px flex-1 bg-border"></div>
-						<span class="text-xs text-muted-foreground">or</span>
-						<div class="h-px flex-1 bg-border"></div>
+					<div class="mb-6 flex rounded-lg border border-border bg-muted p-1 gap-1">
+						<button
+							class="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors {tab === 'login'
+								? 'bg-background text-foreground shadow-sm'
+								: 'text-muted-foreground hover:text-foreground'}"
+							onclick={() => { tab = 'login'; message = ''; }}
+						>
+							Log in
+						</button>
+						<button
+							class="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors {tab === 'register'
+								? 'bg-background text-foreground shadow-sm'
+								: 'text-muted-foreground hover:text-foreground'}"
+							onclick={() => { tab = 'register'; message = ''; }}
+						>
+							Register
+						</button>
 					</div>
+
+					<form
+						onsubmit={(e) => { e.preventDefault(); submit(); }}
+						class="space-y-4"
+					>
+						<div class="space-y-1.5">
+							<Label for="email">Email</Label>
+							<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
+						</div>
+
+						<div class="space-y-1.5">
+							<Label for="password">Password</Label>
+							<Input id="password" type="password" bind:value={password} placeholder="••••••••" required />
+						</div>
+
+						{#if message}
+							<p class="text-sm text-destructive">{message}</p>
+						{/if}
+
+						<Button type="submit" class="w-full" disabled={busy}>
+							{tab === 'register' ? 'Create account' : 'Log in'}
+						</Button>
+					</form>
 				{/if}
 
-				<a href="{backend.baseUrl}/auth/oidc" class="block">
-					<Button variant="outline" class="w-full" type="button">
-						Continue with SSO
-					</Button>
-				</a>
+				{#if oidcEnabled}
+					{#if !ssoOnly}
+						<div class="my-5 flex items-center gap-3">
+							<div class="h-px flex-1 bg-border"></div>
+							<span class="text-xs text-muted-foreground">or</span>
+							<div class="h-px flex-1 bg-border"></div>
+						</div>
+					{/if}
+
+					<a href="{backend.baseUrl}/auth/oidc" class="block">
+						<Button variant="outline" class="w-full" type="button">
+							Continue with SSO
+						</Button>
+					</a>
+				{/if}
 			{/if}
 		</div>
 	</div>
