@@ -33,7 +33,10 @@ func (c *Controller) updateSettings(ctx context.Context, req *UpdateRequest) (*S
 	if !ok {
 		return nil, errors.Unauthorized("missing auth")
 	}
-	s, err := c.service.updateSettings(ctx, identity.UserID, strings.TrimSpace(req.WebhookURL))
+	req.WebhookURL = strings.TrimSpace(req.WebhookURL)
+	req.WebhookSecretHeader = strings.TrimSpace(req.WebhookSecretHeader)
+	req.WebhookSecretValue = strings.TrimSpace(req.WebhookSecretValue)
+	s, err := c.service.updateSettings(ctx, identity.UserID, req)
 	if err != nil {
 		return nil, err
 	}

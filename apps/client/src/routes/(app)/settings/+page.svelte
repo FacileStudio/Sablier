@@ -9,6 +9,8 @@
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
 	let webhookUrl = $state('');
+	let webhookSecretHeader = $state('');
+	let webhookSecretValue = $state('');
 	let saving = $state(false);
 	let saved = $state(false);
 	let error = $state('');
@@ -17,6 +19,8 @@
 		try {
 			const result = await backend.getSettings(ctx.token);
 			webhookUrl = result.settings.webhook_url;
+			webhookSecretHeader = result.settings.webhook_secret_header;
+			webhookSecretValue = result.settings.webhook_secret_value;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load settings';
 		}
@@ -27,8 +31,10 @@
 		saved = false;
 		error = '';
 		try {
-			const result = await backend.updateSettings(ctx.token, webhookUrl);
+			const result = await backend.updateSettings(ctx.token, webhookUrl, webhookSecretHeader, webhookSecretValue);
 			webhookUrl = result.settings.webhook_url;
+			webhookSecretHeader = result.settings.webhook_secret_header;
+			webhookSecretValue = result.settings.webhook_secret_value;
 			saved = true;
 			setTimeout(() => (saved = false), 2000);
 		} catch (e) {
@@ -63,6 +69,24 @@
 					bind:value={webhookUrl}
 				/>
 			</div>
+			<div class="flex flex-col gap-1.5">
+				<Label for="webhook-secret-header">Secret header name</Label>
+				<Input
+					id="webhook-secret-header"
+					type="text"
+					placeholder="x-sablier-signature"
+					bind:value={webhookSecretHeader}
+				/>
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<Label for="webhook-secret-value">Secret value</Label>
+				<Input
+					id="webhook-secret-value"
+					type="password"
+					placeholder="Leave empty for no authentication"
+					bind:value={webhookSecretValue}
+				/>
+			</div>
 			{#if error}
 				<p class="text-sm text-red-500">{error}</p>
 			{/if}
@@ -78,6 +102,8 @@
 					class="text-muted-foreground"
 					onclick={() => {
 						webhookUrl = '';
+						webhookSecretHeader = '';
+						webhookSecretValue = '';
 					}}
 				>
 					Clear

@@ -163,7 +163,7 @@ func (service *Service) fireWebhook(ctx context.Context, userID int64, event str
 	if setting.WebhookURL == "" {
 		return
 	}
-	webhook.Fire(setting.WebhookURL, webhook.Payload{
+	webhook.Fire(setting.WebhookURL, setting.WebhookSecretHeader, setting.WebhookSecretValue, webhook.Payload{
 		Event: event,
 		Data:  entry,
 	})

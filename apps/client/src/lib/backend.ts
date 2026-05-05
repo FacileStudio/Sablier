@@ -24,6 +24,8 @@ export type Project = {
 
 export type UserSettings = {
 	webhook_url: string;
+	webhook_secret_header: string;
+	webhook_secret_value: string;
 };
 
 export type SettingsResponse = {
@@ -131,10 +133,14 @@ export const backend = {
 	getSettings(token: string) {
 		return apiFetch<SettingsResponse>('/settings/', {}, token);
 	},
-	updateSettings(token: string, webhookUrl: string) {
+	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue: string) {
 		return apiFetch<SettingsResponse>('/settings/', {
 			method: 'PUT',
-			body: JSON.stringify({ webhook_url: webhookUrl })
+			body: JSON.stringify({
+				webhook_url: webhookUrl,
+				webhook_secret_header: webhookSecretHeader,
+				webhook_secret_value: webhookSecretValue
+			})
 		}, token);
 	}
 };

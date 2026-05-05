@@ -14,7 +14,7 @@ type Payload struct {
 	Data  any    `json:"data"`
 }
 
-func Fire(url string, payload Payload) {
+func Fire(url, secretHeader, secretValue string, payload Payload) {
 	go func() {
 		body, err := json.Marshal(payload)
 		if err != nil {
@@ -29,6 +29,9 @@ func Fire(url string, payload Payload) {
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
+		if secretHeader != "" && secretValue != "" {
+			req.Header.Set(secretHeader, secretValue)
+		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			slog.Error("webhook: request failed", slog.Any("error", err))
