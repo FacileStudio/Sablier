@@ -168,6 +168,7 @@
 						<Table.Root>
 							<Table.Header>
 								<Table.Row>
+									<Table.Head>User</Table.Head>
 									<Table.Head>Description</Table.Head>
 									<Table.Head>Started</Table.Head>
 									<Table.Head class="text-right">Duration</Table.Head>
@@ -176,6 +177,7 @@
 							<Table.Body>
 								{#each sortedEntries as entry}
 									<Table.Row>
+										<Table.Cell class="text-muted-foreground">{entry.user_email ?? '—'}</Table.Cell>
 										<Table.Cell class="text-muted-foreground">
 											{entry.description || '—'}
 										</Table.Cell>
