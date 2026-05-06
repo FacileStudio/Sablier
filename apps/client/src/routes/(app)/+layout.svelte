@@ -111,7 +111,7 @@
 						<p class="truncate text-xs text-muted-foreground">{user?.email}</p>
 					</div>
 				</a>
-				<Button variant="ghost" size="sm" class="w-full justify-start gap-2 border border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onclick={logout}>
+				<Button variant="ghost" size="sm" class="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onclick={logout}>
 					<LogOut class="h-4 w-4" />
 					Logout
 				</Button>
