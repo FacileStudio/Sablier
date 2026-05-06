@@ -17,32 +17,37 @@
 
 	let name = $state(ctx.user?.name ?? '');
 	let color = $state(normalizeUserColor(ctx.user?.color));
+	let rate = $state(ctx.user?.rate ?? 0);
+	let rateType = $state<'daily' | 'hourly'>(ctx.user?.rate_type ?? 'daily');
 	let saving = $state(false);
+	let rateSaving = $state(false);
+	let rateSaved = $state(false);
 	let uploading = $state(false);
 	let removingAvatar = $state(false);
 	let message = $state('');
 	let error = $state('');
+	let rateError = $state('');
 	let previewUrl = $state('');
 
 	let totalTrackedMs = $state(0);
-	let rate = $state(0);
-	let rateType = $state<'daily' | 'hourly'>('daily');
 
 	onMount(async () => {
 		try {
-			const [entriesResult, settingsResult] = await Promise.all([
-				backend.listEntries(ctx.token),
-				backend.getSettings(ctx.token)
-			]);
-			totalTrackedMs = entriesResult.entries.reduce((acc, e) => {
+			const result = await backend.listEntries(ctx.token);
+			totalTrackedMs = result.entries.reduce((acc, e) => {
 				const start = new Date(e.started_at).getTime();
 				const end = e.stopped_at ? new Date(e.stopped_at).getTime() : Date.now();
 				return acc + (end - start);
 			}, 0);
-			rate = settingsResult.settings.rate ?? 0;
-			rateType = settingsResult.settings.rate_type ?? 'daily';
 		} catch {
 		}
+	});
+
+	$effect(() => {
+		name = ctx.user?.name ?? '';
+		color = normalizeUserColor(ctx.user?.color);
+		rate = ctx.user?.rate ?? 0;
+		rateType = ctx.user?.rate_type ?? 'daily';
 	});
 
 	const virtualEarnings = $derived.by(() => {
@@ -64,19 +69,10 @@
 		return `${h}h ${m}m`;
 	}
 
-	$effect(() => {
-		name = ctx.user?.name ?? '';
-		color = normalizeUserColor(ctx.user?.color);
-	});
-
 	function getInitials(value: string) {
 		const parts = value.trim().split(/\s+/).filter(Boolean);
-		if (parts.length === 0) {
-			return '?';
-		}
-		if (parts.length === 1) {
-			return parts[0].slice(0, 2).toUpperCase();
-		}
+		if (parts.length === 0) return '?';
+		if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
 		return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 	}
 
@@ -88,7 +84,6 @@
 		saving = true;
 		error = '';
 		message = '';
-
 		try {
 			const result = await backend.updateMe(ctx.token, { name, color: normalizeUserColor(color) });
 			ctx.setUser(result.user);
@@ -97,6 +92,22 @@
 			error = err instanceof Error ? err.message : 'Failed to save profile.';
 		} finally {
 			saving = false;
+		}
+	}
+
+	async function saveRate() {
+		rateSaving = true;
+		rateSaved = false;
+		rateError = '';
+		try {
+			const result = await backend.updateMe(ctx.token, { rate, rate_type: rateType });
+			ctx.setUser(result.user);
+			rateSaved = true;
+			setTimeout(() => (rateSaved = false), 2000);
+		} catch (err) {
+			rateError = err instanceof Error ? err.message : 'Failed to save rate.';
+		} finally {
+			rateSaving = false;
 		}
 	}
 
@@ -119,9 +130,7 @@
 	async function onAvatarChange(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
-		if (!file) {
-			return;
-		}
+		if (!file) return;
 
 		previewUrl = URL.createObjectURL(file);
 		uploading = true;
@@ -150,7 +159,7 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="space-y-2">
 		<h1 class="text-2xl font-semibold">Profile</h1>
-		<p class="text-sm text-muted-foreground">Set your display name and avatar.</p>
+		<p class="text-sm text-muted-foreground">Set your display name, avatar, and billable rate.</p>
 	</div>
 
 	{#if virtualEarnings !== null}
@@ -178,6 +187,64 @@
 			</Card.Content>
 		</Card.Root>
 	{/if}
+
+	<Card.Root class="max-w-2xl">
+		<Card.Header>
+			<Card.Title>Billable Rate</Card.Title>
+			<Card.Description>
+				Your personal rate used to calculate the virtual value of your tracked time.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="flex flex-col gap-4">
+			<div class="flex gap-2">
+				<button
+					type="button"
+					class={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${rateType === 'daily' ? 'border-foreground bg-foreground text-background' : 'border-border bg-background hover:border-foreground/30 hover:bg-muted/40'}`}
+					onclick={() => (rateType = 'daily')}
+				>
+					Daily rate
+				</button>
+				<button
+					type="button"
+					class={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${rateType === 'hourly' ? 'border-foreground bg-foreground text-background' : 'border-border bg-background hover:border-foreground/30 hover:bg-muted/40'}`}
+					onclick={() => (rateType = 'hourly')}
+				>
+					Hourly rate
+				</button>
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<Label for="rate">{rateType === 'daily' ? 'Daily rate (€/day)' : 'Hourly rate (€/h)'}</Label>
+				<div class="relative">
+					<span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">€</span>
+					<Input
+						id="rate"
+						type="number"
+						min="0"
+						step="0.01"
+						placeholder={rateType === 'daily' ? '300' : '50'}
+						bind:value={rate}
+						class="pl-7"
+					/>
+				</div>
+				<p class="text-xs text-muted-foreground">
+					{#if rateType === 'daily'}
+						Assumes an 8-hour workday for earnings calculations.
+					{:else}
+						Applied directly to your tracked hours.
+					{/if}
+				</p>
+			</div>
+			{#if rateError}
+				<p class="text-sm text-red-500">{rateError}</p>
+			{/if}
+		</Card.Content>
+		<Card.Footer>
+			<Button onclick={saveRate} disabled={rateSaving}>
+				<Save class="h-4 w-4" />
+				{rateSaving ? 'Saving…' : rateSaved ? 'Saved!' : 'Save rate'}
+			</Button>
+		</Card.Footer>
+	</Card.Root>
 
 	<Card.Root class="max-w-2xl">
 		<Card.Header>

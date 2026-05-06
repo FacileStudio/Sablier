@@ -9,6 +9,8 @@ type User struct {
 	AvatarURL    string    `gorm:"column:avatar_url"`
 	Color        string    `gorm:"column:color"`
 	PasswordHash string    `gorm:"column:password_hash"`
+	Rate         float64   `gorm:"column:rate;not null;default:0"`
+	RateType     string    `gorm:"column:rate_type;not null;default:'daily'"`
 	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime"`
 }
 

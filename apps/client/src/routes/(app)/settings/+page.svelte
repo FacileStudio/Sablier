@@ -12,14 +12,9 @@
 	let webhookUrl = $state('');
 	let webhookSecretHeader = $state('');
 	let webhookSecretValue = $state('');
-	let rate = $state(0);
-	let rateType = $state<'daily' | 'hourly'>('daily');
 	let saving = $state(false);
 	let saved = $state(false);
-	let rateSaving = $state(false);
-	let rateSaved = $state(false);
 	let error = $state('');
-	let rateError = $state('');
 
 	onMount(async () => {
 		try {
@@ -27,8 +22,6 @@
 			webhookUrl = result.settings.webhook_url;
 			webhookSecretHeader = result.settings.webhook_secret_header;
 			webhookSecretValue = result.settings.webhook_secret_value;
-			rate = result.settings.rate ?? 0;
-			rateType = result.settings.rate_type ?? 'daily';
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load settings';
 		}
@@ -39,7 +32,7 @@
 		saved = false;
 		error = '';
 		try {
-			const result = await backend.updateSettings(ctx.token, webhookUrl, webhookSecretHeader, webhookSecretValue, rate, rateType);
+			const result = await backend.updateSettings(ctx.token, webhookUrl, webhookSecretHeader, webhookSecretValue);
 			webhookUrl = result.settings.webhook_url;
 			webhookSecretHeader = result.settings.webhook_secret_header;
 			webhookSecretValue = result.settings.webhook_secret_value;
@@ -51,23 +44,6 @@
 			saving = false;
 		}
 	}
-
-	async function saveRate() {
-		rateSaving = true;
-		rateSaved = false;
-		rateError = '';
-		try {
-			const result = await backend.updateSettings(ctx.token, webhookUrl, webhookSecretHeader, webhookSecretValue, rate, rateType);
-			rate = result.settings.rate ?? 0;
-			rateType = result.settings.rate_type ?? 'daily';
-			rateSaved = true;
-			setTimeout(() => (rateSaved = false), 2000);
-		} catch (e) {
-			rateError = e instanceof Error ? e.message : 'Failed to save rate';
-		} finally {
-			rateSaving = false;
-		}
-	}
 </script>
 
 <svelte:head>
@@ -76,64 +52,6 @@
 
 <div class="flex flex-col gap-6 p-6">
 	<h1 class="text-2xl font-semibold">Settings</h1>
-
-	<Card.Root class="max-w-xl">
-		<Card.Header>
-			<Card.Title>Rate</Card.Title>
-			<Card.Description>
-				Set your billable rate to visualize the monetary value of your tracked time.
-			</Card.Description>
-		</Card.Header>
-		<Card.Content class="flex flex-col gap-4">
-			<div class="flex gap-2">
-				<button
-					type="button"
-					class={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${rateType === 'daily' ? 'border-foreground bg-foreground text-background' : 'border-border bg-background hover:border-foreground/30 hover:bg-muted/40'}`}
-					onclick={() => (rateType = 'daily')}
-				>
-					Daily rate
-				</button>
-				<button
-					type="button"
-					class={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${rateType === 'hourly' ? 'border-foreground bg-foreground text-background' : 'border-border bg-background hover:border-foreground/30 hover:bg-muted/40'}`}
-					onclick={() => (rateType = 'hourly')}
-				>
-					Hourly rate
-				</button>
-			</div>
-			<div class="flex flex-col gap-1.5">
-				<Label for="rate">{rateType === 'daily' ? 'Daily rate (€/day)' : 'Hourly rate (€/h)'}</Label>
-				<div class="relative">
-					<span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">€</span>
-					<Input
-						id="rate"
-						type="number"
-						min="0"
-						step="0.01"
-						placeholder={rateType === 'daily' ? '300' : '50'}
-						bind:value={rate}
-						class="pl-7"
-					/>
-				</div>
-				<p class="text-xs text-muted-foreground">
-					{#if rateType === 'daily'}
-						Assumes an 8-hour workday for earnings calculations.
-					{:else}
-						Applied directly to your tracked hours.
-					{/if}
-				</p>
-			</div>
-			{#if rateError}
-				<p class="text-sm text-red-500">{rateError}</p>
-			{/if}
-		</Card.Content>
-		<Card.Footer>
-			<Button onclick={saveRate} disabled={rateSaving}>
-				<Save class="h-4 w-4" />
-				{rateSaving ? 'Saving…' : rateSaved ? 'Saved!' : 'Save rate'}
-			</Button>
-		</Card.Footer>
-	</Card.Root>
 
 	<Card.Root class="max-w-xl">
 		<Card.Header>

@@ -19,8 +19,7 @@
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
-	let rate = $state(0);
-	let rateType = $state<'daily' | 'hourly'>('daily');
+	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>>(new Map());
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
@@ -81,17 +80,20 @@
 	}
 
 	onMount(async () => {
-		const [p, e, r, s] = await Promise.all([
+		const [p, e, r, u] = await Promise.all([
 			backend.listProjects(ctx.token),
 			backend.listEntries(ctx.token),
 			backend.listRunningEntries(ctx.token),
-			backend.getSettings(ctx.token)
+			backend.listUsers(ctx.token)
 		]);
 		projects = p.projects;
 		entries = e.entries;
 		runningEntries = r.entries;
-		rate = s.settings.rate ?? 0;
-		rateType = s.settings.rate_type ?? 'daily';
+		const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>();
+		for (const user of u.users) {
+			map.set(Number(user.id), { rate: user.rate ?? 0, rate_type: user.rate_type ?? 'daily' });
+		}
+		userRates = map;
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
 		runningPoller = setInterval(loadRunning, 30_000);
 	});
@@ -108,17 +110,21 @@
 	);
 
 	const todayEarnings = $derived.by(() => {
-		if (rate <= 0) return null;
-		const todayMs = entries
-			.filter((e) => isToday(e.started_at))
-			.reduce((acc, e) => {
-				const start = new Date(e.started_at).getTime();
-				const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
-				return acc + (end - start);
-			}, 0);
-		const hours = todayMs / 3_600_000;
-		const amount = rateType === 'hourly' ? hours * rate : (hours / 8) * rate;
-		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount);
+		if (userRates.size === 0) return null;
+		let total = 0;
+		let anyRate = false;
+		for (const entry of entries) {
+			if (!isToday(entry.started_at)) continue;
+			const userRate = userRates.get(entry.user_id);
+			if (!userRate || userRate.rate <= 0) continue;
+			anyRate = true;
+			const start = new Date(entry.started_at).getTime();
+			const end = entry.stopped_at ? new Date(entry.stopped_at).getTime() : now;
+			const hours = (end - start) / 3_600_000;
+			total += userRate.rate_type === 'hourly' ? hours * userRate.rate : (hours / 8) * userRate.rate;
+		}
+		if (!anyRate) return null;
+		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total);
 	});
 
 	const todayDate = new Date().toLocaleDateString(undefined, {

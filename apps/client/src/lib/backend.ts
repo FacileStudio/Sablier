@@ -14,6 +14,8 @@ export type UserProfile = {
 	name: string;
 	avatar_url: string;
 	color: string;
+	rate: number;
+	rate_type: 'daily' | 'hourly';
 	created_at: string;
 };
 
@@ -46,8 +48,6 @@ export type UserSettings = {
 	webhook_url: string;
 	webhook_secret_header: string;
 	webhook_secret_value: string;
-	rate: number;
-	rate_type: 'daily' | 'hourly';
 };
 
 export type SettingsResponse = {
@@ -150,7 +150,7 @@ export const backend = {
 			user: normalizeUser(result.user)
 		}));
 	},
-	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string }) {
+	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly' }) {
 		return apiFetch<MeResponse>('/users/me', {
 			method: 'PATCH',
 			body: JSON.stringify(payload)
@@ -273,15 +273,13 @@ export const backend = {
 	getSettings(token: string) {
 		return apiFetch<SettingsResponse>('/settings/', {}, token);
 	},
-	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue: string, rate: number, rateType: 'daily' | 'hourly') {
+	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue: string) {
 		return apiFetch<SettingsResponse>('/settings/', {
 			method: 'PUT',
 			body: JSON.stringify({
 				webhook_url: webhookUrl,
 				webhook_secret_header: webhookSecretHeader,
-				webhook_secret_value: webhookSecretValue,
-				rate,
-				rate_type: rateType
+				webhook_secret_value: webhookSecretValue
 			})
 		}, token);
 	}
