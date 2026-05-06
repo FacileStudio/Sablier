@@ -170,6 +170,7 @@
 		>();
 
 		for (const entry of entries) {
+			if (!entry.project_id) continue;
 			const current = stats.get(entry.project_id);
 			const durationMs = entryMs(entry);
 			if (current) {

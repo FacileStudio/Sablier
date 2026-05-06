@@ -16,7 +16,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { formatDuration } from '$lib/utils';
-	import { Clock, BarChart3, Calendar, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
+	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -142,14 +142,6 @@
 	});
 
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
-
-	const lastSession = $derived(
-		entries.length > 0
-			? entries.reduce((latest, e) =>
-					new Date(e.started_at) > new Date(latest.started_at) ? e : latest
-				)
-			: null
-	);
 
 	const tasksWithStats = $derived(
 		[...tasks]
@@ -396,7 +388,7 @@
 				<p class="mt-4 text-sm text-destructive">{projectActionError}</p>
 			{/if}
 
-			<div class="mt-6 grid grid-cols-2 gap-4" class:sm:grid-cols-4={projectValue === null} class:sm:grid-cols-5={projectValue !== null}>
+			<div class="mt-6 grid grid-cols-2 gap-4" class:sm:grid-cols-3={projectValue === null} class:sm:grid-cols-4={projectValue !== null}>
 				<Card.Root>
 					<Card.Header class="pb-2">
 						<Card.Title class="text-sm font-medium text-muted-foreground">Total Time</Card.Title>
@@ -429,20 +421,6 @@
 						<div class="flex items-center gap-2">
 							<Timer class="h-4 w-4 text-muted-foreground" />
 							<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(avgMs)}</span>
-						</div>
-					</Card.Content>
-				</Card.Root>
-
-				<Card.Root>
-					<Card.Header class="pb-2">
-						<Card.Title class="text-sm font-medium text-muted-foreground">Last Session</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<div class="flex items-center gap-2">
-							<Calendar class="h-4 w-4 text-muted-foreground" />
-							<span class="text-sm font-medium">
-								{lastSession ? formatDate(lastSession.started_at) : 'Never'}
-							</span>
 						</div>
 					</Card.Content>
 				</Card.Root>
