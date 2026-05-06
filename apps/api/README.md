@@ -1,108 +1,64 @@
 # API
 
-Small Go backend for authentication, events, and ticket check-in.
+Go backend for authentication, projects, tasks, sessions, profiles, and webhook settings.
 
-Built with:
-- Chi for routing
-- GORM + Postgres for persistence
-- JWT auth for protected endpoints
+## Responsibilities
 
-## Quick Start
+- JWT authentication with optional OIDC login
+- Shared project and task management
+- Timer start/stop plus manual time entries
+- User profiles with avatar file storage
+- Per-user webhook configuration for timer events
+- Health, readiness, and JSON docs endpoints
 
-Preferred requirements:
-- `mise`
-- Postgres
+## Run locally
 
-Run from the repo root:
-
-```bash
-mise install
-cp apps/api/.env.example apps/api/.env
-mise //apps/api:dev
+```sh
+cp .env.example .env
+go run .
 ```
 
-If you prefer to work inside `apps/api`, the local task form works too:
+Default address: `http://localhost:4000`
 
-```bash
-mise :dev
+The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
+
+## Useful endpoints
+
+- `GET /health`
+- `GET /ready`
+- `GET /docs`
+- `GET /auth/config`
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /users/me`
+- `POST /users/me/avatar`
+- `GET /projects`
+- `GET /projects/{id}/tasks`
+- `GET /time-entries`
+- `POST /time-entries/start`
+- `POST /time-entries/stop`
+- `GET /settings/`
+
+## Environment
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `DOMAINS`: comma-separated allowed origins
+- `PORT`: HTTP port, default `4000`
+- `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
+- `STORAGE_DIR`: avatar storage root, default `./data`
+- `OIDC_*`: enables OpenID Connect login
+- `SSO_ONLY=true`: disables password auth routes
+
+See [`./.env.example`](./.env.example) for the local template.
+
+## Build and test
+
+```sh
+go test ./...
+go build -o bin/api .
 ```
 
-The server listens on `:4000` by default. Set `PORT` to override it.
-By default CORS allows local frontend origins on ports `3000` and `5173`. Override with `DOMAINS` as a comma-separated list of allowed origins.
-Set `LOG_LEVEL` to one of `debug`, `info`, `warn`, or `error`.
+## Notes
 
-On startup the app runs GORM auto-migrations for all tables.
-
-## Common Commands
-
-```bash
-mise //apps/api:dev        # run the API
-mise //apps/api:test       # run tests
-mise //apps/api:check      # fmt + vet + test
-mise //apps/api:build      # build ./bin/api
-```
-
-`mise` manages the Go toolchain for this repo, and the API command flow now lives directly in `apps/api/mise.toml`.
-
-## Docker
-
-Build the production image from the repo root so Docker can access the shared `mise` config and lockfile:
-
-```bash
-docker build -f apps/api/Dockerfile -t fdt-api .
-```
-
-## API
-
-Auth:
-
-```bash
-curl -sS -X POST http://localhost:4000/auth/register \
-  -H 'content-type: application/json' \
-  -d '{"email":"me@example.com","password":"password123"}'
-
-curl -sS -X POST http://localhost:4000/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"email":"me@example.com","password":"password123"}'
-
-curl -sS http://localhost:4000/users/me \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -sS -X PATCH http://localhost:4000/users/me \
-  -H 'content-type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"name":"Jane Doe","email":"updated@example.com","password":"newpassword123"}'
-
-curl -sS -X POST http://localhost:4000/users/me/avatar \
-  -H "Authorization: Bearer $TOKEN" \
-  -F avatar=@./avatar.png
-```
-
-Events:
-
-```bash
-curl -sS http://localhost:4000/events
-
-curl -sS http://localhost:4000/events/$EVENT_ID
-
-curl -sS -X POST http://localhost:4000/events \
-  -H 'content-type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"name":"My Event","starts":"2030-01-01T18:00:00Z","ends":"2030-01-01T21:00:00Z"}'
-```
-
-Tickets:
-
-```bash
-curl -sS -X POST http://localhost:4000/events/$EVENT_ID/tickets \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -sS -X POST http://localhost:4000/tickets/validate \
-  -H 'content-type: application/json' \
-  -d '{"code":"'"$CODE"'"}'
-
-curl -sS -X POST http://localhost:4000/tickets/checkin \
-  -H 'content-type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"code":"'"$CODE"'"}'
-```
+- Avatar files are served by the API under `/files/*`.
+- The production image stores uploaded files in `/data`.

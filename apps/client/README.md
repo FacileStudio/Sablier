@@ -1,30 +1,34 @@
 # Client
 
-SvelteKit frontend for the FDT monorepo.
+SvelteKit frontend for Sablier.
 
-## Quick Start
+## Responsibilities
 
-From the repo root:
+- Login, registration, and OIDC entry flow
+- Dashboard, sessions, projects, users, settings, and profile pages
+- Live timer controls and manual session editing
+- Avatar rendering and project/user activity summaries
 
-```sh
-mise install
-mise //apps/client:dev
-```
-
-If you are already in `apps/client`, you can use the local task form:
+## Run locally
 
 ```sh
-mise :dev
+bun install
+bun run dev
 ```
 
-## Common Commands
+Default dev URL: `http://localhost:5173`
+
+## Scripts
 
 ```sh
-mise //apps/client:install  # install dependencies
-mise //apps/client:dev      # start the dev server
-mise //apps/client:check    # run svelte-check
-mise //apps/client:build    # create a production build
-mise //apps/client:preview  # preview the production build
+bun run dev
+bun run build
+bun run preview
+bun run check
 ```
 
-The repo manages Node.js with `mise`, and the client dependencies are installed from `package-lock.json`.
+## Configuration
+
+- `VITE_API_BASE_URL`: API base URL used by the frontend, default `http://localhost:4000`
+
+The production Docker build injects `VITE_API_BASE_URL` at build time and serves the static output with Nginx.

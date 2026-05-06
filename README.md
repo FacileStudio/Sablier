@@ -1,77 +1,93 @@
 # Sablier
 
-Sablier is a monorepo containing a Go API and a SvelteKit frontend.
+Sablier is a self-hosted time tracker for small teams. It pairs a Go API with a SvelteKit frontend and keeps the setup boring on purpose.
 
-- `apps/api`: Go backend
-- `apps/client`: SvelteKit frontend
+## What it does
 
-## Quick Start
+- Email/password auth with optional OIDC SSO and `SSO_ONLY` mode
+- Shared projects and tasks for the whole workspace
+- Live timers, manual sessions, and per-user session editing
+- Dashboard, user directory, and user activity views
+- Profile names, colors, and avatar uploads
+- Outbound timer webhooks on start and stop
 
-### 1. Prerequisites
+## Stack
 
-- [Go 1.24+](https://go.dev/dl/)
-- [Node.js](https://nodejs.org/) (LTS recommended)
-- [Docker](https://www.docker.com/)
+- `apps/api`: Go, Chi, GORM, PostgreSQL
+- `apps/client`: SvelteKit 5, Tailwind CSS 4, Bun
+- `docker-compose.yml`: PostgreSQL plus production-style API and client services
 
-### 2. Infrastructure
+## Quick start
 
-Start the development database using Docker Compose:
+### Docker
 
-```sh
-docker compose up db -d
-```
-
-The database will be available at `localhost:5432`.
-
-### 3. API Setup
-
-Navigate to the API directory and start the server:
+1. Copy the root env file and adjust values if needed:
 
 ```sh
-cd apps/api
-go run main.go
+cp .env.example .env
 ```
 
-The API server runs on `http://localhost:4000` by default. It will automatically run database migrations on startup.
-
-### 4. Frontend Setup
-
-Navigate to the client directory, install dependencies, and start the development server:
-
-```sh
-cd apps/client
-npm install
-npm run dev
-```
-
-The frontend will be available at `http://localhost:5173` (or `http://localhost:3000` depending on your local config).
-
-## Environment Configuration
-
-Both the API and Client can be configured via environment variables.
-
-- **API**: See `apps/api/.env.example`. Since the API does not load `.env` files automatically, ensure variables are exported in your shell or provided via a tool like `direnv`.
-- **Client**: See `apps/client/.env.example` (or `apps/api/.env.example` for shared values). SvelteKit/Vite will load `.env` files automatically.
-
-## Docker Compose
-
-To run the entire stack (API, Client, and DB) using Docker:
+2. Start the full stack:
 
 ```sh
 docker compose up --build
 ```
 
-## Common Commands
+3. Open the app:
 
-### API (`apps/api`)
+- Client: `http://localhost`
+- API: `http://localhost:4000`
+- API docs payload: `http://localhost:4000/docs`
 
-- `go run main.go`: Run the API in development mode.
-- `go build -o bin/api .`: Build the API binary.
-- `go test ./...`: Run API tests.
+### Local development
 
-### Client (`apps/client`)
+1. Start PostgreSQL:
 
-- `npm run dev`: Start the development server.
-- `npm run build`: Build the frontend for production.
-- `npm run check`: Run type and svelte checks.
-- `npm run preview`: Preview the production build locally.
+```sh
+docker compose up db -d
+```
+
+2. Start the API:
+
+```sh
+cd apps/api
+cp .env.example .env
+go run .
+```
+
+3. Start the client in another terminal:
+
+```sh
+cd apps/client
+bun install
+bun run dev
+```
+
+The client defaults to `http://localhost:5173` and talks to `http://localhost:4000`.
+
+## Configuration
+
+Main environment variables:
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `DOMAINS`: allowed frontend origins for CORS
+- `PORT`: API port, default `4000`
+- `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
+- `STORAGE_DIR`: local file storage for avatars, default `./data`
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`: enable OIDC login
+- `OIDC_SUCCESS_URL`: post-login redirect, defaults to the first `DOMAINS` entry
+- `SSO_ONLY=true`: hide password login and registration
+- `VITE_API_BASE_URL`: client-side API base URL for production builds
+
+See [`.env.example`](.env.example) and [`apps/api/.env.example`](apps/api/.env.example) for examples.
+
+## Architecture
+
+Source: [`docs/architecture.d2`](docs/architecture.d2)
+
+![Sablier architecture](docs/architecture.svg)
+
+## Repo map
+
+- [`apps/api/README.md`](apps/api/README.md): backend setup and API overview
+- [`apps/client/README.md`](apps/client/README.md): frontend setup and build notes
