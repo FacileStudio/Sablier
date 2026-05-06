@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -9,14 +9,35 @@
 	import { Plus } from 'lucide-svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import { getEntryUserDisplayName } from '$lib/user-display';
+	import { normalizeUserColor } from '$lib/user-colors';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
 	let projects = $state<Project[]>([]);
 	let allEntries = $state<TimeEntry[]>([]);
+	let runningEntries = $state<TimeEntry[]>([]);
 	let drawerOpen = $state(false);
 	let name = $state('');
 	let description = $state('');
+	let runningPoller: ReturnType<typeof setInterval> | undefined;
+
+	type ActiveUser = { key: string; color: string; label: string; initial: string };
+
+	function activeUsersForProject(projectId: number): ActiveUser[] {
+		const seen = new Set<string>();
+		const users: ActiveUser[] = [];
+		for (const e of runningEntries) {
+			if (e.project_id !== projectId) continue;
+			const key = String(e.user_id);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const label = getEntryUserDisplayName(e);
+			const color = normalizeUserColor((e as TimeEntry & { user_color?: string }).user_color);
+			const initial = (label[0] ?? '?').toUpperCase();
+			users.push({ key, color, label, initial });
+		}
+		return users;
+	}
 
 	type UserTimeSegment = {
 		key: string;
@@ -69,13 +90,20 @@
 		)
 	);
 
+	async function loadRunning() {
+		const r = await backend.listRunningEntries(ctx.token);
+		runningEntries = r.entries;
+	}
+
 	async function load() {
-		const [projRes, entriesRes] = await Promise.all([
+		const [projRes, entriesRes, runningRes] = await Promise.all([
 			backend.listProjects(ctx.token),
-			backend.listEntries(ctx.token)
+			backend.listEntries(ctx.token),
+			backend.listRunningEntries(ctx.token)
 		]);
 		projects = projRes.projects;
 		allEntries = entriesRes.entries;
+		runningEntries = runningRes.entries;
 	}
 
 	async function create() {
@@ -86,7 +114,12 @@
 		await load();
 	}
 
-	onMount(load);
+	onMount(() => {
+		load();
+		runningPoller = setInterval(loadRunning, 30_000);
+	});
+
+	onDestroy(() => clearInterval(runningPoller));
 </script>
 
 <svelte:head>
@@ -142,14 +175,41 @@
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each projects as project}
+				{@const activeUsers = activeUsersForProject(project.id)}
 				<Card.Root
 					class="border-border cursor-pointer transition-colors hover:bg-muted/40"
 					onclick={() => (window.location.href = `/projects/${project.id}`)}
 				>
 					<Card.Header class="gap-4">
-						<div class="min-w-0 flex-1">
-							<Card.Title class="truncate">{project.name}</Card.Title>
-							<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+						<div class="flex items-start justify-between gap-2">
+							<div class="min-w-0 flex-1">
+								<Card.Title class="truncate">{project.name}</Card.Title>
+								<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+							</div>
+							{#if activeUsers.length > 0}
+								<div class="flex shrink-0 items-center">
+									<div class="flex -space-x-2">
+										{#each activeUsers.slice(0, 4) as user}
+											<div
+												title="{user.label} — working now"
+												class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background text-[11px] font-semibold text-white shadow-sm ring-1 ring-black/10"
+												style="background-color: {user.color};"
+											>
+												{user.initial}
+											</div>
+										{/each}
+										{#if activeUsers.length > 4}
+											<div class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium text-muted-foreground shadow-sm">
+												+{activeUsers.length - 4}
+											</div>
+										{/if}
+									</div>
+									<span class="relative ml-2 flex h-2 w-2 shrink-0">
+										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+										<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+									</span>
+								</div>
+							{/if}
 						</div>
 					</Card.Header>
 					<Card.Content class="flex flex-col gap-4">
