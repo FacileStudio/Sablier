@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { cn } from '$lib/utils';
 	import type { Task } from '$lib/backend';
 
@@ -19,9 +20,12 @@
 	}: Props = $props();
 
 	let open = $state(false);
+	let rootEl = $state<HTMLDivElement | null>(null);
 	let inputEl = $state<HTMLInputElement | null>(null);
 	let optionEls = $state<Array<HTMLButtonElement | null>>([]);
 	let activeIndex = $state(-1);
+	let menuPlacement = $state<'up' | 'down'>('down');
+	let menuMaxHeight = $state(224);
 
 	let filtered = $derived(
 		value.trim()
@@ -46,11 +50,29 @@
 			return;
 		}
 		open = true;
+		updateMenuLayout();
 		if (filtered.length > 0) {
 			activeIndex = 0;
 			return;
 		}
 		activeIndex = showCreate ? filtered.length : -1;
+	}
+
+	function updateMenuLayout() {
+		if (!inputEl || typeof window === 'undefined') {
+			return;
+		}
+		const rect = inputEl.getBoundingClientRect();
+		const viewportPadding = 12;
+		const gap = 8;
+		const maxPreferredHeight = 224;
+		const minUsefulHeight = 120;
+		const spaceBelow = window.innerHeight - rect.bottom - viewportPadding - gap;
+		const spaceAbove = rect.top - viewportPadding - gap;
+		const shouldOpenUp = spaceBelow < minUsefulHeight && spaceAbove > spaceBelow;
+		menuPlacement = shouldOpenUp ? 'up' : 'down';
+		const availableSpace = shouldOpenUp ? spaceAbove : spaceBelow;
+		menuMaxHeight = Math.max(96, Math.min(maxPreferredHeight, availableSpace));
 	}
 
 	function handleFocus() {
@@ -105,6 +127,13 @@
 		}
 	}
 
+	function handleWindowLayoutChange() {
+		if (!open) {
+			return;
+		}
+		updateMenuLayout();
+	}
+
 	$effect(() => {
 		if (!open || activeIndex < 0) {
 			return;
@@ -113,9 +142,26 @@
 			block: 'nearest'
 		});
 	});
+
+	$effect(() => {
+		if (!open || typeof window === 'undefined') {
+			return;
+		}
+		updateMenuLayout();
+		window.addEventListener('resize', handleWindowLayoutChange);
+		window.addEventListener('scroll', handleWindowLayoutChange, true);
+		return () => {
+			window.removeEventListener('resize', handleWindowLayoutChange);
+			window.removeEventListener('scroll', handleWindowLayoutChange, true);
+		};
+	});
+
+	onDestroy(() => {
+		optionEls = [];
+	});
 </script>
 
-<div class="relative w-full">
+<div bind:this={rootEl} class="relative w-full">
 	<input
 		bind:this={inputEl}
 		{disabled}
@@ -134,9 +180,12 @@
 
 	{#if open && (!loading || filtered.length > 0 || showCreate || value.trim())}
 		<div
-			class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-lg"
+			class={cn(
+				'absolute left-0 right-0 z-50 overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-lg',
+				menuPlacement === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'
+			)}
 		>
-			<div class="max-h-[min(14rem,38vh)] overflow-y-auto overscroll-contain p-1">
+			<div class="overflow-y-auto overscroll-contain p-1" style={`max-height: ${menuMaxHeight}px;`}>
 				{#each filtered as task, index}
 					<button
 						bind:this={optionEls[index]}

@@ -65,6 +65,36 @@
 		return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 	}
 
+	function localDateKey(d: Date): string {
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	}
+
+	function formatMinutes(m: number): string {
+		if (m === 0) return 'No activity';
+		const h = Math.floor(m / 60);
+		const min = Math.round(m % 60);
+		if (h === 0) return `${min}m`;
+		if (min === 0) return `${h}h`;
+		return `${h}h ${min}m`;
+	}
+
+	function activityLevelClass(level: number, isFuture: boolean): string {
+		if (isFuture) return 'bg-muted/30';
+		if (level === 0) return 'bg-muted';
+		if (level === 1) return 'bg-green-200 dark:bg-green-900';
+		if (level === 2) return 'bg-green-400 dark:bg-green-700';
+		if (level === 3) return 'bg-green-500 dark:bg-green-600';
+		return 'bg-green-700 dark:bg-green-400';
+	}
+
+	type ActivityDay = {
+		key: string;
+		label: string;
+		level: number;
+		minutes: number;
+		isFuture: boolean;
+	};
+
 	const totalMs = $derived(entries.reduce((acc, e) => acc + entryMs(e), 0));
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
 	const lastEntry = $derived(
@@ -112,6 +142,70 @@
 	const recentEntries = $derived(
 		[...entries].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
 	);
+	const activityData = $derived.by(() => {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		const dayMinutes = new Map<string, number>();
+		for (const entry of entries) {
+			const d = new Date(entry.started_at);
+			d.setHours(0, 0, 0, 0);
+			const key = localDateKey(d);
+			dayMinutes.set(key, (dayMinutes.get(key) ?? 0) + entryMs(entry) / 60000);
+		}
+
+		const startDate = new Date(today);
+		startDate.setDate(startDate.getDate() - 52 * 7);
+		startDate.setDate(startDate.getDate() - startDate.getDay());
+
+		const totalDays = Math.ceil((today.getTime() - startDate.getTime()) / 86400000) + 1;
+		const totalWeeks = Math.ceil(totalDays / 7);
+
+		const weeks: ActivityDay[][] = [];
+		const cur = new Date(startDate);
+
+		for (let w = 0; w < totalWeeks; w++) {
+			const week: ActivityDay[] = [];
+			for (let d = 0; d < 7; d++) {
+				const key = localDateKey(cur);
+				const minutes = dayMinutes.get(key) ?? 0;
+				const isFuture = cur > today;
+				let level = 0;
+				if (!isFuture && minutes > 0) level = 1;
+				if (!isFuture && minutes >= 30) level = 2;
+				if (!isFuture && minutes >= 120) level = 3;
+				if (!isFuture && minutes >= 300) level = 4;
+				week.push({
+					key,
+					label: cur.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+					level,
+					minutes: Math.round(minutes),
+					isFuture
+				});
+				cur.setDate(cur.getDate() + 1);
+			}
+			weeks.push(week);
+		}
+
+		const monthHeaders = weeks.map((week) => {
+			const first = week.find((day) => new Date(day.key).getDate() === 1);
+			if (first) {
+				return new Date(first.key).toLocaleString(undefined, { month: 'short' });
+			}
+			return '';
+		});
+
+		const totalMinutes = [...dayMinutes.values()].reduce((acc, minutes) => acc + minutes, 0);
+		const activeDays = [...dayMinutes.values()].filter((minutes) => minutes > 0).length;
+
+		return {
+			weeks,
+			monthHeaders,
+			totalMinutes: Math.round(totalMinutes),
+			activeDays,
+			numWeeks: weeks.length
+		};
+	});
 
 	onMount(async () => {
 		try {
@@ -220,6 +314,58 @@
 				</Card.Content>
 			</Card.Root>
 		</div>
+
+		<Card.Root>
+			<Card.Header class="flex flex-row items-center justify-between">
+				<div>
+					<Card.Title>Activity</Card.Title>
+					<p class="mt-1 text-xs text-muted-foreground">
+						{activityData.activeDays} active {activityData.activeDays === 1 ? 'day' : 'days'} ·
+						{formatMinutes(activityData.totalMinutes)} tracked in the last year
+					</p>
+				</div>
+			</Card.Header>
+			<Card.Content>
+				<div class="flex w-full gap-1.5">
+					<div class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-[10px] text-muted-foreground">
+						{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel}
+							<span>{dayLabel}</span>
+						{/each}
+					</div>
+					<div class="min-w-0 flex-1">
+						<div class="mb-[3px] grid" style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;">
+							{#each activityData.weeks as _week, i}
+								<div class="overflow-hidden whitespace-nowrap text-[10px] leading-none text-muted-foreground">
+									{activityData.monthHeaders[i] ?? ''}
+								</div>
+							{/each}
+						</div>
+						<div class="grid" style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;">
+							{#each activityData.weeks as week}
+								<div class="flex flex-col gap-[2px]">
+									{#each week as day}
+										<div
+											class="w-full aspect-square rounded transition-opacity hover:opacity-70 cursor-default {activityLevelClass(day.level, day.isFuture)}"
+											title="{day.label} — {formatMinutes(day.minutes)}"
+										></div>
+									{/each}
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+
+				<div class="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+					<span>Less</span>
+					<div class="h-3 w-3 rounded-[2px] bg-muted"></div>
+					<div class="h-3 w-3 rounded-[2px] bg-green-200 dark:bg-green-900"></div>
+					<div class="h-3 w-3 rounded-[2px] bg-green-400 dark:bg-green-700"></div>
+					<div class="h-3 w-3 rounded-[2px] bg-green-500 dark:bg-green-600"></div>
+					<div class="h-3 w-3 rounded-[2px] bg-green-700 dark:bg-green-400"></div>
+					<span>More</span>
+				</div>
+			</Card.Content>
+		</Card.Root>
 
 		<section>
 			<h2 class="mb-4 text-lg font-semibold">Project Breakdown</h2>
