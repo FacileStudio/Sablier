@@ -1,4 +1,4 @@
-direction: right
+direction: down
 
 vars: {
   d2-config: {
@@ -7,20 +7,18 @@ vars: {
   }
 }
 
-title: "Sablier Architecture"
-
 browser: {
-  label: "Browser"
+  label: "User"
   shape: person
 }
 
 client: {
-  label: "Client\\nSvelteKit 5 + Tailwind\\nServed by Nginx"
+  label: "Client"
   shape: rectangle
 }
 
 api: {
-  label: "API\\nGo + Chi + GORM"
+  label: "API"
   shape: rectangle
 }
 
@@ -30,30 +28,23 @@ db: {
 }
 
 storage: {
-  label: "Local storage\\navatars in /data"
+  label: "Storage"
   shape: cylinder
 }
 
 oidc: {
-  label: "OIDC provider\\noptional"
+  label: "SSO"
   shape: cloud
 }
 
 webhook: {
-  label: "Webhook receiver\\noptional"
+  label: "Webhook"
   shape: cloud
 }
 
-project_features: {
-  label: "Core flows\\n- Auth: password or OIDC\\n- Shared projects and tasks\\n- Per-user time entries\\n- Profile names, colors, avatars\\n- User-configured webhooks"
-  shape: rectangle
-}
-
-browser -> client: "Open app"
-client -> api: "JSON API\\nJWT bearer token"
-client -> oidc: "SSO redirect"
-oidc -> api: "OIDC callback"
-api -> db: "users, projects, tasks, sessions, settings"
-api -> storage: "avatar upload + file serving"
-api -> webhook: "timer_started\\ntimer_stopped"
-project_features -> api: "main domain logic"
+browser -> client
+client -> api
+oidc -> api
+api -> db
+api -> storage
+api -> webhook
