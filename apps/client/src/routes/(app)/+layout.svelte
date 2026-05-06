@@ -123,7 +123,9 @@
 			{@render children()}
 		</main>
 	</div>
-	<div class="fixed top-4 left-1/2 z-50 -translate-x-1/2">
-		<TimerControl {projects} />
+	<div class="fixed top-0 left-1/2 z-50 -translate-x-1/2">
+		<div class="rounded-b-2xl border border-t-0 bg-background px-5 py-3 shadow-lg shadow-black/10">
+			<TimerControl {projects} />
+		</div>
 	</div>
 {/if}
