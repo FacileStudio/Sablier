@@ -5,7 +5,7 @@
 	import { backend, type UserProfile } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { LayoutDashboard, Clock, FolderOpen, Users, LogOut, Settings } from 'lucide-svelte';
+	import { LayoutDashboard, Clock, FolderOpen, Users, LogOut } from 'lucide-svelte';
 
 	let { children } = $props();
 
@@ -63,8 +63,7 @@
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/sessions', label: 'Sessions', icon: Clock },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
-		{ href: '/users', label: 'Users', icon: Users },
-		{ href: '/settings', label: 'Settings', icon: Settings }
+		{ href: '/users', label: 'Users', icon: Users }
 	];
 </script>
 

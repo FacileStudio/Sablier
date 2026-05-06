@@ -7,6 +7,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { USER_COLORS, normalizeUserColor, userColorLabel } from '$lib/user-colors';
+	import { Save } from '@lucide/svelte';
 
 	const ctx = getContext<{
 		token: string;
@@ -207,7 +208,8 @@
 					<p class="text-sm text-emerald-600">{message}</p>
 				{/if}
 
-				<Button type="submit" disabled={saving}>
+				<Button type="submit" disabled={saving} class="flex items-center gap-2">
+					<Save class="h-4 w-4" />
 					{saving ? 'Saving…' : 'Save profile'}
 				</Button>
 			</form>

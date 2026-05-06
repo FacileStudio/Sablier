@@ -4,8 +4,9 @@
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
 	import * as Table from '$lib/components/ui/table';
-	import { Clock } from 'lucide-svelte';
+	import { Clock, Settings } from 'lucide-svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { goto } from '$app/navigation';
 	import { formatDuration } from '$lib/utils';
@@ -207,7 +208,12 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-start justify-between">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
+			<div class="flex items-center gap-2">
+				<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
+				<Button variant="outline" size="icon" href="/settings" aria-label="Open system settings">
+					<Settings class="h-4 w-4" />
+				</Button>
+			</div>
 			<p class="text-sm text-muted-foreground">{todayDate}</p>
 		</div>
 		<TimerControl {projects} onchange={loadEntries} />
