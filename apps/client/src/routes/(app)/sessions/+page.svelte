@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount, onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { backend, type Project, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { Button } from '$lib/components/ui/button';
@@ -152,7 +153,10 @@
 					{@const isRunning = entry.stopped_at === null}
 					{@const startMs = new Date(entry.started_at).getTime()}
 					{@const durationMs = isRunning ? now - startMs : new Date(entry.stopped_at!).getTime() - startMs}
-					<Table.Row>
+					<Table.Row
+						class="cursor-pointer"
+						onclick={() => goto(`/projects/${entry.project_id}`)}
+					>
 						<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
 						<Table.Cell class="text-muted-foreground">
 							<div class="flex items-center gap-2">
@@ -175,8 +179,8 @@
 								<Button
 									variant="ghost"
 									size="icon"
-									onclick={() => handleDelete(entry.id)}
-									class="h-8 w-8 text-destructive hover:text-destructive"
+									onclick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}
+									class="h-8 w-8 text-destructive opacity-50 hover:opacity-100 hover:text-destructive"
 									disabled={deletingEntryId === entry.id}
 								>
 									<Trash2 class="h-4 w-4" />

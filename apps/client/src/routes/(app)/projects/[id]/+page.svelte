@@ -494,7 +494,7 @@
 												<Button
 													variant="ghost"
 													size="icon"
-													class="h-8 w-8 text-destructive hover:text-destructive"
+													class="h-8 w-8 text-destructive opacity-50 hover:opacity-100 hover:text-destructive"
 													onclick={() => handleDelete(entry.id)}
 													disabled={deletingEntryId === entry.id}
 												>
