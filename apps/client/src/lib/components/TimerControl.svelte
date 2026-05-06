@@ -3,10 +3,10 @@
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Drawer from '$lib/components/ui/drawer';
+	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
 	import { Play, Square } from 'lucide-svelte';
 
 	type Props = {
@@ -31,7 +31,6 @@
 	let taskLoading = $state(false);
 	let stopping = $state(false);
 	let error = $state('');
-	const taskSuggestionsId = 'timer-task-suggestions';
 
 	function formatDuration(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -205,30 +204,14 @@
 						</Select.Root>
 					</div>
 					<div class="flex flex-col gap-1.5">
-						<Label for="timer-task-input">Task</Label>
-						<Input
-							id="timer-task-input"
-							list={selectedProjectId ? taskSuggestionsId : undefined}
-							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+						<Label>Task</Label>
+						<TaskCombobox
+							{tasks}
 							bind:value={taskName}
 							disabled={!selectedProjectId}
+							loading={taskLoading}
+							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
 						/>
-						{#if selectedProjectId}
-							<datalist id={taskSuggestionsId}>
-								{#each tasks as task}
-									<option value={task.name}></option>
-								{/each}
-							</datalist>
-							<p class="text-sm text-muted-foreground">
-								{#if taskLoading}
-									Loading task suggestions…
-								{:else if tasks.length}
-									Pick an existing task from suggestions or type a new one.
-								{:else}
-									No tasks yet. Type a name to create the first one.
-								{/if}
-							</p>
-						{/if}
 					</div>
 						{#if error}
 							<p class="text-sm text-destructive">{error}</p>

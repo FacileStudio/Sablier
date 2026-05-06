@@ -11,6 +11,7 @@
 	import * as Drawer from '$lib/components/ui/drawer';
 	import * as Popover from '$lib/components/ui/popover';
 	import * as Calendar from '$lib/components/ui/calendar';
+	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
 	import { CalendarIcon, Plus } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 
@@ -37,7 +38,6 @@
 	let saving = $state(false);
 	let taskLoading = $state(false);
 	let error = $state('');
-	const taskSuggestionsId = 'manual-task-suggestions';
 
 	function projectName(id: number): string {
 		return projects.find((p) => p.id === id)?.name ?? String(id);
@@ -236,30 +236,14 @@
 						</div>
 					</div>
 					<div class="flex flex-col gap-1.5">
-						<Label for="manual-task-input">Task</Label>
-						<Input
-							id="manual-task-input"
-							list={selectedProjectId ? taskSuggestionsId : undefined}
-							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+						<Label>Task</Label>
+						<TaskCombobox
+							{tasks}
 							bind:value={taskName}
 							disabled={!selectedProjectId}
+							loading={taskLoading}
+							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
 						/>
-						{#if selectedProjectId}
-							<datalist id={taskSuggestionsId}>
-								{#each tasks as task}
-									<option value={task.name}></option>
-								{/each}
-							</datalist>
-							<p class="text-sm text-muted-foreground">
-								{#if taskLoading}
-									Loading task suggestions…
-								{:else if tasks.length}
-									Pick an existing task from suggestions or type a new one.
-								{:else}
-									No tasks yet. Type a name to create the first one.
-								{/if}
-							</p>
-						{/if}
 					</div>
 					{#if error}
 						<p class="text-sm text-destructive">{error}</p>
