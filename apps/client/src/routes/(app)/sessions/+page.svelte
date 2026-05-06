@@ -146,7 +146,6 @@
 					<Table.Head>User</Table.Head>
 					<Table.Head>Task</Table.Head>
 					<Table.Head>Started</Table.Head>
-					<Table.Head>Stopped</Table.Head>
 					<Table.Head>Duration</Table.Head>
 					<Table.Head class="text-right">Actions</Table.Head>
 				</Table.Row>
@@ -170,7 +169,7 @@
 							</div>
 						</Table.Cell>
 						<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
-						<Table.Cell>{formatDate(entry.started_at)}</Table.Cell>
+						<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
 						<Table.Cell>
 							{#if isRunning}
 								<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
@@ -181,10 +180,9 @@
 									Running
 								</span>
 							{:else}
-								{formatDate(entry.stopped_at!)}
+								<span class="font-mono text-sm tabular-nums">{formatDuration(durationMs)}</span>
 							{/if}
 						</Table.Cell>
-						<Table.Cell class="font-mono text-sm">{formatDuration(durationMs)}</Table.Cell>
 						<Table.Cell class="text-right">
 							{#if entry.user_id === Number(ctx.user?.id)}
 								<Button

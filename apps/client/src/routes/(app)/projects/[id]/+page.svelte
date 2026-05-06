@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry, type UserProfile } from '$lib/backend';
@@ -31,6 +31,8 @@
 	let deleteError = $state('');
 	let deletingTaskId = $state<number | null>(null);
 	let taskDeleteError = $state('');
+	let now = $state(Date.now());
+	let ticker: ReturnType<typeof setInterval> | undefined;
 
 	type UserTimeSegment = {
 		key: string;
@@ -66,7 +68,7 @@
 
 	function entryMs(e: TimeEntry): number {
 		const start = new Date(e.started_at).getTime();
-		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : Date.now();
+		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
 		return end - start;
 	}
 
@@ -230,6 +232,7 @@
 	}
 
 	onMount(async () => {
+		ticker = setInterval(() => { now = Date.now(); }, 1000);
 		try {
 			const id = Number(page.params.id);
 			const [proj, taskResult, ents] = await Promise.all([
@@ -246,6 +249,8 @@
 			loading = false;
 		}
 	});
+
+	onDestroy(() => clearInterval(ticker));
 </script>
 
 <svelte:head>
@@ -486,12 +491,14 @@
 									<Table.Head>User</Table.Head>
 									<Table.Head>Task</Table.Head>
 									<Table.Head>Started</Table.Head>
-									<Table.Head class="text-right">Duration</Table.Head>
+									<Table.Head>Duration</Table.Head>
 									<Table.Head class="text-right">Actions</Table.Head>
 								</Table.Row>
 							</Table.Header>
 							<Table.Body>
 								{#each sortedEntries as entry}
+									{@const isRunning = entry.stopped_at === null}
+									{@const durationMs = isRunning ? now - new Date(entry.started_at).getTime() : entryMs(entry)}
 									<Table.Row>
 										<Table.Cell class="text-muted-foreground">
 											<div class="flex items-center gap-2">
@@ -500,11 +507,9 @@
 											</div>
 										</Table.Cell>
 										<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
-										<Table.Cell class="text-muted-foreground">
-											{formatDate(entry.started_at)}
-										</Table.Cell>
-										<Table.Cell class="text-right">
-											{#if entry.stopped_at === null}
+										<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
+										<Table.Cell>
+											{#if isRunning}
 												<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
 													<span class="relative flex h-2 w-2">
 														<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
@@ -513,7 +518,7 @@
 													Running
 												</span>
 											{:else}
-												<span class="tabular-nums">{formatDuration(entryMs(entry))}</span>
+												<span class="font-mono text-sm tabular-nums">{formatDuration(durationMs)}</span>
 											{/if}
 										</Table.Cell>
 										<Table.Cell class="text-right">
