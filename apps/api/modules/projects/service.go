@@ -123,6 +123,34 @@ func (service *Service) deleteTask(ctx context.Context, projectID int64, taskID 
 	return count, nil
 }
 
+func (service *Service) updateTask(ctx context.Context, projectID int64, taskID int64, name string) (*schemas.Task, error) {
+	var task schemas.Task
+	err := service.orm.WithContext(ctx).Where("id = ? AND project_id = ?", taskID, projectID).First(&task).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.NotFound("task not found")
+	}
+	if err != nil {
+		return nil, errors.Internal("failed to find task", err)
+	}
+
+	var existing schemas.Task
+	err = service.orm.WithContext(ctx).
+		Where("project_id = ? AND lower(name) = lower(?) AND id <> ?", projectID, name, taskID).
+		First(&existing).Error
+	if err == nil {
+		return &existing, nil
+	}
+	if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.Internal("failed to check task", err)
+	}
+
+	task.Name = name
+	if err := service.orm.WithContext(ctx).Save(&task).Error; err != nil {
+		return nil, errors.Internal("failed to update task", err)
+	}
+	return &task, nil
+}
+
 func (service *Service) createTask(ctx context.Context, projectID int64, name string) (*schemas.Task, error) {
 	if _, err := service.getProject(ctx, projectID); err != nil {
 		return nil, err

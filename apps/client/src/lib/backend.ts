@@ -214,6 +214,12 @@ export const backend = {
 			body: JSON.stringify({ name })
 		}, token);
 	},
+	updateTask(token: string, projectId: number, taskId: number, name: string) {
+		return apiFetch<Task>(`/projects/${projectId}/tasks/${taskId}`, {
+			method: 'PUT',
+			body: JSON.stringify({ name })
+		}, token);
+	},
 	deleteTask(token: string, projectId: number, taskId: number) {
 		return apiFetch<{ deleted: boolean; sessions_unlinked: number }>(`/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' }, token);
 	},

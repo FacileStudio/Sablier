@@ -113,3 +113,18 @@ func TestCreateTaskAllowsForeignProject(t *testing.T) {
 		t.Fatalf("expected project %d, got %d", foreignProject.ID, task.ProjectID)
 	}
 }
+
+func TestUpdateTaskAllowsForeignProject(t *testing.T) {
+	service := newTestService(t)
+	foreignProject := seedProject(t, service.orm, 2, "Not mine")
+	task := seedTask(t, service.orm, foreignProject.ID, "Old name")
+
+	updated, err := service.updateTask(context.Background(), foreignProject.ID, task.ID, "New name")
+	if err != nil {
+		t.Fatalf("update task: %v", err)
+	}
+
+	if updated.Name != "New name" {
+		t.Fatalf("expected updated name, got %q", updated.Name)
+	}
+}

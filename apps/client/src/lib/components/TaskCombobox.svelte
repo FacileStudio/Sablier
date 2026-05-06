@@ -70,8 +70,9 @@
 		onblur={handleBlur}
 		onkeydown={handleKeydown}
 		autocomplete="off"
+		title={value.trim() || placeholder}
 		class={cn(
-			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 disabled:bg-input/50 dark:disabled:bg-input/80 h-8 w-full min-w-0 rounded-lg border bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-muted-foreground md:text-sm'
+			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 disabled:bg-input/50 dark:disabled:bg-input/80 h-8 w-full min-w-0 truncate rounded-lg border bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-muted-foreground md:text-sm'
 		)}
 	/>
 
@@ -86,19 +87,21 @@
 						'flex w-full cursor-default items-center px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground',
 						value.toLowerCase() === task.name.toLowerCase() && 'bg-accent text-accent-foreground'
 					)}
+					title={task.name}
 					onmousedown={() => select(task.name)}
 				>
-					{task.name}
+					<span class="block min-w-0 truncate">{task.name}</span>
 				</button>
 			{/each}
 			{#if showCreate}
 				<button
 					type="button"
 					class="flex w-full cursor-default items-center gap-1.5 border-t px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+					title={value.trim()}
 					onmousedown={() => select(value.trim())}
 				>
 					<span class="text-xs">Create</span>
-					<span class="font-medium text-foreground">"{value.trim()}"</span>
+					<span class="min-w-0 truncate font-medium text-foreground">"{value.trim()}"</span>
 				</button>
 			{/if}
 		</div>

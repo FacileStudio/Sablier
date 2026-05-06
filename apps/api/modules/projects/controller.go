@@ -104,6 +104,19 @@ func (c *Controller) deleteTask(ctx context.Context, projectID int64, taskID int
 	return c.service.deleteTask(ctx, projectID, taskID)
 }
 
+func (c *Controller) updateTask(ctx context.Context, projectID int64, taskID int64, req *UpdateTaskRequest) (*TaskResponse, error) {
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, errors.Invalid("task name is required")
+	}
+	record, err := c.service.updateTask(ctx, projectID, taskID, name)
+	if err != nil {
+		return nil, err
+	}
+	resp := toTaskResponse(record)
+	return &resp, nil
+}
+
 func (c *Controller) createTask(ctx context.Context, projectID int64, req *CreateTaskRequest) (*TaskResponse, error) {
 	name := strings.TrimSpace(req.Name)
 	if name == "" {

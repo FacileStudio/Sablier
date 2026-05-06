@@ -16,6 +16,10 @@ type CreateTaskRequest struct {
 	Name string `json:"name"`
 }
 
+type UpdateTaskRequest struct {
+	Name string `json:"name"`
+}
+
 type ProjectResponse struct {
 	ID          int64     `json:"id"`
 	Name        string    `json:"name"`

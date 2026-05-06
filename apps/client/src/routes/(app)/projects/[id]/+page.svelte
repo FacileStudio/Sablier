@@ -39,6 +39,10 @@
 	let taskDeleteError = $state('');
 	let taskDeleteDialogOpen = $state(false);
 	let deleteTaskTarget = $state<{ id: number; name: string; sessionCount: number } | null>(null);
+	let editingTaskId = $state<number | null>(null);
+	let taskDraftName = $state('');
+	let taskSaveError = $state('');
+	let savingTaskId = $state<number | null>(null);
 	let editingEntry = $state<TimeEntry | null>(null);
 	let editDrawerOpen = $state(false);
 	let now = $state(Date.now());
@@ -185,12 +189,25 @@
 
 	function openTaskDeleteDialog(taskId: number, name: string, sessionCount: number) {
 		deleteTaskTarget = { id: taskId, name, sessionCount };
+		taskSaveError = '';
 		taskDeleteDialogOpen = true;
 	}
 
 	function openEditDrawer(entry: TimeEntry) {
 		editingEntry = entry;
 		editDrawerOpen = true;
+	}
+
+	function startTaskEdit(taskId: number, name: string) {
+		editingTaskId = taskId;
+		taskDraftName = name;
+		taskSaveError = '';
+	}
+
+	function cancelTaskEdit() {
+		editingTaskId = null;
+		taskDraftName = '';
+		taskSaveError = '';
 	}
 
 	async function confirmDeleteTask() {
@@ -210,6 +227,28 @@
 			taskDeleteError = e instanceof Error ? e.message : 'Failed to delete task.';
 		} finally {
 			deletingTaskId = null;
+		}
+	}
+
+	async function saveTaskName(taskId: number) {
+		if (!project) {
+			return;
+		}
+		savingTaskId = taskId;
+		taskSaveError = '';
+		try {
+			const updated = await backend.updateTask(ctx.token, project.id, taskId, taskDraftName);
+			tasks = tasks
+				.map((task) => task.id === taskId ? updated : task)
+				.sort((a, b) => a.name.localeCompare(b.name));
+			entries = entries.map((entry) =>
+				entry.task_id === taskId ? { ...entry, task_name: updated.name } : entry
+			);
+			cancelTaskEdit();
+		} catch (e) {
+			taskSaveError = e instanceof Error ? e.message : 'Failed to rename task.';
+		} finally {
+			savingTaskId = null;
 		}
 	}
 
@@ -416,16 +455,13 @@
 			</div>
 
 			<section class="mt-6 rounded-2xl border p-5">
-				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+				<div>
 					<div>
 						<h2 class="text-lg font-semibold">User Repartition</h2>
 						<p class="text-sm text-muted-foreground">
 							Whole-project split by tracked time per user.
 						</p>
 					</div>
-					<Badge variant="outline" class="w-fit tabular-nums">
-						{formatDuration(totalMs)}
-					</Badge>
 				</div>
 
 				<div class="mt-4">
@@ -445,6 +481,9 @@
 					</p>
 				</div>
 				<div>
+					{#if taskSaveError}
+						<p class="mb-4 text-sm text-destructive">{taskSaveError}</p>
+					{/if}
 					{#if tasksWithStats.length === 0}
 						<p class="text-sm text-muted-foreground">No tasks yet.</p>
 					{:else}
@@ -453,7 +492,36 @@
 								<div class="rounded-xl border p-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="truncate font-medium">{task.name}</p>
+											{#if editingTaskId === task.id}
+												<div class="flex flex-col gap-2">
+													<Input
+														bind:value={taskDraftName}
+														class="h-8"
+														maxlength={200}
+													/>
+													<div class="flex flex-wrap gap-2">
+														<Button
+															size="sm"
+															onclick={() => saveTaskName(task.id)}
+															disabled={savingTaskId === task.id}
+														>
+															<Check class="h-4 w-4" />
+															{savingTaskId === task.id ? 'Saving…' : 'Save'}
+														</Button>
+														<Button
+															variant="outline"
+															size="sm"
+															onclick={cancelTaskEdit}
+															disabled={savingTaskId === task.id}
+														>
+															<X class="h-4 w-4" />
+															Cancel
+														</Button>
+													</div>
+												</div>
+											{:else}
+												<p class="truncate font-medium" title={task.name}>{task.name}</p>
+											{/if}
 										</div>
 										<div class="flex items-center gap-1">
 											<Badge variant="secondary" class="tabular-nums">
@@ -462,9 +530,18 @@
 											<Button
 												variant="ghost"
 												size="icon"
+												class="h-7 w-7 text-muted-foreground opacity-50 hover:opacity-100"
+												onclick={() => startTaskEdit(task.id, task.name)}
+												disabled={editingTaskId !== null && editingTaskId !== task.id}
+											>
+												<Pencil class="h-3.5 w-3.5" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
 												class="h-7 w-7 text-muted-foreground opacity-50 hover:text-destructive hover:opacity-100"
 												onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
-												disabled={deletingTaskId === task.id}
+												disabled={deletingTaskId === task.id || (editingTaskId !== null && editingTaskId !== task.id)}
 											>
 												<Trash2 class="h-3.5 w-3.5" />
 											</Button>
