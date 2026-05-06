@@ -18,6 +18,10 @@
 <AlertDialogPrimitive.Action
 	bind:ref
 	data-slot="alert-dialog-action"
-	class={cn(buttonVariants({ variant, size }), className)}
+	class={cn(
+		buttonVariants({ variant, size }),
+		variant === "destructive" && "border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white",
+		className
+	)}
 	{...restProps}
 />
