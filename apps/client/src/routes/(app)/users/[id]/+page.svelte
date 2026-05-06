@@ -194,7 +194,9 @@
 		return Array.from(stats.values()).sort((a, b) => b.totalMs - a.totalMs);
 	});
 	const recentEntries = $derived(
-		[...entries].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+		entries
+			.filter((e) => !!e.project_id)
+			.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
 	);
 	const activityData = $derived.by(() => {
 		const today = new Date();
