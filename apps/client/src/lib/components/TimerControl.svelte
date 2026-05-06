@@ -165,7 +165,7 @@
 
 {#if running}
 	<div class="flex items-center gap-4">
-		<span class="tabular-nums leading-none" style="font-family: var(--font-heading); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed, { includeSeconds: true })}</span>
+		<span class="leading-none" style="font-family: var(--font-mono); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed, { includeSeconds: true })}</span>
 		<div class="flex items-center gap-2">
 			<Button
 				class="gap-2 h-10 px-5 bg-red-600 hover:bg-red-700 text-white border-0"
