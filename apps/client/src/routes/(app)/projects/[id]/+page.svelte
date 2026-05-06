@@ -379,7 +379,7 @@
 				</Card.Root>
 			</div>
 
-			<section class="mt-6 rounded-2xl border p-5">
+			<section class="mt-6 rounded-2xl p-5">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<h2 class="text-lg font-semibold">User Repartition</h2>
@@ -414,13 +414,10 @@
 					{:else}
 						<div class="space-y-3">
 							{#each tasksWithStats as task}
-								<div class="rounded-xl border p-4">
+								<div class="rounded-xl p-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
 											<p class="truncate font-medium">{task.name}</p>
-											<p class="mt-1 text-sm text-muted-foreground">
-												{task.sessionCount} {task.sessionCount === 1 ? 'session' : 'sessions'}
-											</p>
 										</div>
 										<Badge variant="secondary" class="tabular-nums">
 											{formatDuration(task.totalMs)}
@@ -433,9 +430,6 @@
 											<div class="h-3 w-full rounded-full border border-border bg-muted/40"></div>
 										{/if}
 									</div>
-									<p class="mt-2 text-xs text-muted-foreground">
-										{task.lastStartedAt ? `Last session ${formatDate(task.lastStartedAt)}` : 'No sessions on this task yet'}
-									</p>
 								</div>
 							{/each}
 						</div>
