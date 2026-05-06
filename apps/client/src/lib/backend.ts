@@ -14,6 +14,7 @@ export type UserProfile = {
 	name: string;
 	avatar_url: string;
 	color: string;
+	created_at: string;
 };
 
 export type MeResponse = {

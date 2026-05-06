@@ -218,6 +218,7 @@ func mapUser(record schemas.User) *User {
 		Name:      record.Name,
 		AvatarURL: record.AvatarURL,
 		Color:     record.Color,
+		CreatedAt: record.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

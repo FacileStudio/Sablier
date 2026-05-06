@@ -6,6 +6,7 @@ type User struct {
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatar_url"`
 	Color     string `json:"color"`
+	CreatedAt string `json:"created_at"`
 }
 
 type MeResponse struct {
