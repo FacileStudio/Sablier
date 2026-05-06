@@ -119,5 +119,24 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			}
 			httpjson.WriteJSON(w, http.StatusCreated, resp)
 		})
+
+		router.Delete("/{id}/tasks/{taskId}", func(w http.ResponseWriter, request *http.Request) {
+			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+			if err != nil {
+				httpjson.WriteError(w, errors.Invalid("invalid project id"))
+				return
+			}
+			taskID, err := strconv.ParseInt(chi.URLParam(request, "taskId"), 10, 64)
+			if err != nil {
+				httpjson.WriteError(w, errors.Invalid("invalid task id"))
+				return
+			}
+			affected, err := service.controller.deleteTask(request.Context(), id, taskID)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, map[string]any{"deleted": true, "sessions_unlinked": affected})
+		})
 	})
 }

@@ -93,6 +93,36 @@ func (service *Service) listTasks(ctx context.Context, projectID int64) ([]schem
 	return records, nil
 }
 
+func (service *Service) countTaskEntries(ctx context.Context, taskID int64) (int64, error) {
+	var count int64
+	if err := service.orm.WithContext(ctx).Model(&schemas.TimeEntry{}).Where("task_id = ?", taskID).Count(&count).Error; err != nil {
+		return 0, errors.Internal("failed to count task entries", err)
+	}
+	return count, nil
+}
+
+func (service *Service) deleteTask(ctx context.Context, projectID int64, taskID int64) (int64, error) {
+	var task schemas.Task
+	err := service.orm.WithContext(ctx).Where("id = ? AND project_id = ?", taskID, projectID).First(&task).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, errors.NotFound("task not found")
+	}
+	if err != nil {
+		return 0, errors.Internal("failed to find task", err)
+	}
+	count, err := service.countTaskEntries(ctx, taskID)
+	if err != nil {
+		return 0, err
+	}
+	if err := service.orm.WithContext(ctx).Model(&schemas.TimeEntry{}).Where("task_id = ?", taskID).Update("task_id", 0).Error; err != nil {
+		return 0, errors.Internal("failed to unlink task entries", err)
+	}
+	if err := service.orm.WithContext(ctx).Delete(&task).Error; err != nil {
+		return 0, errors.Internal("failed to delete task", err)
+	}
+	return count, nil
+}
+
 func (service *Service) createTask(ctx context.Context, projectID int64, name string) (*schemas.Task, error) {
 	if _, err := service.getProject(ctx, projectID); err != nil {
 		return nil, err

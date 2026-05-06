@@ -29,6 +29,8 @@
 	let deletingProject = $state(false);
 	let deletingEntryId = $state<number | null>(null);
 	let deleteError = $state('');
+	let deletingTaskId = $state<number | null>(null);
+	let taskDeleteError = $state('');
 
 	type UserTimeSegment = {
 		key: string;
@@ -158,6 +160,24 @@
 			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
 		} finally {
 			deletingEntryId = null;
+		}
+	}
+
+	async function handleDeleteTask(taskId: number, sessionCount: number) {
+		const msg = sessionCount > 0
+			? `Delete this task? ${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'} will become unassigned.`
+			: 'Delete this task?';
+		if (!confirm(msg)) return;
+		deletingTaskId = taskId;
+		taskDeleteError = '';
+		try {
+			await backend.deleteTask(ctx.token, project!.id, taskId);
+			tasks = tasks.filter((t) => t.id !== taskId);
+			entries = entries.map((e) => e.task_id === taskId ? { ...e, task_id: 0, task_name: '' } : e);
+		} catch (e) {
+			taskDeleteError = e instanceof Error ? e.message : 'Failed to delete task.';
+		} finally {
+			deletingTaskId = null;
 		}
 	}
 
@@ -419,9 +439,20 @@
 										<div class="min-w-0">
 											<p class="truncate font-medium">{task.name}</p>
 										</div>
-										<Badge variant="secondary" class="tabular-nums">
-											{formatDuration(task.totalMs)}
-										</Badge>
+										<div class="flex items-center gap-1">
+											<Badge variant="secondary" class="tabular-nums">
+												{formatDuration(task.totalMs)}
+											</Badge>
+											<Button
+												variant="ghost"
+												size="icon"
+												class="h-7 w-7 text-muted-foreground opacity-50 hover:text-destructive hover:opacity-100"
+												onclick={() => handleDeleteTask(task.id, task.sessionCount)}
+												disabled={deletingTaskId === task.id}
+											>
+												<Trash2 class="h-3.5 w-3.5" />
+											</Button>
+										</div>
 									</div>
 									<div class="mt-3">
 										{#if task.userSegments.length > 0}

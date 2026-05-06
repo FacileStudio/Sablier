@@ -151,6 +151,11 @@ export const backend = {
 			user: normalizeUser(result.user)
 		}));
 	},
+	deleteAvatar(token: string) {
+		return apiFetch<MeResponse>('/users/me/avatar', { method: 'DELETE' }, token).then((result) => ({
+			user: normalizeUser(result.user)
+		}));
+	},
 	async uploadAvatar(token: string, file: File) {
 		const formData = new FormData();
 		formData.set('avatar', file);
@@ -203,6 +208,9 @@ export const backend = {
 			method: 'POST',
 			body: JSON.stringify({ name })
 		}, token);
+	},
+	deleteTask(token: string, projectId: number, taskId: number) {
+		return apiFetch<{ deleted: boolean; sessions_unlinked: number }>(`/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' }, token);
 	},
 
 	listEntries(token: string, projectId?: number) {

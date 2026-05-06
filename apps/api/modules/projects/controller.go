@@ -100,6 +100,10 @@ func (c *Controller) listTasks(ctx context.Context, projectID int64) (*ListTasks
 	return &ListTasksResponse{Tasks: items}, nil
 }
 
+func (c *Controller) deleteTask(ctx context.Context, projectID int64, taskID int64) (int64, error) {
+	return c.service.deleteTask(ctx, projectID, taskID)
+}
+
 func (c *Controller) createTask(ctx context.Context, projectID int64, req *CreateTaskRequest) (*TaskResponse, error) {
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
