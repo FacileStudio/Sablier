@@ -26,6 +26,7 @@
 	let project = $state<Project | null>(null);
 	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
+	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>>(new Map());
 	let projectEditDrawerOpen = $state(false);
 	let editName = $state('');
 	let editDescription = $state('');
@@ -125,6 +126,21 @@
 	const projectUserSegments = $derived(aggregateUserTimeSegments(entries));
 
 	const totalMs = $derived(entries.reduce((acc, e) => acc + entryMs(e), 0));
+
+	const projectValue = $derived.by(() => {
+		if (userRates.size === 0) return null;
+		let total = 0;
+		let anyRate = false;
+		for (const entry of entries) {
+			const ur = userRates.get(entry.user_id);
+			if (!ur || ur.rate <= 0) continue;
+			anyRate = true;
+			const hours = entryMs(entry) / 3_600_000;
+			total += ur.rate_type === 'hourly' ? hours * ur.rate : (hours / 8) * ur.rate;
+		}
+		if (!anyRate) return null;
+		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total);
+	});
 
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
 
@@ -309,14 +325,20 @@
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
 		try {
 			const id = Number(page.params.id);
-			const [proj, taskResult, ents] = await Promise.all([
+			const [proj, taskResult, ents, usersResult] = await Promise.all([
 				backend.getProject(ctx.token, id),
 				backend.listTasks(ctx.token, id),
-				backend.listEntries(ctx.token, id)
+				backend.listEntries(ctx.token, id),
+				backend.listUsers(ctx.token)
 			]);
 			project = proj;
 			tasks = taskResult.tasks;
 			entries = ents.entries;
+			const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>();
+			for (const u of usersResult.users) {
+				map.set(Number(u.id), { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily' });
+			}
+			userRates = map;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load project.';
 		} finally {
@@ -377,7 +399,7 @@
 				<p class="mt-4 text-sm text-destructive">{projectActionError}</p>
 			{/if}
 
-			<div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+			<div class="mt-6 grid grid-cols-2 gap-4" class:sm:grid-cols-4={projectValue === null} class:sm:grid-cols-5={projectValue !== null}>
 				<Card.Root>
 					<Card.Header class="pb-2">
 						<Card.Title class="text-sm font-medium text-muted-foreground">Total Time</Card.Title>
@@ -427,6 +449,17 @@
 						</div>
 					</Card.Content>
 				</Card.Root>
+
+				{#if projectValue !== null}
+					<Card.Root>
+						<Card.Header class="pb-2">
+							<Card.Title class="text-sm font-medium text-muted-foreground">Project Value</Card.Title>
+						</Card.Header>
+						<Card.Content>
+							<span class="text-2xl font-bold tabular-nums">{projectValue}</span>
+						</Card.Content>
+					</Card.Root>
+				{/if}
 			</div>
 
 			<section class="mt-6 rounded-2xl border p-5">

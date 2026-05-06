@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getContext } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -29,45 +29,12 @@
 	let rateError = $state('');
 	let previewUrl = $state('');
 
-	let totalTrackedMs = $state(0);
-
-	onMount(async () => {
-		try {
-			const result = await backend.listEntries(ctx.token);
-			totalTrackedMs = result.entries.reduce((acc, e) => {
-				const start = new Date(e.started_at).getTime();
-				const end = e.stopped_at ? new Date(e.stopped_at).getTime() : Date.now();
-				return acc + (end - start);
-			}, 0);
-		} catch {
-		}
-	});
-
 	$effect(() => {
 		name = ctx.user?.name ?? '';
 		color = normalizeUserColor(ctx.user?.color);
 		rate = ctx.user?.rate ?? 0;
 		rateType = ctx.user?.rate_type ?? 'daily';
 	});
-
-	const virtualEarnings = $derived.by(() => {
-		if (rate <= 0) return null;
-		const hours = totalTrackedMs / 3_600_000;
-		if (rateType === 'hourly') return hours * rate;
-		return (hours / 8) * rate;
-	});
-
-	function formatEarnings(eur: number): string {
-		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(eur);
-	}
-
-	function formatHours(ms: number): string {
-		const h = Math.floor(ms / 3_600_000);
-		const m = Math.round((ms % 3_600_000) / 60_000);
-		if (h === 0) return `${m}m`;
-		if (m === 0) return `${h}h`;
-		return `${h}h ${m}m`;
-	}
 
 	function getInitials(value: string) {
 		const parts = value.trim().split(/\s+/).filter(Boolean);
@@ -161,32 +128,6 @@
 		<h1 class="text-2xl font-semibold">Profile</h1>
 		<p class="text-sm text-muted-foreground">Set your display name, avatar, and billable rate.</p>
 	</div>
-
-	{#if virtualEarnings !== null}
-		<Card.Root class="max-w-2xl">
-			<Card.Header>
-				<Card.Title>Virtual Earnings</Card.Title>
-				<Card.Description>
-					Monetary representation of your tracked time at your configured {rateType} rate.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content class="flex flex-col gap-4">
-				<div class="flex items-end gap-2">
-					<span class="text-4xl font-bold tabular-nums">{formatEarnings(virtualEarnings)}</span>
-					<span class="mb-1 text-sm text-muted-foreground">
-						from {formatHours(totalTrackedMs)} tracked
-					</span>
-				</div>
-				<p class="text-xs text-muted-foreground">
-					{#if rateType === 'daily'}
-						Based on {rate} €/day (8h workday). Not real money — just a reminder your time has value.
-					{:else}
-						Based on {rate} €/h. Not real money — just a reminder your time has value.
-					{/if}
-				</p>
-			</Card.Content>
-		</Card.Root>
-	{/if}
 
 	<Card.Root class="max-w-2xl">
 		<Card.Header>

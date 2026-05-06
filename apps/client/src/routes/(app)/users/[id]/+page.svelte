@@ -90,6 +90,21 @@
 
 	const totalMs = $derived(entries.reduce((acc, e) => acc + entryMs(e), 0));
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
+
+	const virtualEarnings = $derived.by(() => {
+		if (!user || (user.rate ?? 0) <= 0) return null;
+		const hours = totalMs / 3_600_000;
+		const amount = user.rate_type === 'hourly' ? hours * user.rate : (hours / 8) * user.rate;
+		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount);
+	});
+
+	function formatHours(ms: number): string {
+		const h = Math.floor(ms / 3_600_000);
+		const m = Math.round((ms % 3_600_000) / 60_000);
+		if (h === 0) return `${m}m`;
+		if (m === 0) return `${h}h`;
+		return `${h}h ${m}m`;
+	}
 	const lastEntry = $derived(
 		entries.length > 0
 			? entries.reduce((latest, e) =>
@@ -307,6 +322,30 @@
 				</Card.Content>
 			</Card.Root>
 		</div>
+
+		{#if virtualEarnings !== null}
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Virtual Earnings</Card.Title>
+					<Card.Description>
+						Monetary value of {name}'s tracked time at their {user.rate_type} rate.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content class="flex flex-col gap-2">
+					<div class="flex items-end gap-2">
+						<span class="text-4xl font-bold tabular-nums">{virtualEarnings}</span>
+						<span class="mb-1 text-sm text-muted-foreground">from {formatHours(totalMs)} tracked</span>
+					</div>
+					<p class="text-xs text-muted-foreground">
+						{#if user.rate_type === 'daily'}
+							At {user.rate} €/day (8h workday).
+						{:else}
+							At {user.rate} €/h.
+						{/if}
+					</p>
+				</Card.Content>
+			</Card.Root>
+		{/if}
 
 		<Card.Root>
 			<Card.Header class="flex flex-row items-center justify-between">
