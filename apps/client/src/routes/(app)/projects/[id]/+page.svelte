@@ -376,13 +376,12 @@
 				</div>
 				<div class="flex shrink-0 items-center gap-3">
 					<div class="flex gap-2">
-						<Button variant="outline" size="sm" onclick={startProjectEdit}>
+						<Button variant="outline" class="gap-2 h-10 px-5" onclick={startProjectEdit}>
 							<Pencil class="h-4 w-4" />
 							Edit
 						</Button>
 						<Button
-							size="sm"
-							class="border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+							class="gap-2 h-10 px-5 border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
 							onclick={() => { projectDeleteDialogOpen = true; }}
 							disabled={deletingProject}
 						>

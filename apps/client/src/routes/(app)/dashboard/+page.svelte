@@ -235,7 +235,7 @@
 			<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
 			<p class="text-sm text-muted-foreground">{todayDate}</p>
 		</div>
-		<Button variant="outline" href="/settings" class="gap-2">
+		<Button variant="outline" href="/settings" class="gap-2 h-10 px-5">
 			<Settings class="h-4 w-4" />
 			<span>Settings</span>
 		</Button>
