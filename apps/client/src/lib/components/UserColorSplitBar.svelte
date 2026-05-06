@@ -30,7 +30,7 @@
 </script>
 
 <div class="space-y-3">
-	<div class={`flex w-full overflow-hidden rounded-full border border-border bg-muted/40 ${barClass}`}>
+	<div class={`flex w-full overflow-hidden rounded-full bg-muted/40 ${barClass}`}>
 		{#if totalMs > 0}
 			{#each segments as segment, index (segment.key)}
 				<div

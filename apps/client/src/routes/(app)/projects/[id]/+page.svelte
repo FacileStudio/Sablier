@@ -427,7 +427,7 @@
 										{#if task.userSegments.length > 0}
 											<UserColorSplitBar segments={task.userSegments} />
 										{:else}
-											<div class="h-3 w-full rounded-full border border-border bg-muted/40"></div>
+											<div class="h-3 w-full rounded-full bg-muted/40"></div>
 										{/if}
 									</div>
 								</div>
