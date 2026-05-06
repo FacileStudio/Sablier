@@ -170,7 +170,7 @@
 		>();
 
 		for (const entry of entries) {
-			if (!entry.project_id) continue;
+			if (!entry.project_id || !projects.some((p) => p.id === entry.project_id)) continue;
 			const current = stats.get(entry.project_id);
 			const durationMs = entryMs(entry);
 			if (current) {
@@ -195,7 +195,7 @@
 	});
 	const recentEntries = $derived(
 		entries
-			.filter((e) => !!e.project_id)
+			.filter((e) => !!e.project_id && projects.some((p) => p.id === e.project_id))
 			.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
 	);
 	const activityData = $derived.by(() => {
