@@ -15,6 +15,8 @@ export function formatDuration(ms: number, options: DurationFormatOptions = {}) 
 	const safeMs = Math.max(0, ms);
 	const totalSeconds = Math.floor(safeMs / 1000);
 
+	if (safeMs === 0) return '—';
+
 	if (includeSeconds) {
 		const h = Math.floor(totalSeconds / 3600);
 		const m = Math.floor((totalSeconds % 3600) / 60);
