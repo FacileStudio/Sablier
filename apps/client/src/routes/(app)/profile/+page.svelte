@@ -19,6 +19,7 @@
 	let color = $state(normalizeUserColor(ctx.user?.color));
 	let rate = $state(ctx.user?.rate ?? 0);
 	let rateType = $state<'daily' | 'hourly'>(ctx.user?.rate_type ?? 'daily');
+	let workdayHours = $state(ctx.user?.workday_hours ?? 8);
 	let saving = $state(false);
 	let rateSaving = $state(false);
 	let rateSaved = $state(false);
@@ -34,6 +35,7 @@
 		color = normalizeUserColor(ctx.user?.color);
 		rate = ctx.user?.rate ?? 0;
 		rateType = ctx.user?.rate_type ?? 'daily';
+		workdayHours = ctx.user?.workday_hours ?? 8;
 	});
 
 	function getInitials(value: string) {
@@ -67,7 +69,7 @@
 		rateSaved = false;
 		rateError = '';
 		try {
-			const result = await backend.updateMe(ctx.token, { rate, rate_type: rateType });
+			const result = await backend.updateMe(ctx.token, { rate, rate_type: rateType, workday_hours: rateType === 'daily' ? workdayHours : undefined });
 			ctx.setUser(result.user);
 			rateSaved = true;
 			setTimeout(() => (rateSaved = false), 2000);
@@ -169,12 +171,26 @@
 				</div>
 				<p class="text-xs text-muted-foreground">
 					{#if rateType === 'daily'}
-						Assumes an 8-hour workday for earnings calculations.
+						Earnings = (tracked hours ÷ workday hours) × daily rate.
 					{:else}
 						Applied directly to your tracked hours.
 					{/if}
 				</p>
 			</div>
+			{#if rateType === 'daily'}
+				<div class="flex flex-col gap-1.5">
+					<Label for="workday-hours">Workday duration (hours)</Label>
+					<Input
+						id="workday-hours"
+						type="number"
+						min="1"
+						max="24"
+						step="0.5"
+						placeholder="8"
+						bind:value={workdayHours}
+					/>
+				</div>
+			{/if}
 			{#if rateError}
 				<p class="text-sm text-red-500">{rateError}</p>
 			{/if}

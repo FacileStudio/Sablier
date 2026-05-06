@@ -19,7 +19,7 @@
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
-	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>>(new Map());
+	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
@@ -89,9 +89,9 @@
 		projects = p.projects;
 		entries = e.entries;
 		runningEntries = r.entries;
-		const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>();
+		const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
 		for (const user of u.users) {
-			map.set(Number(user.id), { rate: user.rate ?? 0, rate_type: user.rate_type ?? 'daily' });
+			map.set(Number(user.id), { rate: user.rate ?? 0, rate_type: user.rate_type ?? 'daily', workday_hours: user.workday_hours > 0 ? user.workday_hours : 8 });
 		}
 		userRates = map;
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
@@ -121,7 +121,7 @@
 			const start = new Date(entry.started_at).getTime();
 			const end = entry.stopped_at ? new Date(entry.stopped_at).getTime() : now;
 			const hours = (end - start) / 3_600_000;
-			total += userRate.rate_type === 'hourly' ? hours * userRate.rate : (hours / 8) * userRate.rate;
+			total += userRate.rate_type === 'hourly' ? hours * userRate.rate : (hours / userRate.workday_hours) * userRate.rate;
 		}
 		if (!anyRate) return null;
 		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total);

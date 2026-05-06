@@ -16,6 +16,7 @@ export type UserProfile = {
 	color: string;
 	rate: number;
 	rate_type: 'daily' | 'hourly';
+	workday_hours: number;
 	created_at: string;
 };
 
@@ -150,7 +151,7 @@ export const backend = {
 			user: normalizeUser(result.user)
 		}));
 	},
-	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly' }) {
+	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly'; workday_hours?: number }) {
 		return apiFetch<MeResponse>('/users/me', {
 			method: 'PATCH',
 			body: JSON.stringify(payload)

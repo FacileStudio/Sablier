@@ -118,11 +118,20 @@ func (controller *Controller) updateMe(context context.Context, req *UpdateReque
 		rateType = &t
 	}
 
-	if name == nil && email == nil && password == nil && color == nil && rate == nil && rateType == nil {
+	var workdayHours *float64
+	if req.WorkdayHours != nil {
+		h := *req.WorkdayHours
+		if h <= 0 {
+			h = 8
+		}
+		workdayHours = &h
+	}
+
+	if name == nil && email == nil && password == nil && color == nil && rate == nil && rateType == nil && workdayHours == nil {
 		return nil, errors.Invalid("at least one field must be provided")
 	}
 
-	user, err := controller.service.updateUser(context, identity.UserID, name, email, password, color, rate, rateType)
+	user, err := controller.service.updateUser(context, identity.UserID, name, email, password, color, rate, rateType, workdayHours)
 	if err != nil {
 		return nil, err
 	}

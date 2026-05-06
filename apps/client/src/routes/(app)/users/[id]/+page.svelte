@@ -91,12 +91,16 @@
 	const totalMs = $derived(entries.reduce((acc, e) => acc + entryMs(e), 0));
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
 
-	const virtualEarnings = $derived.by(() => {
-		if (!user || (user.rate ?? 0) <= 0) return null;
-		const hours = totalMs / 3_600_000;
-		const amount = user.rate_type === 'hourly' ? hours * user.rate : (hours / 8) * user.rate;
-		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount);
-	});
+	function computeEarnings(ms: number, u: typeof user): number | null {
+		if (!u || (u.rate ?? 0) <= 0) return null;
+		const hours = ms / 3_600_000;
+		const wh = u.workday_hours > 0 ? u.workday_hours : 8;
+		return u.rate_type === 'hourly' ? hours * u.rate : (hours / wh) * u.rate;
+	}
+
+	function formatEarnings(eur: number): string {
+		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(eur);
+	}
 
 	function formatHours(ms: number): string {
 		const h = Math.floor(ms / 3_600_000);
@@ -105,6 +109,41 @@
 		if (m === 0) return `${h}h`;
 		return `${h}h ${m}m`;
 	}
+
+	function sumMsWhere(predicate: (e: (typeof entries)[0]) => boolean): number {
+		return entries.filter(predicate).reduce((acc, e) => acc + entryMs(e), 0);
+	}
+
+	function isThisWeek(iso: string): boolean {
+		const d = new Date(iso);
+		const t = new Date();
+		const startOfWeek = new Date(t);
+		startOfWeek.setHours(0, 0, 0, 0);
+		startOfWeek.setDate(t.getDate() - t.getDay());
+		return d >= startOfWeek;
+	}
+
+	function isThisMonth(iso: string): boolean {
+		const d = new Date(iso);
+		const t = new Date();
+		return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth();
+	}
+
+	function isToday(iso: string): boolean {
+		const d = new Date(iso);
+		const t = new Date();
+		return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+	}
+
+	const earningsBreakdown = $derived.by(() => {
+		if (!user || (user.rate ?? 0) <= 0) return null;
+		return {
+			today: computeEarnings(sumMsWhere((e) => isToday(e.started_at)), user),
+			week: computeEarnings(sumMsWhere((e) => isThisWeek(e.started_at)), user),
+			month: computeEarnings(sumMsWhere((e) => isThisMonth(e.started_at)), user),
+			total: computeEarnings(totalMs, user)
+		};
+	});
 	const lastEntry = $derived(
 		entries.length > 0
 			? entries.reduce((latest, e) =>
@@ -323,28 +362,61 @@
 			</Card.Root>
 		</div>
 
-		{#if virtualEarnings !== null}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Virtual Earnings</Card.Title>
-					<Card.Description>
-						Monetary value of {name}'s tracked time at their {user.rate_type} rate.
-					</Card.Description>
-				</Card.Header>
-				<Card.Content class="flex flex-col gap-2">
-					<div class="flex items-end gap-2">
-						<span class="text-4xl font-bold tabular-nums">{virtualEarnings}</span>
-						<span class="mb-1 text-sm text-muted-foreground">from {formatHours(totalMs)} tracked</span>
-					</div>
-					<p class="text-xs text-muted-foreground">
+		{#if earningsBreakdown !== null}
+			<section>
+				<div class="mb-3">
+					<h2 class="text-lg font-semibold">Virtual Earnings</h2>
+					<p class="text-sm text-muted-foreground">
 						{#if user.rate_type === 'daily'}
-							At {user.rate} €/day (8h workday).
+							At {user.rate} €/day · {user.workday_hours > 0 ? user.workday_hours : 8}h workday.
 						{:else}
 							At {user.rate} €/h.
 						{/if}
 					</p>
-				</Card.Content>
-			</Card.Root>
+				</div>
+				<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+					<Card.Root>
+						<Card.Header class="pb-2">
+							<Card.Title class="text-sm font-medium text-muted-foreground">Today</Card.Title>
+						</Card.Header>
+						<Card.Content>
+							<span class="text-2xl font-bold tabular-nums">
+								{earningsBreakdown.today !== null ? formatEarnings(earningsBreakdown.today) : '—'}
+							</span>
+						</Card.Content>
+					</Card.Root>
+					<Card.Root>
+						<Card.Header class="pb-2">
+							<Card.Title class="text-sm font-medium text-muted-foreground">This Week</Card.Title>
+						</Card.Header>
+						<Card.Content>
+							<span class="text-2xl font-bold tabular-nums">
+								{earningsBreakdown.week !== null ? formatEarnings(earningsBreakdown.week) : '—'}
+							</span>
+						</Card.Content>
+					</Card.Root>
+					<Card.Root>
+						<Card.Header class="pb-2">
+							<Card.Title class="text-sm font-medium text-muted-foreground">This Month</Card.Title>
+						</Card.Header>
+						<Card.Content>
+							<span class="text-2xl font-bold tabular-nums">
+								{earningsBreakdown.month !== null ? formatEarnings(earningsBreakdown.month) : '—'}
+							</span>
+						</Card.Content>
+					</Card.Root>
+					<Card.Root>
+						<Card.Header class="pb-2">
+							<Card.Title class="text-sm font-medium text-muted-foreground">Total</Card.Title>
+						</Card.Header>
+						<Card.Content>
+							<span class="text-2xl font-bold tabular-nums">
+								{earningsBreakdown.total !== null ? formatEarnings(earningsBreakdown.total) : '—'}
+							</span>
+						</Card.Content>
+					</Card.Root>
+				</div>
+			</section>
 		{/if}
 
 		<Card.Root>

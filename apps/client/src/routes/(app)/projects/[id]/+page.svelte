@@ -26,7 +26,7 @@
 	let project = $state<Project | null>(null);
 	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
-	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>>(new Map());
+	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
 	let projectEditDrawerOpen = $state(false);
 	let editName = $state('');
 	let editDescription = $state('');
@@ -136,7 +136,7 @@
 			if (!ur || ur.rate <= 0) continue;
 			anyRate = true;
 			const hours = entryMs(entry) / 3_600_000;
-			total += ur.rate_type === 'hourly' ? hours * ur.rate : (hours / 8) * ur.rate;
+			total += ur.rate_type === 'hourly' ? hours * ur.rate : (hours / ur.workday_hours) * ur.rate;
 		}
 		if (!anyRate) return null;
 		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total);
@@ -334,9 +334,9 @@
 			project = proj;
 			tasks = taskResult.tasks;
 			entries = ents.entries;
-			const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly' }>();
+			const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
 			for (const u of usersResult.users) {
-				map.set(Number(u.id), { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily' });
+				map.set(Number(u.id), { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily', workday_hours: u.workday_hours > 0 ? u.workday_hours : 8 });
 			}
 			userRates = map;
 		} catch (e) {

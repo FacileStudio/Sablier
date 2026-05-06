@@ -69,7 +69,7 @@ func (service *Service) listUsers(context context.Context) ([]User, error) {
 	return users, nil
 }
 
-func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, password *string, color *string, rate *float64, rateType *string) (*User, error) {
+func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, password *string, color *string, rate *float64, rateType *string, workdayHours *float64) (*User, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Internal("failed to parse user id", err)
@@ -97,6 +97,9 @@ func (service *Service) updateUser(context context.Context, userID string, name 
 	}
 	if rateType != nil {
 		updates["rate_type"] = *rateType
+	}
+	if workdayHours != nil {
+		updates["workday_hours"] = *workdayHours
 	}
 
 	result := service.orm.WithContext(context).
@@ -253,15 +256,20 @@ func mapUser(record schemas.User) *User {
 	if rateType == "" {
 		rateType = "daily"
 	}
+	workdayHours := record.WorkdayHours
+	if workdayHours <= 0 {
+		workdayHours = 8
+	}
 	return &User{
-		ID:        strconv.FormatInt(record.ID, 10),
-		Email:     record.Email,
-		Name:      record.Name,
-		AvatarURL: record.AvatarURL,
-		Color:     record.Color,
-		Rate:      record.Rate,
-		RateType:  rateType,
-		CreatedAt: record.CreatedAt.UTC().Format(time.RFC3339),
+		ID:           strconv.FormatInt(record.ID, 10),
+		Email:        record.Email,
+		Name:         record.Name,
+		AvatarURL:    record.AvatarURL,
+		Color:        record.Color,
+		Rate:         record.Rate,
+		RateType:     rateType,
+		WorkdayHours: workdayHours,
+		CreatedAt:    record.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
