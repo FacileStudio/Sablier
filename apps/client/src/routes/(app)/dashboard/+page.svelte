@@ -19,6 +19,8 @@
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
+	let rate = $state(0);
+	let rateType = $state<'daily' | 'hourly'>('daily');
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
@@ -79,14 +81,17 @@
 	}
 
 	onMount(async () => {
-		const [p, e, r] = await Promise.all([
+		const [p, e, r, s] = await Promise.all([
 			backend.listProjects(ctx.token),
 			backend.listEntries(ctx.token),
-			backend.listRunningEntries(ctx.token)
+			backend.listRunningEntries(ctx.token),
+			backend.getSettings(ctx.token)
 		]);
 		projects = p.projects;
 		entries = e.entries;
 		runningEntries = r.entries;
+		rate = s.settings.rate ?? 0;
+		rateType = s.settings.rate_type ?? 'daily';
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
 		runningPoller = setInterval(loadRunning, 30_000);
 	});
@@ -101,6 +106,20 @@
 			.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
 			.slice(0, 5)
 	);
+
+	const todayEarnings = $derived.by(() => {
+		if (rate <= 0) return null;
+		const todayMs = entries
+			.filter((e) => isToday(e.started_at))
+			.reduce((acc, e) => {
+				const start = new Date(e.started_at).getTime();
+				const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
+				return acc + (end - start);
+			}, 0);
+		const hours = todayMs / 3_600_000;
+		const amount = rateType === 'hourly' ? hours * rate : (hours / 8) * rate;
+		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount);
+	});
 
 	const todayDate = new Date().toLocaleDateString(undefined, {
 		weekday: 'long',
@@ -220,7 +239,7 @@
 		<TimerControl {projects} onchange={loadEntries} />
 	</div>
 
-	<div class="grid grid-cols-3 gap-4">
+	<div class="grid gap-4" class:grid-cols-3={todayEarnings === null} class:grid-cols-4={todayEarnings !== null}>
 		<Card.Root>
 			<Card.Header class="pb-2">
 				<Card.Title class="text-sm font-medium text-muted-foreground">Today's Total</Card.Title>
@@ -232,6 +251,17 @@
 				</div>
 			</Card.Content>
 		</Card.Root>
+
+		{#if todayEarnings !== null}
+			<Card.Root>
+				<Card.Header class="pb-2">
+					<Card.Title class="text-sm font-medium text-muted-foreground">Today's Value</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					<span class="text-2xl font-bold tabular-nums">{todayEarnings}</span>
+				</Card.Content>
+			</Card.Root>
+		{/if}
 
 		<Card.Root>
 			<Card.Header class="pb-2">

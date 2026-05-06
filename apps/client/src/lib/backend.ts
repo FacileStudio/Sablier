@@ -46,6 +46,8 @@ export type UserSettings = {
 	webhook_url: string;
 	webhook_secret_header: string;
 	webhook_secret_value: string;
+	rate: number;
+	rate_type: 'daily' | 'hourly';
 };
 
 export type SettingsResponse = {
@@ -271,13 +273,15 @@ export const backend = {
 	getSettings(token: string) {
 		return apiFetch<SettingsResponse>('/settings/', {}, token);
 	},
-	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue: string) {
+	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue: string, rate: number, rateType: 'daily' | 'hourly') {
 		return apiFetch<SettingsResponse>('/settings/', {
 			method: 'PUT',
 			body: JSON.stringify({
 				webhook_url: webhookUrl,
 				webhook_secret_header: webhookSecretHeader,
-				webhook_secret_value: webhookSecretValue
+				webhook_secret_value: webhookSecretValue,
+				rate,
+				rate_type: rateType
 			})
 		}, token);
 	}
