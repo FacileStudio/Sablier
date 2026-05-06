@@ -128,32 +128,21 @@
 		autocomplete="off"
 		title={value.trim() || placeholder}
 		class={cn(
-			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 disabled:bg-input/50 dark:disabled:bg-input/80 h-8 w-full min-w-0 truncate rounded-lg border bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-muted-foreground md:text-sm'
+			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 disabled:bg-input/50 dark:disabled:bg-input/80 h-10 w-full min-w-0 rounded-xl border bg-transparent px-3 text-sm outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-muted-foreground'
 		)}
 	/>
 
-	{#if open}
+	{#if open && (!loading || filtered.length > 0 || showCreate || value.trim())}
 		<div
-			class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg"
+			class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-lg"
 		>
-			<div class="border-b bg-muted/30 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-				{#if loading}
-					Loading tasks…
-				{:else if filtered.length > 0}
-					{filtered.length} suggestion{filtered.length === 1 ? '' : 's'}
-				{:else if showCreate}
-					Create new task
-				{:else}
-					No matching tasks
-				{/if}
-			</div>
-			<div class="max-h-[min(18rem,40vh)] overflow-y-auto overscroll-contain py-1">
+			<div class="max-h-[min(14rem,38vh)] overflow-y-auto overscroll-contain p-1">
 				{#each filtered as task, index}
 					<button
 						bind:this={optionEls[index]}
 						type="button"
 						class={cn(
-							'flex w-full cursor-default items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground',
+							'flex w-full cursor-default items-center rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground',
 							(activeIndex === index || value.toLowerCase() === task.name.toLowerCase()) && 'bg-accent text-accent-foreground'
 						)}
 						title={task.name}
@@ -171,7 +160,7 @@
 						bind:this={optionEls[filtered.length]}
 						type="button"
 						class={cn(
-							'flex w-full cursor-default items-center gap-2 border-t px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+							'flex w-full cursor-default items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
 							activeIndex === filtered.length && 'bg-accent text-accent-foreground'
 						)}
 						title={value.trim()}
@@ -181,14 +170,15 @@
 							select(value.trim());
 						}}
 					>
-						<span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-							Create
-						</span>
-						<span class="min-w-0 flex-1 truncate font-medium text-foreground">"{value.trim()}"</span>
+						<span class="min-w-0 flex-1 truncate">Create "{value.trim()}"</span>
 					</button>
 				{:else if !loading && filtered.length === 0}
-					<div class="px-3 py-3 text-sm text-muted-foreground">
-						No tasks found for <span class="font-medium text-foreground">{value.trim() || 'this query'}</span>
+					<div class="px-3 py-2 text-sm text-muted-foreground">
+						No matching task
+					</div>
+				{:else if loading}
+					<div class="px-3 py-2 text-sm text-muted-foreground">
+						Loading tasks…
 					</div>
 				{/if}
 			</div>
