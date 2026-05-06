@@ -498,7 +498,7 @@
 													onclick={() => handleDelete(entry.id)}
 													disabled={deletingEntryId === entry.id}
 												>
-													<Trash2 class="h-4 w-4" />
+													<Trash2 class="h-4 w-4 text-destructive" />
 												</Button>
 											{/if}
 										</Table.Cell>

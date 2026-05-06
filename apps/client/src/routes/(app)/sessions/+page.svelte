@@ -183,7 +183,7 @@
 									class="h-8 w-8 text-destructive opacity-50 hover:opacity-100 hover:text-destructive"
 									disabled={deletingEntryId === entry.id}
 								>
-									<Trash2 class="h-4 w-4" />
+									<Trash2 class="h-4 w-4 text-destructive" />
 								</Button>
 							{/if}
 						</Table.Cell>
