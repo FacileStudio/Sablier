@@ -213,8 +213,8 @@ type webhookTimeEntry struct {
 }
 
 func (service *Service) fireWebhook(ctx context.Context, userID int64, event string, entry *schemas.TimeEntry) {
-	var setting schemas.UserSetting
-	if err := service.orm.WithContext(ctx).Where("user_id = ?", userID).First(&setting).Error; err != nil {
+	var setting schemas.AppSetting
+	if err := service.orm.WithContext(ctx).Where("id = 1").First(&setting).Error; err != nil {
 		return
 	}
 	if setting.WebhookURL == "" {

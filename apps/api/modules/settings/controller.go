@@ -2,10 +2,6 @@ package settings
 
 import (
 	"context"
-	"strings"
-
-	"api/internal/authcontext"
-	"api/internal/errors"
 )
 
 type Controller struct {
@@ -17,11 +13,7 @@ func newController(service *Service) *Controller {
 }
 
 func (c *Controller) getSettings(ctx context.Context) (*SettingsResponse, error) {
-	identity, ok := authcontext.IdentityFromContext(ctx)
-	if !ok {
-		return nil, errors.Unauthorized("missing auth")
-	}
-	s, err := c.service.getSettings(ctx, identity.UserID)
+	s, err := c.service.getSettings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -29,14 +21,7 @@ func (c *Controller) getSettings(ctx context.Context) (*SettingsResponse, error)
 }
 
 func (c *Controller) updateSettings(ctx context.Context, req *UpdateRequest) (*SettingsResponse, error) {
-	identity, ok := authcontext.IdentityFromContext(ctx)
-	if !ok {
-		return nil, errors.Unauthorized("missing auth")
-	}
-	req.WebhookURL = strings.TrimSpace(req.WebhookURL)
-	req.WebhookSecretHeader = strings.TrimSpace(req.WebhookSecretHeader)
-	req.WebhookSecretValue = strings.TrimSpace(req.WebhookSecretValue)
-	s, err := c.service.updateSettings(ctx, identity.UserID, req)
+	s, err := c.service.updateSettings(ctx, req)
 	if err != nil {
 		return nil, err
 	}

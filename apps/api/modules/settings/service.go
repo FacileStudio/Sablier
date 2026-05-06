@@ -3,7 +3,7 @@ package settings
 import (
 	"context"
 	stderrors "errors"
-	"strconv"
+	"strings"
 
 	"api/internal/errors"
 	"api/schemas"
@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+const appSettingID = 1
 
 type Service struct {
 	orm        *gorm.DB
@@ -23,15 +25,11 @@ func NewService(orm *gorm.DB) *Service {
 	return service
 }
 
-func (service *Service) getSettings(ctx context.Context, userID string) (*Settings, error) {
-	uid, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
-	var record schemas.UserSetting
-	err = service.orm.WithContext(ctx).Where("user_id = ?", uid).First(&record).Error
+func (service *Service) getSettings(ctx context.Context) (*Settings, error) {
+	var record schemas.AppSetting
+	err := service.orm.WithContext(ctx).Where("id = ?", appSettingID).First(&record).Error
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return &Settings{WebhookURL: ""}, nil
+		return &Settings{}, nil
 	}
 	if err != nil {
 		return nil, errors.Internal("failed to get settings", err)
@@ -43,19 +41,15 @@ func (service *Service) getSettings(ctx context.Context, userID string) (*Settin
 	}, nil
 }
 
-func (service *Service) updateSettings(ctx context.Context, userID string, req *UpdateRequest) (*Settings, error) {
-	uid, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
-	record := schemas.UserSetting{
-		UserID:              uid,
-		WebhookURL:          req.WebhookURL,
-		WebhookSecretHeader: req.WebhookSecretHeader,
-		WebhookSecretValue:  req.WebhookSecretValue,
+func (service *Service) updateSettings(ctx context.Context, req *UpdateRequest) (*Settings, error) {
+	record := schemas.AppSetting{
+		ID:                  appSettingID,
+		WebhookURL:          strings.TrimSpace(req.WebhookURL),
+		WebhookSecretHeader: strings.TrimSpace(req.WebhookSecretHeader),
+		WebhookSecretValue:  strings.TrimSpace(req.WebhookSecretValue),
 	}
 	if err := service.orm.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "user_id"}},
+		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"webhook_url", "webhook_secret_header", "webhook_secret_value"}),
 	}).Create(&record).Error; err != nil {
 		return nil, errors.Internal("failed to update settings", err)

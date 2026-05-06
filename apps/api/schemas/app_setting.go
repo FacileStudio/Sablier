@@ -1,7 +1,7 @@
 package schemas
 
-type UserSetting struct {
-	UserID              int64  `gorm:"primaryKey"`
+type AppSetting struct {
+	ID                  int    `gorm:"primaryKey"`
 	WebhookURL          string `gorm:"not null;default:''"`
 	WebhookSecretHeader string `gorm:"not null;default:''"`
 	WebhookSecretValue  string `gorm:"not null;default:''"`
