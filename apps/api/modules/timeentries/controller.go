@@ -59,6 +59,18 @@ func (c *Controller) list(ctx context.Context, projectID int64) (*ListEntriesRes
 	if err != nil {
 		return nil, err
 	}
+	return rowsToResponse(records), nil
+}
+
+func (c *Controller) listRunning(ctx context.Context) (*ListEntriesResponse, error) {
+	records, err := c.service.listRunningEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return rowsToResponse(records), nil
+}
+
+func rowsToResponse(records []timeEntryRow) *ListEntriesResponse {
 	items := make([]TimeEntryResponse, len(records))
 	for i, r := range records {
 		items[i] = toResponse(&r.TimeEntry)
@@ -67,7 +79,7 @@ func (c *Controller) list(ctx context.Context, projectID int64) (*ListEntriesRes
 		items[i].UserColor = r.UserColor
 		items[i].TaskName = r.TaskName
 	}
-	return &ListEntriesResponse{Entries: items}, nil
+	return &ListEntriesResponse{Entries: items}
 }
 
 func (c *Controller) create(ctx context.Context, userID string, req *CreateEntryRequest) (*TimeEntryResponse, error) {

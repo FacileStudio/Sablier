@@ -109,6 +109,22 @@ func (service *Service) listEntries(ctx context.Context, projectID int64) ([]tim
 	return records, nil
 }
 
+func (service *Service) listRunningEntries(ctx context.Context) ([]timeEntryRow, error) {
+	var records []timeEntryRow
+	err := service.orm.WithContext(ctx).
+		Model(&schemas.TimeEntry{}).
+		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, tasks.name as task_name").
+		Joins("JOIN users ON users.id = time_entries.user_id").
+		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id").
+		Where("time_entries.stopped_at IS NULL").
+		Order("time_entries.started_at asc").
+		Find(&records).Error
+	if err != nil {
+		return nil, errors.Internal("failed to list running entries", err)
+	}
+	return records, nil
+}
+
 func (service *Service) createEntry(ctx context.Context, userID string, projectID int64, taskID int64, startedAt, stoppedAt time.Time) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {

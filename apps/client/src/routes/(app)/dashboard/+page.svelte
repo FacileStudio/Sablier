@@ -7,13 +7,16 @@
 	import * as Table from '$lib/components/ui/table';
 	import { Clock } from 'lucide-svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
+	import { goto } from '$app/navigation';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
 	let projects = $state<Project[]>([]);
 	let entries = $state<TimeEntry[]>([]);
+	let runningEntries = $state<TimeEntry[]>([]);
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
+	let runningPoller: ReturnType<typeof setInterval> | undefined;
 
 	function formatDuration(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -68,21 +71,36 @@
 	}
 
 	async function loadEntries() {
-		const e = await backend.listEntries(ctx.token);
+		const [e, r] = await Promise.all([
+			backend.listEntries(ctx.token),
+			backend.listRunningEntries(ctx.token)
+		]);
 		entries = e.entries;
+		runningEntries = r.entries;
+	}
+
+	async function loadRunning() {
+		const r = await backend.listRunningEntries(ctx.token);
+		runningEntries = r.entries;
 	}
 
 	onMount(async () => {
-		const [p, e] = await Promise.all([
+		const [p, e, r] = await Promise.all([
 			backend.listProjects(ctx.token),
-			backend.listEntries(ctx.token)
+			backend.listEntries(ctx.token),
+			backend.listRunningEntries(ctx.token)
 		]);
 		projects = p.projects;
 		entries = e.entries;
+		runningEntries = r.entries;
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
+		runningPoller = setInterval(loadRunning, 30_000);
 	});
 
-	onDestroy(() => clearInterval(ticker));
+	onDestroy(() => {
+		clearInterval(ticker);
+		clearInterval(runningPoller);
+	});
 
 	const recentEntries = $derived(
 		[...entries]
@@ -233,6 +251,50 @@
 			</Card.Content>
 		</Card.Root>
 	</div>
+
+	<Card.Root>
+		<Card.Header class="flex flex-row items-center justify-between pb-3">
+			<div class="flex items-center gap-2">
+				<Card.Title>Currently Working</Card.Title>
+				{#if runningEntries.length > 0}
+					<span class="relative flex h-2 w-2">
+						<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+						<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+					</span>
+				{/if}
+			</div>
+			<span class="text-sm text-muted-foreground">
+				{runningEntries.length} active {runningEntries.length === 1 ? 'session' : 'sessions'}
+			</span>
+		</Card.Header>
+		<Card.Content>
+			{#if runningEntries.length === 0}
+				<p class="text-sm text-muted-foreground">No one is currently working.</p>
+			{:else}
+				<div class="flex flex-col gap-2">
+					{#each runningEntries as entry}
+						{@const elapsedMs = now - new Date(entry.started_at).getTime()}
+						<button
+							type="button"
+							class="flex w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors hover:bg-accent"
+							onclick={() => goto(`/projects/${entry.project_id}`)}
+						>
+							<div class="flex items-center gap-3">
+								<UserColorDot color={userColor(entry)} class="h-3 w-3" />
+								<div>
+									<p class="text-sm font-medium leading-none">{getEntryUserDisplayName(entry)}</p>
+									<p class="mt-1 text-xs text-muted-foreground">
+										{projectName(entry.project_id)}{entry.task_name ? ` · ${entry.task_name}` : ''}
+									</p>
+								</div>
+							</div>
+							<span class="font-mono text-sm tabular-nums text-muted-foreground">{formatDuration(elapsedMs)}</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</Card.Content>
+	</Card.Root>
 
 	<Card.Root>
 		<Card.Header class="flex flex-row items-center justify-between">

@@ -201,6 +201,9 @@ export const backend = {
 		const qs = projectId ? `?project_id=${projectId}` : '';
 		return apiFetch<{ entries: TimeEntry[] }>(`/time-entries${qs}`, {}, token);
 	},
+	listRunningEntries(token: string) {
+		return apiFetch<{ entries: TimeEntry[] }>('/time-entries?running=true', {}, token);
+	},
 	getRunning(token: string) {
 		return apiFetch<{ entry: TimeEntry | null }>('/time-entries/running', {}, token);
 	},
