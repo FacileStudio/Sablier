@@ -156,6 +156,37 @@ func (service *Service) storeAvatar(context context.Context, userID string, read
 	return mapUser(record), nil
 }
 
+func (service *Service) clearAvatar(context context.Context, userID string) (*User, error) {
+	id, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return nil, errors.Internal("failed to parse user id", err)
+	}
+
+	var record schemas.User
+	if err := service.orm.WithContext(context).Where("id = ?", id).First(&record).Error; err != nil {
+		if stderrors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.NotFound("user not found")
+		}
+		return nil, errors.Internal("failed to read user", err)
+	}
+
+	oldAvatarURL := record.AvatarURL
+	record.AvatarURL = ""
+	if err := service.orm.WithContext(context).Save(&record).Error; err != nil {
+		return nil, errors.Internal("failed to clear avatar", err)
+	}
+
+	if oldAvatarURL != "" {
+		service.removeAvatarFile(oldAvatarURL)
+	}
+
+	if err := service.ensureUserColor(context, &record); err != nil {
+		return nil, err
+	}
+
+	return mapUser(record), nil
+}
+
 func (service *Service) persistAvatarFile(userID int64, reader io.Reader, contentType string) (string, string, error) {
 	extension, ok := avatarExtension(contentType)
 	if !ok {

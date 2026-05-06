@@ -104,6 +104,18 @@ func (controller *Controller) updateMe(context context.Context, req *UpdateReque
 	return &MeResponse{User: *user}, nil
 }
 
+func (controller *Controller) deleteAvatar(context context.Context) (*MeResponse, error) {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
+		return nil, errors.Unauthorized("missing auth")
+	}
+	user, err := controller.service.clearAvatar(context, identity.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &MeResponse{User: *user}, nil
+}
+
 func (controller *Controller) uploadAvatar(context context.Context, request *http.Request) (*MeResponse, error) {
 	identity, ok := authcontext.IdentityFromContext(context)
 	if !ok {

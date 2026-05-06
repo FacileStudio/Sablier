@@ -274,15 +274,26 @@
 				<div class="flex flex-col gap-2">
 					{#each runningEntries as entry}
 						{@const elapsedMs = now - new Date(entry.started_at).getTime()}
+						{@const avatarUrl = entry.user_avatar_url}
+						{@const label = getEntryUserDisplayName(entry)}
 						<button
 							type="button"
 							class="flex w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors hover:bg-accent"
 							onclick={() => goto(`/projects/${entry.project_id}`)}
 						>
 							<div class="flex items-center gap-3">
-								<UserColorDot color={userColor(entry)} class="h-3 w-3" />
+								{#if avatarUrl}
+									<img src={avatarUrl} alt={label} class="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
+								{:else}
+									<div
+										class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ring-1 ring-black/10"
+										style="background-color: {userColor(entry)};"
+									>
+										{(label[0] ?? '?').toUpperCase()}
+									</div>
+								{/if}
 								<div>
-									<p class="text-sm font-medium leading-none">{getEntryUserDisplayName(entry)}</p>
+									<p class="text-sm font-medium leading-none">{label}</p>
 									<p class="mt-1 text-xs text-muted-foreground">
 										{projectName(entry.project_id)}{entry.task_name ? ` · ${entry.task_name}` : ''}
 									</p>

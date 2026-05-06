@@ -54,5 +54,14 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			}
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
+
+		router.With(middleware.RequireAuth(authService)).Delete("/me/avatar", func(w http.ResponseWriter, request *http.Request) {
+			resp, err := service.controller.deleteAvatar(request.Context())
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
 	})
 }

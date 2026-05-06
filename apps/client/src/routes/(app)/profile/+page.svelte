@@ -18,6 +18,7 @@
 	let color = $state(normalizeUserColor(ctx.user?.color));
 	let saving = $state(false);
 	let uploading = $state(false);
+	let removingAvatar = $state(false);
 	let message = $state('');
 	let error = $state('');
 	let previewUrl = $state('');
@@ -55,6 +56,22 @@
 			error = err instanceof Error ? err.message : 'Failed to save profile.';
 		} finally {
 			saving = false;
+		}
+	}
+
+	async function removeAvatar() {
+		removingAvatar = true;
+		error = '';
+		message = '';
+		try {
+			const result = await backend.deleteAvatar(ctx.token);
+			ctx.setUser(result.user);
+			previewUrl = '';
+			message = 'Profile picture removed.';
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to remove picture.';
+		} finally {
+			removingAvatar = false;
 		}
 	}
 
@@ -121,10 +138,22 @@
 						type="file"
 						accept="image/png,image/jpeg,image/gif,image/webp"
 						onchange={onAvatarChange}
-						disabled={uploading}
+						disabled={uploading || removingAvatar}
 						class="cursor-pointer hover:border-foreground/30 hover:bg-muted/30 file:cursor-pointer"
 					/>
 					<p class="text-xs text-muted-foreground">PNG, JPG, GIF, or WebP. Max 5 MB.</p>
+					{#if ctx.user?.avatar_url}
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							class="text-destructive opacity-70 hover:opacity-100 hover:text-destructive px-0"
+							onclick={removeAvatar}
+							disabled={removingAvatar}
+						>
+							{removingAvatar ? 'Removing…' : 'Remove picture'}
+						</Button>
+					{/if}
 				</div>
 			</div>
 
