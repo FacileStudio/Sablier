@@ -8,13 +8,14 @@
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import * as Drawer from '$lib/components/ui/drawer';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { Clock, BarChart3, Calendar, ArrowLeft, Timer, Pencil, Trash2, Check, X } from 'lucide-svelte';
+	import { Clock, BarChart3, Calendar, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -23,7 +24,7 @@
 	let project = $state<Project | null>(null);
 	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
-	let editingProject = $state(false);
+	let projectEditDrawerOpen = $state(false);
 	let editName = $state('');
 	let editDescription = $state('');
 	let projectActionError = $state('');
@@ -219,11 +220,11 @@
 		projectActionError = '';
 		editName = project.name;
 		editDescription = project.description;
-		editingProject = true;
+		projectEditDrawerOpen = true;
 	}
 
 	function cancelProjectEdit() {
-		editingProject = false;
+		projectEditDrawerOpen = false;
 		projectActionError = '';
 		editName = '';
 		editDescription = '';
@@ -237,7 +238,9 @@
 		projectActionError = '';
 		try {
 			project = await backend.updateProject(ctx.token, project.id, editName, editDescription);
-			editingProject = false;
+			projectEditDrawerOpen = false;
+			editName = '';
+			editDescription = '';
 		} catch (e) {
 			projectActionError = e instanceof Error ? e.message : 'Failed to save project.';
 		} finally {
@@ -324,69 +327,39 @@
 							<Card.Title>Project Settings</Card.Title>
 							<Card.Description>Edit metadata or delete the project from here, not from the grid.</Card.Description>
 						</div>
-						{#if !editingProject}
-							<div class="flex shrink-0 gap-2">
-								<Button variant="outline" size="sm" onclick={startProjectEdit}>
-									<Pencil class="h-4 w-4" />
-									Edit
-								</Button>
-								<Button
-									variant="destructive"
-									size="sm"
-									onclick={() => { projectDeleteDialogOpen = true; }}
-									disabled={deletingProject}
-								>
-									<Trash2 class="h-4 w-4" />
-									{deletingProject ? 'Deleting…' : 'Delete'}
-								</Button>
-							</div>
-						{/if}
+						<div class="flex shrink-0 gap-2">
+							<Button variant="outline" size="sm" onclick={startProjectEdit}>
+								<Pencil class="h-4 w-4" />
+								Edit
+							</Button>
+							<Button
+								size="sm"
+								class="border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+								onclick={() => { projectDeleteDialogOpen = true; }}
+								disabled={deletingProject}
+							>
+								<Trash2 class="h-4 w-4" />
+								{deletingProject ? 'Deleting…' : 'Delete'}
+							</Button>
+						</div>
 					</div>
 				</Card.Header>
 				<Card.Content class="flex flex-col gap-4">
 					{#if projectActionError}
 						<p class="text-sm text-destructive">{projectActionError}</p>
 					{/if}
-
-					{#if editingProject}
-						<div class="grid gap-4 md:grid-cols-2">
-							<div class="flex flex-col gap-1.5">
-								<Label for="project-edit-name">Name</Label>
-								<Input id="project-edit-name" bind:value={editName} />
-							</div>
-							<div class="flex flex-col gap-1.5">
-								<Label for="project-edit-description">Description</Label>
-								<Input
-									id="project-edit-description"
-									bind:value={editDescription}
-									placeholder="Optional"
-								/>
-							</div>
+					<div class="grid gap-4 md:grid-cols-2">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">Name</p>
+							<p class="mt-1 font-medium">{project.name}</p>
 						</div>
-						<div class="flex flex-wrap gap-2">
-							<Button onclick={saveProject} disabled={savingProject}>
-								<Check class="h-4 w-4" />
-								{savingProject ? 'Saving…' : 'Save'}
-							</Button>
-							<Button variant="outline" onclick={cancelProjectEdit} disabled={savingProject}>
-								<X class="h-4 w-4" />
-								Cancel
-							</Button>
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">Description</p>
+							<p class="mt-1 text-sm text-muted-foreground">
+								{project.description || 'No description'}
+							</p>
 						</div>
-					{:else}
-						<div class="grid gap-4 md:grid-cols-2">
-							<div>
-								<p class="text-xs uppercase tracking-wide text-muted-foreground">Name</p>
-								<p class="mt-1 font-medium">{project.name}</p>
-							</div>
-							<div>
-								<p class="text-xs uppercase tracking-wide text-muted-foreground">Description</p>
-								<p class="mt-1 text-sm text-muted-foreground">
-									{project.description || 'No description'}
-								</p>
-							</div>
-						</div>
-					{/if}
+					</div>
 				</Card.Content>
 			</Card.Root>
 
@@ -617,17 +590,66 @@
 				<AlertDialog.Cancel disabled={deletingProject}>Cancel</AlertDialog.Cancel>
 				<AlertDialog.Action
 					variant="destructive"
+					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
 					disabled={deletingProject}
 					onclick={(e) => {
 						e.preventDefault();
 						void deleteProject();
 					}}
 				>
+					<Trash2 class="h-4 w-4" />
 					{deletingProject ? 'Deleting…' : 'Delete'}
 				</AlertDialog.Action>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
+
+	<Drawer.Root bind:open={projectEditDrawerOpen} direction="bottom">
+		<Drawer.Portal>
+			<Drawer.Overlay class="fixed inset-0 bg-black/40" />
+			<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
+				<div class="mx-auto mt-4 mb-6 h-1.5 w-12 shrink-0 rounded-full bg-muted"></div>
+				<div class="mx-auto flex w-full max-w-lg flex-col gap-6 px-6 pb-8">
+					<Drawer.Header class="p-0">
+						<Drawer.Title>Edit project</Drawer.Title>
+						<Drawer.Description>
+							Update the project name and description from here.
+						</Drawer.Description>
+					</Drawer.Header>
+
+					{#if projectActionError}
+						<p class="text-sm text-destructive">{projectActionError}</p>
+					{/if}
+
+					<div class="flex flex-col gap-4">
+						<div class="flex flex-col gap-1.5">
+							<Label for="project-edit-name">Name</Label>
+							<Input id="project-edit-name" bind:value={editName} />
+						</div>
+						<div class="flex flex-col gap-1.5">
+							<Label for="project-edit-description">Description</Label>
+							<Input
+								id="project-edit-description"
+								bind:value={editDescription}
+								placeholder="Optional"
+							/>
+						</div>
+					</div>
+
+					<div class="flex flex-wrap gap-2">
+						<Button onclick={saveProject} disabled={savingProject}>
+							<Save class="h-4 w-4" />
+							{savingProject ? 'Saving…' : 'Save'}
+						</Button>
+						<Button variant="outline" onclick={cancelProjectEdit} disabled={savingProject}>
+							<X class="h-4 w-4" />
+							Cancel
+						</Button>
+					</div>
+				</div>
+			</Drawer.Content>
+		</Drawer.Portal>
+	</Drawer.Root>
 
 	<ManualSessionDrawer
 		projects={project ? [project] : []}
@@ -666,12 +688,14 @@
 				<AlertDialog.Cancel disabled={deletingTaskId !== null}>Cancel</AlertDialog.Cancel>
 				<AlertDialog.Action
 					variant="destructive"
+					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
 					disabled={deletingTaskId !== deleteTaskTarget?.id && deletingTaskId !== null}
 					onclick={(e) => {
 						e.preventDefault();
 						void confirmDeleteTask();
 					}}
 				>
+					<Trash2 class="h-4 w-4" />
 					{deletingTaskId === deleteTaskTarget?.id ? 'Deleting…' : 'Delete'}
 				</AlertDialog.Action>
 			</AlertDialog.Footer>
@@ -701,12 +725,14 @@
 				<AlertDialog.Cancel disabled={deletingEntryId !== null}>Cancel</AlertDialog.Cancel>
 				<AlertDialog.Action
 					variant="destructive"
+					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
 					disabled={deletingEntryId !== deleteEntryTarget?.id && deletingEntryId !== null}
 					onclick={(e) => {
 						e.preventDefault();
 						void confirmDeleteEntry();
 					}}
 				>
+					<Trash2 class="h-4 w-4" />
 					{deletingEntryId === deleteEntryTarget?.id ? 'Deleting…' : 'Delete'}
 				</AlertDialog.Action>
 			</AlertDialog.Footer>

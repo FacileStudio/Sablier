@@ -5,6 +5,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Save } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -93,6 +94,7 @@
 		</Card.Content>
 		<Card.Footer class="gap-2">
 			<Button onclick={save} disabled={saving}>
+				<Save class="h-4 w-4" />
 				{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}
 			</Button>
 			{#if webhookUrl}

@@ -247,12 +247,14 @@
 				<AlertDialog.Cancel disabled={deletingEntryId !== null}>Cancel</AlertDialog.Cancel>
 				<AlertDialog.Action
 					variant="destructive"
+					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
 					disabled={deletingEntryId !== deleteTarget?.id && deletingEntryId !== null}
 					onclick={(e) => {
 						e.preventDefault();
 						void confirmDelete();
 					}}
 				>
+					<Trash2 class="h-4 w-4" />
 					{deletingEntryId === deleteTarget?.id ? 'Deleting…' : 'Delete'}
 				</AlertDialog.Action>
 			</AlertDialog.Footer>
