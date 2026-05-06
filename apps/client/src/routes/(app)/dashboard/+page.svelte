@@ -210,8 +210,9 @@
 		<div>
 			<div class="flex items-center gap-2">
 				<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
-				<Button variant="outline" size="icon" href="/settings" aria-label="Open system settings">
+				<Button variant="outline" href="/settings" class="gap-2">
 					<Settings class="h-4 w-4" />
+					<span>Settings</span>
 				</Button>
 			</div>
 			<p class="text-sm text-muted-foreground">{todayDate}</p>
