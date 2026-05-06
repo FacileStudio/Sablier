@@ -102,12 +102,7 @@
 							</div>
 						</div>
 
-						<div class="space-y-2.5">
-							<div class="flex items-start gap-2">
-								<span class="text-[10px] font-medium text-muted-foreground w-14 shrink-0 pt-0.5">Joined</span>
-								<span class="text-xs text-foreground">{formatDate(user.created_at)}</span>
-							</div>
-						</div>
+						<p class="text-xs text-muted-foreground">Created {formatDate(user.created_at)}</p>
 					</div>
 				</div>
 			{/each}

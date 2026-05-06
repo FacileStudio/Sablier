@@ -379,7 +379,7 @@
 				</Card.Root>
 			</div>
 
-			<section class="mt-6 rounded-2xl p-5">
+			<section class="mt-6 rounded-2xl border p-5">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<h2 class="text-lg font-semibold">User Repartition</h2>
