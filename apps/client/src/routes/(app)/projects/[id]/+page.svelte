@@ -499,12 +499,12 @@
 											{#if entry.user_id === Number(ctx.user?.id)}
 												<Button
 													variant="ghost"
-													size="sm"
-													class="text-muted-foreground hover:text-destructive"
+													size="icon"
+													class="h-8 w-8 text-destructive hover:text-destructive"
 													onclick={() => handleDelete(entry.id)}
 													disabled={deletingEntryId === entry.id}
 												>
-													{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
+													<Trash2 class="h-4 w-4" />
 												</Button>
 											{/if}
 										</Table.Cell>

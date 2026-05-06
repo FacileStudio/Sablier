@@ -9,6 +9,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
+	import { Trash2 } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -173,12 +174,12 @@
 							{#if entry.user_id === Number(ctx.user?.id)}
 								<Button
 									variant="ghost"
-									size="sm"
+									size="icon"
 									onclick={() => handleDelete(entry.id)}
-									class="text-muted-foreground hover:text-destructive"
+									class="h-8 w-8 text-destructive hover:text-destructive"
 									disabled={deletingEntryId === entry.id}
 								>
-									{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
+									<Trash2 class="h-4 w-4" />
 								</Button>
 							{/if}
 						</Table.Cell>
