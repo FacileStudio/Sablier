@@ -54,8 +54,8 @@ func (c *Controller) stop(ctx context.Context, userID string) (*TimeEntryRespons
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context, projectID int64) (*ListEntriesResponse, error) {
-	records, err := c.service.listEntries(ctx, projectID)
+func (c *Controller) list(ctx context.Context, projectID int64, userID int64) (*ListEntriesResponse, error) {
+	records, err := c.service.listEntries(ctx, projectID, userID)
 	if err != nil {
 		return nil, err
 	}

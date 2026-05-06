@@ -143,6 +143,11 @@ export const backend = {
 			users: result.users.map(normalizeUser)
 		}));
 	},
+	getUser(token: string, id: string) {
+		return apiFetch<MeResponse>(`/users/${id}`, {}, token).then((result) => ({
+			user: normalizeUser(result.user)
+		}));
+	},
 	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string }) {
 		return apiFetch<MeResponse>('/users/me', {
 			method: 'PATCH',
@@ -213,8 +218,11 @@ export const backend = {
 		return apiFetch<{ deleted: boolean; sessions_unlinked: number }>(`/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' }, token);
 	},
 
-	listEntries(token: string, projectId?: number) {
-		const qs = projectId ? `?project_id=${projectId}` : '';
+	listEntries(token: string, projectId?: number, userId?: string) {
+		const params = new URLSearchParams();
+		if (projectId) params.set('project_id', String(projectId));
+		if (userId) params.set('user_id', userId);
+		const qs = params.size ? `?${params}` : '';
 		return apiFetch<{ entries: TimeEntry[] }>(`/time-entries${qs}`, {}, token).then((r) => ({
 			entries: r.entries.map(normalizeEntry)
 		}));

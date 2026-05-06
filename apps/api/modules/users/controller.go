@@ -33,6 +33,14 @@ func (controller *Controller) list(context context.Context) (*ListResponse, erro
 	return &ListResponse{Users: users}, nil
 }
 
+func (controller *Controller) get(context context.Context, userID string) (*MeResponse, error) {
+	user, err := controller.service.getUser(context, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &MeResponse{User: *user}, nil
+}
+
 func (controller *Controller) me(context context.Context) (*MeResponse, error) {
 	identity, ok := authcontext.IdentityFromContext(context)
 	if !ok {

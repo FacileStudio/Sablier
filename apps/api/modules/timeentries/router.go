@@ -36,7 +36,16 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 				}
 				projectID = id
 			}
-			resp, err := service.controller.list(request.Context(), projectID)
+			var userID int64
+			if raw := request.URL.Query().Get("user_id"); raw != "" {
+				id, err := strconv.ParseInt(raw, 10, 64)
+				if err != nil {
+					httpjson.WriteError(w, errors.Invalid("invalid user_id"))
+					return
+				}
+				userID = id
+			}
+			resp, err := service.controller.list(request.Context(), projectID, userID)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return

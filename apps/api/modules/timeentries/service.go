@@ -94,7 +94,7 @@ type timeEntryRow struct {
 	TaskName      string
 }
 
-func (service *Service) listEntries(ctx context.Context, projectID int64) ([]timeEntryRow, error) {
+func (service *Service) listEntries(ctx context.Context, projectID int64, userID int64) ([]timeEntryRow, error) {
 	query := service.orm.WithContext(ctx).
 		Model(&schemas.TimeEntry{}).
 		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.avatar_url as user_avatar_url, tasks.name as task_name").
@@ -102,6 +102,9 @@ func (service *Service) listEntries(ctx context.Context, projectID int64) ([]tim
 		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id")
 	if projectID > 0 {
 		query = query.Where("time_entries.project_id = ?", projectID)
+	}
+	if userID > 0 {
+		query = query.Where("time_entries.user_id = ?", userID)
 	}
 	var records []timeEntryRow
 	if err := query.Order("time_entries.started_at desc").Limit(100).Find(&records).Error; err != nil {

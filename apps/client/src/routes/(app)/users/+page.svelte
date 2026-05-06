@@ -75,7 +75,7 @@
 			{#each users as user (user.id)}
 				{@const color = userColor(user)}
 				{@const name = displayName(user)}
-				<div class="group rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
+				<a href="/users/{user.id}" class="group rounded-lg border border-border bg-card transition-shadow hover:shadow-md block">
 					<div class="p-5">
 						<div class="flex items-center gap-3 mb-4">
 							{#if user.avatar_url}
@@ -104,7 +104,7 @@
 
 						<p class="text-xs text-muted-foreground">Created {formatDate(user.created_at)}</p>
 					</div>
-				</div>
+				</a>
 			{/each}
 		</div>
 	{/if}
