@@ -123,7 +123,7 @@ func TestListEntriesIncludesUserColor(t *testing.T) {
 	task := seedTask(t, service.orm, project.ID)
 	seedEntry(t, service.orm, project.ID, task.ID, user.ID)
 
-	records, err := service.listEntries(context.Background(), project.ID)
+	records, err := service.listEntries(context.Background(), project.ID, 0)
 	if err != nil {
 		t.Fatalf("list entries: %v", err)
 	}
@@ -138,6 +138,58 @@ func TestListEntriesIncludesUserColor(t *testing.T) {
 	}
 	if records[0].UserColor != user.Color {
 		t.Fatalf("expected user color %q, got %q", user.Color, records[0].UserColor)
+	}
+}
+
+func TestUpdateEntryAllowsEditingRunningSession(t *testing.T) {
+	service := newTestService(t)
+	project := seedProject(t, service.orm, 1)
+	task := seedTask(t, service.orm, project.ID)
+	running := schemas.TimeEntry{
+		ProjectID: project.ID,
+		TaskID:    task.ID,
+		UserID:    1,
+		StartedAt: time.Now().UTC().Add(-time.Hour),
+	}
+	if err := service.orm.Create(&running).Error; err != nil {
+		t.Fatalf("create running entry: %v", err)
+	}
+
+	updatedStart := time.Now().UTC().Add(-90 * time.Minute)
+	record, taskName, err := service.updateEntry(context.Background(), "1", running.ID, &UpdateEntryRequest{
+		ProjectID: project.ID,
+		TaskID:    task.ID,
+		StartedAt: updatedStart,
+		StoppedAt: nil,
+	})
+	if err != nil {
+		t.Fatalf("update running entry: %v", err)
+	}
+	if taskName != task.Name {
+		t.Fatalf("expected task name %q, got %q", task.Name, taskName)
+	}
+	if record.StoppedAt != nil {
+		t.Fatalf("expected running entry to remain running, got stopped_at=%v", record.StoppedAt)
+	}
+	if !record.StartedAt.Equal(updatedStart) {
+		t.Fatalf("expected started_at %v, got %v", updatedStart, record.StartedAt)
+	}
+}
+
+func TestUpdateEntryRejectsTurningStoppedEntryBackIntoRunning(t *testing.T) {
+	service := newTestService(t)
+	project := seedProject(t, service.orm, 1)
+	task := seedTask(t, service.orm, project.ID)
+	entry := seedEntry(t, service.orm, project.ID, task.ID, 1)
+
+	_, _, err := service.updateEntry(context.Background(), "1", entry.ID, &UpdateEntryRequest{
+		ProjectID: project.ID,
+		TaskID:    task.ID,
+		StartedAt: entry.StartedAt.Add(-15 * time.Minute),
+		StoppedAt: nil,
+	})
+	if err == nil || err.Error() != "only the currently running session can remain running after edit" {
+		t.Fatalf("expected running-session-only error, got %v", err)
 	}
 }
 

@@ -166,6 +166,9 @@ func (service *Service) updateEntry(ctx context.Context, userID string, entryID 
 	if err != nil {
 		return nil, "", errors.Internal("failed to get entry", err)
 	}
+	if record.StoppedAt != nil && req.StoppedAt == nil {
+		return nil, "", errors.Invalid("only the currently running session can remain running after edit")
+	}
 
 	task, err := service.getTask(ctx, req.ProjectID, req.TaskID)
 	if err != nil {
