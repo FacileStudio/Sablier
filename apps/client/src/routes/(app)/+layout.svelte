@@ -5,7 +5,7 @@
 	import { backend, type UserProfile } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { LayoutDashboard, Clock, FolderOpen, Users, LogOut } from 'lucide-svelte';
+	import { LayoutDashboard, FolderOpen, Users, LogOut } from 'lucide-svelte';
 
 	let { children } = $props();
 
@@ -61,7 +61,6 @@
 
 	const navLinks = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-		{ href: '/sessions', label: 'Sessions', icon: Clock },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		{ href: '/users', label: 'Users', icon: Users }
 	];

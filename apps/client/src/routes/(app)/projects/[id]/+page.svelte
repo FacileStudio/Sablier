@@ -7,6 +7,7 @@
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
+	import TimerControl from '$lib/components/TimerControl.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Drawer from '$lib/components/ui/drawer';
 	import * as Card from '$lib/components/ui/card';
@@ -352,20 +353,23 @@
 						Created {formatDateShort(project.created_at)}
 					</p>
 				</div>
-				<div class="flex shrink-0 gap-2">
-					<Button variant="outline" size="sm" onclick={startProjectEdit}>
-						<Pencil class="h-4 w-4" />
-						Edit
-					</Button>
-					<Button
-						size="sm"
-						class="border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-						onclick={() => { projectDeleteDialogOpen = true; }}
-						disabled={deletingProject}
-					>
-						<Trash2 class="h-4 w-4" />
-						{deletingProject ? 'Deleting…' : 'Delete'}
-					</Button>
+				<div class="flex shrink-0 items-center gap-3">
+					<TimerControl projects={project ? [project] : []} onchange={handleEntryChange} />
+					<div class="flex gap-2">
+						<Button variant="outline" size="sm" onclick={startProjectEdit}>
+							<Pencil class="h-4 w-4" />
+							Edit
+						</Button>
+						<Button
+							size="sm"
+							class="border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+							onclick={() => { projectDeleteDialogOpen = true; }}
+							disabled={deletingProject}
+						>
+							<Trash2 class="h-4 w-4" />
+							{deletingProject ? 'Deleting…' : 'Delete'}
+						</Button>
+					</div>
 				</div>
 			</div>
 

@@ -360,11 +360,8 @@
 	</Card.Root>
 
 	<Card.Root>
-		<Card.Header class="flex flex-row items-center justify-between">
+		<Card.Header>
 			<Card.Title>Recent Sessions</Card.Title>
-			<a href="/sessions" class="text-sm text-muted-foreground underline-offset-4 hover:underline">
-				View all
-			</a>
 		</Card.Header>
 		<Card.Content>
 			{#if recentEntries.length === 0}
