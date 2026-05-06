@@ -336,7 +336,7 @@
 				<Card.Content>
 					<div class="flex items-center gap-2">
 						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.today)}</span>
+						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.today)}</span>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -348,7 +348,7 @@
 				<Card.Content>
 					<div class="flex items-center gap-2">
 						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.week)}</span>
+						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.week)}</span>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -360,7 +360,7 @@
 				<Card.Content>
 					<div class="flex items-center gap-2">
 						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.month)}</span>
+						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.month)}</span>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -372,7 +372,7 @@
 				<Card.Content>
 					<div class="flex items-center gap-2">
 						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.total)}</span>
+						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.total)}</span>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -384,7 +384,7 @@
 				<Card.Content>
 					<div class="flex items-center gap-2">
 						<Timer class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold tabular-nums">{formatDuration(avgMs)}</span>
+						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(avgMs)}</span>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -422,7 +422,7 @@
 							<Card.Title class="text-sm font-medium text-muted-foreground">Today</Card.Title>
 						</Card.Header>
 						<Card.Content>
-							<span class="text-2xl font-bold tabular-nums">
+							<span class="text-2xl font-bold font-mono tabular-nums">
 								{earningsBreakdown.today !== null ? formatEarnings(earningsBreakdown.today) : '—'}
 							</span>
 						</Card.Content>
@@ -432,7 +432,7 @@
 							<Card.Title class="text-sm font-medium text-muted-foreground">This Week</Card.Title>
 						</Card.Header>
 						<Card.Content>
-							<span class="text-2xl font-bold tabular-nums">
+							<span class="text-2xl font-bold font-mono tabular-nums">
 								{earningsBreakdown.week !== null ? formatEarnings(earningsBreakdown.week) : '—'}
 							</span>
 						</Card.Content>
@@ -442,7 +442,7 @@
 							<Card.Title class="text-sm font-medium text-muted-foreground">This Month</Card.Title>
 						</Card.Header>
 						<Card.Content>
-							<span class="text-2xl font-bold tabular-nums">
+							<span class="text-2xl font-bold font-mono tabular-nums">
 								{earningsBreakdown.month !== null ? formatEarnings(earningsBreakdown.month) : '—'}
 							</span>
 						</Card.Content>
@@ -452,7 +452,7 @@
 							<Card.Title class="text-sm font-medium text-muted-foreground">Total</Card.Title>
 						</Card.Header>
 						<Card.Content>
-							<span class="text-2xl font-bold tabular-nums">
+							<span class="text-2xl font-bold font-mono tabular-nums">
 								{earningsBreakdown.total !== null ? formatEarnings(earningsBreakdown.total) : '—'}
 							</span>
 						</Card.Content>

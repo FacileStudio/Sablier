@@ -404,7 +404,7 @@
 					<Card.Content>
 						<div class="flex items-center gap-2">
 							<Clock class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold tabular-nums">{formatDuration(totalMs)}</span>
+							<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(totalMs)}</span>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -416,7 +416,7 @@
 					<Card.Content>
 						<div class="flex items-center gap-2">
 							<BarChart3 class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold">{tasks.length}</span>
+							<span class="text-2xl font-bold font-mono tabular-nums">{tasks.length}</span>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -428,7 +428,7 @@
 					<Card.Content>
 						<div class="flex items-center gap-2">
 							<Timer class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold tabular-nums">{formatDuration(avgMs)}</span>
+							<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(avgMs)}</span>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -453,7 +453,7 @@
 							<Card.Title class="text-sm font-medium text-muted-foreground">Project Value</Card.Title>
 						</Card.Header>
 						<Card.Content>
-							<span class="text-2xl font-bold tabular-nums">{projectValue}</span>
+							<span class="text-2xl font-bold font-mono tabular-nums">{projectValue}</span>
 						</Card.Content>
 					</Card.Root>
 				{/if}

@@ -249,7 +249,7 @@
 			<Card.Content>
 				<div class="flex items-center gap-2">
 					<Clock class="h-4 w-4 text-muted-foreground" />
-					<span class="text-2xl font-bold tabular-nums">{todayTotal()}</span>
+					<span class="text-2xl font-bold font-mono tabular-nums">{todayTotal()}</span>
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -260,7 +260,7 @@
 					<Card.Title class="text-sm font-medium text-muted-foreground">Today's Value</Card.Title>
 				</Card.Header>
 				<Card.Content>
-					<span class="text-2xl font-bold tabular-nums">{todayEarnings}</span>
+					<span class="text-2xl font-bold font-mono tabular-nums">{todayEarnings}</span>
 				</Card.Content>
 			</Card.Root>
 		{/if}
@@ -270,7 +270,7 @@
 				<Card.Title class="text-sm font-medium text-muted-foreground">Sessions Today</Card.Title>
 			</Card.Header>
 			<Card.Content>
-				<span class="text-2xl font-bold">{todaySessionCount()}</span>
+				<span class="text-2xl font-bold font-mono tabular-nums">{todaySessionCount()}</span>
 			</Card.Content>
 		</Card.Root>
 
@@ -279,7 +279,7 @@
 				<Card.Title class="text-sm font-medium text-muted-foreground">Projects</Card.Title>
 			</Card.Header>
 			<Card.Content>
-				<span class="text-2xl font-bold">{projects.length}</span>
+				<span class="text-2xl font-bold font-mono tabular-nums">{projects.length}</span>
 			</Card.Content>
 		</Card.Root>
 	</div>
