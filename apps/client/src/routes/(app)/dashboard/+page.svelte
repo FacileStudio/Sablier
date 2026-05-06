@@ -7,7 +7,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Table from '$lib/components/ui/table';
 	import { Clock, Settings } from 'lucide-svelte';
-	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { goto } from '$app/navigation';
 	import { formatDuration } from '$lib/utils';
 
@@ -233,16 +232,13 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-start justify-between">
 		<div>
-			<div class="flex items-center gap-2">
-				<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
-				<Button variant="outline" href="/settings" class="gap-2">
-					<Settings class="h-4 w-4" />
-					<span>Settings</span>
-				</Button>
-			</div>
+			<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
 			<p class="text-sm text-muted-foreground">{todayDate}</p>
 		</div>
-		<TimerControl {projects} onchange={loadEntries} />
+		<Button variant="outline" href="/settings" class="gap-2">
+			<Settings class="h-4 w-4" />
+			<span>Settings</span>
+		</Button>
 	</div>
 
 	<div class="grid gap-4" class:grid-cols-3={todayEarnings === null} class:grid-cols-4={todayEarnings !== null}>

@@ -2,9 +2,10 @@
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { backend, type UserProfile } from '$lib/backend';
+	import { backend, type UserProfile, type Project } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
+	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { LayoutDashboard, FolderOpen, Users, LogOut } from 'lucide-svelte';
 
 	let { children } = $props();
@@ -12,6 +13,7 @@
 	let token = $state('');
 	let user = $state<UserProfile | null>(null);
 	let loaded = $state(false);
+	let projects = $state<Project[]>([]);
 
 	function setUser(nextUser: UserProfile) {
 		user = nextUser;
@@ -49,6 +51,8 @@
 			token = stored;
 			user = result.user;
 			loaded = true;
+			const p = await backend.listProjects(stored);
+			projects = p.projects;
 		} catch {
 			goto('/login');
 		}
@@ -118,5 +122,8 @@
 		<main class="flex-1 overflow-auto">
 			{@render children()}
 		</main>
+	</div>
+	<div class="fixed top-4 left-1/2 z-50 -translate-x-1/2">
+		<TimerControl {projects} />
 	</div>
 {/if}

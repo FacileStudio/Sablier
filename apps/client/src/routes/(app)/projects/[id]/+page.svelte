@@ -7,7 +7,6 @@
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
-	import TimerControl from '$lib/components/TimerControl.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Drawer from '$lib/components/ui/drawer';
 	import * as Card from '$lib/components/ui/card';
@@ -376,7 +375,6 @@
 					</p>
 				</div>
 				<div class="flex shrink-0 items-center gap-3">
-					<TimerControl projects={project ? [project] : []} onchange={handleEntryChange} />
 					<div class="flex gap-2">
 						<Button variant="outline" size="sm" onclick={startProjectEdit}>
 							<Pencil class="h-4 w-4" />
