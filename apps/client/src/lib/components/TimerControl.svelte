@@ -198,7 +198,7 @@
 		<Drawer.Trigger>
 			<Button class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
 				<Play class="h-4 w-4" />
-				Start
+				Start Session
 			</Button>
 		</Drawer.Trigger>
 		<Drawer.Portal>
