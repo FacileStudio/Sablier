@@ -2,11 +2,8 @@
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { backend, type UserProfile, type TimeEntry, type Project } from '$lib/backend';
-	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
-	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import * as Table from '$lib/components/ui/table';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { ArrowLeft, Clock, Timer, Calendar } from 'lucide-svelte';
 	import * as Card from '$lib/components/ui/card';
@@ -70,6 +67,41 @@
 				)
 			: null
 	);
+	const projectStats = $derived.by(() => {
+		const stats = new Map<
+			number,
+			{
+				projectId: number;
+				name: string;
+				totalMs: number;
+				sessionCount: number;
+				lastStartedAt: string;
+			}
+		>();
+
+		for (const entry of entries) {
+			const current = stats.get(entry.project_id);
+			const durationMs = entryMs(entry);
+			if (current) {
+				current.totalMs += durationMs;
+				current.sessionCount += 1;
+				if (new Date(entry.started_at) > new Date(current.lastStartedAt)) {
+					current.lastStartedAt = entry.started_at;
+				}
+				continue;
+			}
+
+			stats.set(entry.project_id, {
+				projectId: entry.project_id,
+				name: projectName(entry.project_id),
+				totalMs: durationMs,
+				sessionCount: 1,
+				lastStartedAt: entry.started_at
+			});
+		}
+
+		return Array.from(stats.values()).sort((a, b) => b.totalMs - a.totalMs);
+	});
 
 	onMount(async () => {
 		try {
@@ -171,6 +203,37 @@
 				</Card.Content>
 			</Card.Root>
 		</div>
+
+		<section>
+			<h2 class="mb-4 text-lg font-semibold">Project Breakdown</h2>
+			{#if projectStats.length === 0}
+				<p class="text-sm text-muted-foreground">No project time yet.</p>
+			{:else}
+				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+					{#each projectStats as stat}
+						<a
+							href={`/projects/${stat.projectId}`}
+							class="rounded-2xl border p-4 transition-colors hover:border-foreground/20 hover:bg-muted/30"
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="truncate font-medium">{stat.name}</p>
+									<p class="mt-1 text-xs text-muted-foreground">
+										{stat.sessionCount} {stat.sessionCount === 1 ? 'session' : 'sessions'}
+									</p>
+								</div>
+								<span class="font-mono text-sm font-semibold tabular-nums">
+									{formatDuration(stat.totalMs)}
+								</span>
+							</div>
+							<p class="mt-3 text-xs text-muted-foreground">
+								Last session {formatDate(stat.lastStartedAt)}
+							</p>
+						</a>
+					{/each}
+				</div>
+			{/if}
+		</section>
 
 		<section>
 			<h2 class="mb-4 text-lg font-semibold">Recent Sessions</h2>
