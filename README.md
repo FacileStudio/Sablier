@@ -81,12 +81,6 @@ Main environment variables:
 
 See [`.env.example`](.env.example) and [`apps/api/.env.example`](apps/api/.env.example) for examples.
 
-## Architecture
-
-Source: [`docs/architecture.d2`](docs/architecture.d2)
-
-![Sablier architecture](docs/architecture.svg)
-
 ## Repo map
 
 - [`apps/api/README.md`](apps/api/README.md): backend setup and API overview
