@@ -1,13 +1,15 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
-	import { backend, type UserProfile } from '$lib/backend';
+	import { getContext, onDestroy, onMount } from 'svelte';
+	import { backend, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { getUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
 	let users = $state<UserProfile[]>([]);
+	let runningEntries = $state<TimeEntry[]>([]);
 	let loading = $state(true);
+	let runningPoller: ReturnType<typeof setInterval> | undefined;
 
 	function getInitials(value: string) {
 		const parts = value.trim().split(/\s+/).filter(Boolean);
@@ -33,10 +35,28 @@
 		return normalizeUserColor((user as UserProfile & { color?: string }).color);
 	}
 
+	function isWorking(userId: string): boolean {
+		return runningEntries.some((entry) => String(entry.user_id) === userId);
+	}
+
+	async function loadRunningEntries() {
+		const result = await backend.listRunningEntries(ctx.token);
+		runningEntries = result.entries;
+	}
+
 	onMount(async () => {
-		const result = await backend.listUsers(ctx.token);
-		users = result.users;
+		const [usersResult, runningResult] = await Promise.all([
+			backend.listUsers(ctx.token),
+			backend.listRunningEntries(ctx.token)
+		]);
+		users = usersResult.users;
+		runningEntries = runningResult.entries;
 		loading = false;
+		runningPoller = setInterval(loadRunningEntries, 30_000);
+	});
+
+	onDestroy(() => {
+		clearInterval(runningPoller);
 	});
 </script>
 
@@ -75,7 +95,15 @@
 			{#each users as user (user.id)}
 				{@const color = userColor(user)}
 				{@const name = displayName(user)}
-				<a href="/users/{user.id}" class="group rounded-lg border border-border bg-card transition-shadow hover:shadow-md block">
+				<a href="/users/{user.id}" class="group relative block rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
+					{#if isWorking(user.id)}
+						<div class="absolute right-3 top-3" title="{name} is currently tracking time">
+							<span class="relative flex h-3 w-3">
+								<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+								<span class="relative inline-flex h-3 w-3 rounded-full border border-background bg-green-500"></span>
+							</span>
+						</div>
+					{/if}
 					<div class="p-5">
 						<div class="flex items-center gap-3 mb-4">
 							{#if user.avatar_url}
