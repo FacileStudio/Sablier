@@ -90,6 +90,12 @@
 
 	const totalMs = $derived(entries.reduce((acc, e) => acc + entryMs(e), 0));
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
+	const workedTimeBreakdown = $derived.by(() => ({
+		today: sumMsWhere((e) => isToday(e.started_at)),
+		week: sumMsWhere((e) => isThisWeek(e.started_at)),
+		month: sumMsWhere((e) => isThisMonth(e.started_at)),
+		total: totalMs
+	}));
 
 	function computeEarnings(ms: number, u: typeof user): number | null {
 		if (!u || (u.rate ?? 0) <= 0) return null;
@@ -322,7 +328,43 @@
 			</div>
 		</div>
 
-		<div class="grid grid-cols-3 gap-4">
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<Card.Root>
+				<Card.Header class="pb-2">
+					<Card.Title class="text-sm font-medium text-muted-foreground">Today</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex items-center gap-2">
+						<Clock class="h-4 w-4 text-muted-foreground" />
+						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.today)}</span>
+					</div>
+				</Card.Content>
+			</Card.Root>
+
+			<Card.Root>
+				<Card.Header class="pb-2">
+					<Card.Title class="text-sm font-medium text-muted-foreground">This Week</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex items-center gap-2">
+						<Clock class="h-4 w-4 text-muted-foreground" />
+						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.week)}</span>
+					</div>
+				</Card.Content>
+			</Card.Root>
+
+			<Card.Root>
+				<Card.Header class="pb-2">
+					<Card.Title class="text-sm font-medium text-muted-foreground">This Month</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex items-center gap-2">
+						<Clock class="h-4 w-4 text-muted-foreground" />
+						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.month)}</span>
+					</div>
+				</Card.Content>
+			</Card.Root>
+
 			<Card.Root>
 				<Card.Header class="pb-2">
 					<Card.Title class="text-sm font-medium text-muted-foreground">Total Time</Card.Title>
@@ -330,7 +372,7 @@
 				<Card.Content>
 					<div class="flex items-center gap-2">
 						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold tabular-nums">{formatDuration(totalMs)}</span>
+						<span class="text-2xl font-bold tabular-nums">{formatDuration(workedTimeBreakdown.total)}</span>
 					</div>
 				</Card.Content>
 			</Card.Root>
