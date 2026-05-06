@@ -4,8 +4,10 @@
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
-	import UserColorDot from '$lib/components/UserColorDot.svelte';
+	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
+	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
@@ -27,10 +29,17 @@
 	let projectActionError = $state('');
 	let savingProject = $state(false);
 	let deletingProject = $state(false);
+	let projectDeleteDialogOpen = $state(false);
 	let deletingEntryId = $state<number | null>(null);
 	let deleteError = $state('');
+	let entryDeleteDialogOpen = $state(false);
+	let deleteEntryTarget = $state<TimeEntry | null>(null);
 	let deletingTaskId = $state<number | null>(null);
 	let taskDeleteError = $state('');
+	let taskDeleteDialogOpen = $state(false);
+	let deleteTaskTarget = $state<{ id: number; name: string; sessionCount: number } | null>(null);
+	let editingEntry = $state<TimeEntry | null>(null);
+	let editDrawerOpen = $state(false);
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -149,15 +158,23 @@
 			})
 	);
 
-	async function handleDelete(entryId: number) {
-		if (!confirm('Remove this session?')) {
+	function openEntryDeleteDialog(entry: TimeEntry) {
+		deleteEntryTarget = entry;
+		entryDeleteDialogOpen = true;
+	}
+
+	async function confirmDeleteEntry() {
+		const target = deleteEntryTarget;
+		if (!target) {
 			return;
 		}
-		deletingEntryId = entryId;
+		deletingEntryId = target.id;
 		deleteError = '';
 		try {
-			await backend.deleteEntry(ctx.token, entryId);
-			entries = entries.filter((entry) => entry.id !== entryId);
+			await backend.deleteEntry(ctx.token, target.id);
+			entries = entries.filter((entry) => entry.id !== target.id);
+			entryDeleteDialogOpen = false;
+			deleteEntryTarget = null;
 		} catch (e) {
 			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
 		} finally {
@@ -165,17 +182,29 @@
 		}
 	}
 
-	async function handleDeleteTask(taskId: number, sessionCount: number) {
-		const msg = sessionCount > 0
-			? `Delete this task? ${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'} will become unassigned.`
-			: 'Delete this task?';
-		if (!confirm(msg)) return;
-		deletingTaskId = taskId;
+	function openTaskDeleteDialog(taskId: number, name: string, sessionCount: number) {
+		deleteTaskTarget = { id: taskId, name, sessionCount };
+		taskDeleteDialogOpen = true;
+	}
+
+	function openEditDrawer(entry: TimeEntry) {
+		editingEntry = entry;
+		editDrawerOpen = true;
+	}
+
+	async function confirmDeleteTask() {
+		const target = deleteTaskTarget;
+		if (!target || !project) {
+			return;
+		}
+		deletingTaskId = target.id;
 		taskDeleteError = '';
 		try {
-			await backend.deleteTask(ctx.token, project!.id, taskId);
-			tasks = tasks.filter((t) => t.id !== taskId);
-			entries = entries.map((e) => e.task_id === taskId ? { ...e, task_id: 0, task_name: '' } : e);
+			await backend.deleteTask(ctx.token, project.id, target.id);
+			tasks = tasks.filter((t) => t.id !== target.id);
+			entries = entries.map((e) => e.task_id === target.id ? { ...e, task_id: 0, task_name: '' } : e);
+			taskDeleteDialogOpen = false;
+			deleteTaskTarget = null;
 		} catch (e) {
 			taskDeleteError = e instanceof Error ? e.message : 'Failed to delete task.';
 		} finally {
@@ -217,18 +246,27 @@
 	}
 
 	async function deleteProject() {
-		if (!project || !confirm(`Delete project "${project.name}"?`)) {
+		if (!project) {
 			return;
 		}
 		deletingProject = true;
 		projectActionError = '';
 		try {
 			await backend.deleteProject(ctx.token, project.id);
+			projectDeleteDialogOpen = false;
 			await goto('/projects');
 		} catch (e) {
 			projectActionError = e instanceof Error ? e.message : 'Failed to delete project.';
 			deletingProject = false;
 		}
+	}
+
+	async function handleEntryChange() {
+		if (!project) {
+			return;
+		}
+		const result = await backend.listEntries(ctx.token, project.id);
+		entries = result.entries;
 	}
 
 	onMount(async () => {
@@ -295,7 +333,7 @@
 								<Button
 									variant="destructive"
 									size="sm"
-									onclick={deleteProject}
+									onclick={() => { projectDeleteDialogOpen = true; }}
 									disabled={deletingProject}
 								>
 									<Trash2 class="h-4 w-4" />
@@ -452,7 +490,7 @@
 												variant="ghost"
 												size="icon"
 												class="h-7 w-7 text-muted-foreground opacity-50 hover:text-destructive hover:opacity-100"
-												onclick={() => handleDeleteTask(task.id, task.sessionCount)}
+												onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
 												disabled={deletingTaskId === task.id}
 											>
 												<Trash2 class="h-3.5 w-3.5" />
@@ -490,9 +528,9 @@
 								<Table.Row>
 									<Table.Head>User</Table.Head>
 									<Table.Head>Task</Table.Head>
-									<Table.Head>Started</Table.Head>
-									<Table.Head>Duration</Table.Head>
-									<Table.Head class="text-right">Actions</Table.Head>
+								<Table.Head>Started</Table.Head>
+								<Table.Head>Duration</Table.Head>
+								<Table.Head class="text-right">Actions</Table.Head>
 								</Table.Row>
 							</Table.Header>
 							<Table.Body>
@@ -502,7 +540,11 @@
 									<Table.Row>
 										<Table.Cell class="text-muted-foreground">
 											<div class="flex items-center gap-2">
-												<UserColorDot color={userColor(entry)} />
+												<UserAvatarBadge
+													name={getEntryUserDisplayName(entry)}
+													avatarUrl={entry.user_avatar_url}
+													color={userColor(entry)}
+												/>
 												<span>{getEntryUserDisplayName(entry)}</span>
 											</div>
 										</Table.Cell>
@@ -526,8 +568,16 @@
 												<Button
 													variant="ghost"
 													size="icon"
+													class="h-8 w-8 opacity-50 hover:opacity-100"
+													onclick={() => openEditDrawer(entry)}
+												>
+													<Pencil class="h-4 w-4" />
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon"
 													class="h-8 w-8 text-destructive opacity-50 hover:opacity-100 hover:text-destructive"
-													onclick={() => handleDelete(entry.id)}
+													onclick={() => openEntryDeleteDialog(entry)}
 													disabled={deletingEntryId === entry.id}
 												>
 													<Trash2 class="h-4 w-4 text-destructive" />
@@ -543,4 +593,123 @@
 			</section>
 		{/if}
 	</div>
+
+	<AlertDialog.Root
+		bind:open={projectDeleteDialogOpen}
+		onOpenChange={(open) => {
+			if (!open) {
+				projectDeleteDialogOpen = false;
+			}
+		}}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Delete project?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This will permanently delete
+					{#if project}
+						<span class="font-medium text-foreground"> {project.name}</span>
+					{/if}
+					.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel disabled={deletingProject}>Cancel</AlertDialog.Cancel>
+				<AlertDialog.Action
+					variant="destructive"
+					disabled={deletingProject}
+					onclick={(e) => {
+						e.preventDefault();
+						void deleteProject();
+					}}
+				>
+					{deletingProject ? 'Deleting…' : 'Delete'}
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<ManualSessionDrawer
+		projects={project ? [project] : []}
+		editEntry={editingEntry}
+		bind:open={editDrawerOpen}
+		hideTrigger
+		onchange={handleEntryChange}
+		onclose={() => {
+			editingEntry = null;
+		}}
+	/>
+
+	<AlertDialog.Root
+		bind:open={taskDeleteDialogOpen}
+		onOpenChange={(open) => {
+			if (!open) {
+				deleteTaskTarget = null;
+			}
+		}}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Delete task?</AlertDialog.Title>
+				<AlertDialog.Description>
+					{#if deleteTaskTarget}
+						This will permanently delete
+						<span class="font-medium text-foreground"> {deleteTaskTarget.name}</span>.
+						{#if deleteTaskTarget.sessionCount > 0}
+							{deleteTaskTarget.sessionCount}
+							{deleteTaskTarget.sessionCount === 1 ? ' session will' : ' sessions will'} become unassigned.
+						{/if}
+					{/if}
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel disabled={deletingTaskId !== null}>Cancel</AlertDialog.Cancel>
+				<AlertDialog.Action
+					variant="destructive"
+					disabled={deletingTaskId !== deleteTaskTarget?.id && deletingTaskId !== null}
+					onclick={(e) => {
+						e.preventDefault();
+						void confirmDeleteTask();
+					}}
+				>
+					{deletingTaskId === deleteTaskTarget?.id ? 'Deleting…' : 'Delete'}
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<AlertDialog.Root
+		bind:open={entryDeleteDialogOpen}
+		onOpenChange={(open) => {
+			if (!open) {
+				deleteEntryTarget = null;
+			}
+		}}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Delete session?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This will permanently remove the session
+					{#if deleteEntryTarget?.task_name}
+						for <span class="font-medium text-foreground">{deleteEntryTarget.task_name}</span>
+					{/if}
+					.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel disabled={deletingEntryId !== null}>Cancel</AlertDialog.Cancel>
+				<AlertDialog.Action
+					variant="destructive"
+					disabled={deletingEntryId !== deleteEntryTarget?.id && deletingEntryId !== null}
+					onclick={(e) => {
+						e.preventDefault();
+						void confirmDeleteEntry();
+					}}
+				>
+					{deletingEntryId === deleteEntryTarget?.id ? 'Deleting…' : 'Delete'}
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 </div>

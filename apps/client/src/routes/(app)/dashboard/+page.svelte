@@ -2,7 +2,7 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
-	import UserColorDot from '$lib/components/UserColorDot.svelte';
+	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Clock } from 'lucide-svelte';
@@ -388,13 +388,17 @@
 								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">
 									<div class="flex items-center gap-2">
-										<UserColorDot color={userColor(entry)} />
+										<UserAvatarBadge
+											name={getEntryUserDisplayName(entry)}
+											avatarUrl={entry.user_avatar_url}
+											color={userColor(entry)}
+										/>
 										<span>{getEntryUserDisplayName(entry)}</span>
 									</div>
 								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
-								<Table.Cell>
+								<Table.Cell class="text-right">
 									{#if entry.stopped_at === null}
 										<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
 											<span class="relative flex h-2 w-2">

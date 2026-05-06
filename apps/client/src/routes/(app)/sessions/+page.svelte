@@ -3,9 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { backend, type Project, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
+	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
-	import UserColorDot from '$lib/components/UserColorDot.svelte';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Table from '$lib/components/ui/table';
 	import * as Select from '$lib/components/ui/select';
 	import TimerControl from '$lib/components/TimerControl.svelte';
@@ -20,6 +21,8 @@
 	let now = $state(Date.now());
 	let deleteError = $state('');
 	let deletingEntryId = $state<number | null>(null);
+	let deleteDialogOpen = $state(false);
+	let deleteTarget = $state<TimeEntry | null>(null);
 	let editingEntry = $state<TimeEntry | null>(null);
 	let editDrawerOpen = $state(false);
 
@@ -70,15 +73,22 @@
 		entries = entriesRes.entries;
 	}
 
-	async function handleDelete(id: number) {
-		if (!confirm('Remove this session?')) {
+	function openDeleteDialog(entry: TimeEntry) {
+		deleteTarget = entry;
+		deleteDialogOpen = true;
+	}
+
+	async function confirmDelete() {
+		if (!deleteTarget) {
 			return;
 		}
-		deletingEntryId = id;
+		deletingEntryId = deleteTarget.id;
 		deleteError = '';
 		try {
-			await backend.deleteEntry(ctx.token, id);
+			await backend.deleteEntry(ctx.token, deleteTarget.id);
 			await loadEntries();
+			deleteDialogOpen = false;
+			deleteTarget = null;
 		} catch (e) {
 			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
 		} finally {
@@ -164,7 +174,11 @@
 						</Table.Cell>
 						<Table.Cell class="text-muted-foreground">
 							<div class="flex items-center gap-2">
-								<UserColorDot color={userColor(entry)} />
+								<UserAvatarBadge
+									name={getEntryUserDisplayName(entry)}
+									avatarUrl={entry.user_avatar_url}
+									color={userColor(entry)}
+								/>
 								<span>{getEntryUserDisplayName(entry)}</span>
 							</div>
 						</Table.Cell>
@@ -196,7 +210,7 @@
 								<Button
 									variant="ghost"
 									size="icon"
-									onclick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}
+									onclick={(e) => { e.stopPropagation(); openDeleteDialog(entry); }}
 									class="h-8 w-8 text-destructive opacity-50 hover:opacity-100 hover:text-destructive"
 									disabled={deletingEntryId === entry.id}
 								>
@@ -209,4 +223,39 @@
 			</Table.Body>
 		</Table.Root>
 	{/if}
+
+	<AlertDialog.Root
+		bind:open={deleteDialogOpen}
+		onOpenChange={(open) => {
+			if (!open) {
+				deleteTarget = null;
+			}
+		}}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Delete session?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This will permanently remove the session
+					{#if deleteTarget?.task_name}
+						for <span class="font-medium text-foreground">{deleteTarget.task_name}</span>
+					{/if}
+					.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel disabled={deletingEntryId !== null}>Cancel</AlertDialog.Cancel>
+				<AlertDialog.Action
+					variant="destructive"
+					disabled={deletingEntryId !== deleteTarget?.id && deletingEntryId !== null}
+					onclick={(e) => {
+						e.preventDefault();
+						void confirmDelete();
+					}}
+				>
+					{deletingEntryId === deleteTarget?.id ? 'Deleting…' : 'Delete'}
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 </div>

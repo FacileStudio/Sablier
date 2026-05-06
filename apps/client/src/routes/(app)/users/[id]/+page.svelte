@@ -74,6 +74,9 @@
 	onMount(async () => {
 		try {
 			const id = page.params.id;
+			if (!id) {
+				throw new Error('Missing user id.');
+			}
 			const [userRes, entriesRes, projectsRes] = await Promise.all([
 				backend.getUser(ctx.token, id),
 				backend.listEntries(ctx.token, undefined, id),
