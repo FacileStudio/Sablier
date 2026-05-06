@@ -2,7 +2,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
 	import { getUserDisplayName } from '$lib/user-display';
-	import { normalizeUserColor, userColorLabel } from '$lib/user-colors';
+	import { normalizeUserColor } from '$lib/user-colors';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -94,7 +94,10 @@
 							{/if}
 
 							<div class="min-w-0 flex-1">
-								<p class="truncate font-semibold text-sm leading-tight">{name}</p>
+								<div class="flex items-center gap-1.5">
+									<span class="inline-block h-2.5 w-2.5 rounded-full shrink-0" style="background-color: {color};"></span>
+									<p class="truncate font-semibold text-sm leading-tight">{name}</p>
+								</div>
 								<p class="truncate text-xs text-muted-foreground mt-0.5">{user.email}</p>
 							</div>
 						</div>
@@ -103,16 +106,6 @@
 							<div class="flex items-start gap-2">
 								<span class="text-[10px] font-medium text-muted-foreground w-14 shrink-0 pt-0.5">Joined</span>
 								<span class="text-xs text-foreground">{formatDate(user.created_at)}</span>
-							</div>
-							<div class="flex items-start gap-2">
-								<span class="text-[10px] font-medium text-muted-foreground w-14 shrink-0 pt-0.5">Color</span>
-								<div class="flex items-center gap-1.5 pt-0.5">
-									<span
-										class="inline-block h-2.5 w-2.5 rounded-full border border-black/10 shrink-0"
-										style="background-color: {color};"
-									></span>
-									<span class="text-xs text-foreground">{userColorLabel(color).toLowerCase()}</span>
-								</div>
 							</div>
 						</div>
 					</div>

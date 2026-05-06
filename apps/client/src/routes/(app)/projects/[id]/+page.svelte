@@ -414,7 +414,7 @@
 					{:else}
 						<div class="space-y-3">
 							{#each tasksWithStats as task}
-								<div class="rounded-xl p-4">
+								<div class="rounded-xl border p-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
 											<p class="truncate font-medium">{task.name}</p>
