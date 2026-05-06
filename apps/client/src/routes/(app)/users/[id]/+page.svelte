@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import { backend, type UserProfile, type TimeEntry, type Project } from '$lib/backend';
 	import { normalizeUserColor } from '$lib/user-colors';
 	import * as Table from '$lib/components/ui/table';
@@ -15,6 +16,8 @@
 	let user = $state<UserProfile | null>(null);
 	let entries = $state<TimeEntry[]>([]);
 	let projects = $state<Project[]>([]);
+	let now = $state(Date.now());
+	let ticker: ReturnType<typeof setInterval> | undefined;
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
@@ -43,8 +46,12 @@
 
 	function entryMs(e: TimeEntry): number {
 		const start = new Date(e.started_at).getTime();
-		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : Date.now();
+		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
 		return end - start;
+	}
+
+	function entryDuration(e: TimeEntry): string {
+		return formatDuration(entryMs(e));
 	}
 
 	function projectName(id: number): string {
@@ -102,6 +109,9 @@
 
 		return Array.from(stats.values()).sort((a, b) => b.totalMs - a.totalMs);
 	});
+	const recentEntries = $derived(
+		[...entries].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+	);
 
 	onMount(async () => {
 		try {
@@ -117,11 +127,18 @@
 			user = userRes.user;
 			entries = entriesRes.entries;
 			projects = projectsRes.projects;
+			ticker = setInterval(() => {
+				now = Date.now();
+			}, 1000);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load user.';
 		} finally {
 			loading = false;
 		}
+	});
+
+	onDestroy(() => {
+		clearInterval(ticker);
 	});
 </script>
 
@@ -237,7 +254,7 @@
 
 		<section>
 			<h2 class="mb-4 text-lg font-semibold">Recent Sessions</h2>
-			{#if entries.length === 0}
+			{#if recentEntries.length === 0}
 				<p class="text-sm text-muted-foreground">No sessions yet.</p>
 			{:else}
 				<Table.Root>
@@ -250,9 +267,8 @@
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
-						{#each entries as entry}
-							{@const ms = entryMs(entry)}
-							<Table.Row class="cursor-pointer" onclick={() => (window.location.href = `/projects/${entry.project_id}`)}>
+						{#each recentEntries as entry}
+							<Table.Row class="cursor-pointer" onclick={() => goto(`/projects/${entry.project_id}`)}>
 								<Table.Cell class="font-medium">
 									<span class="hover:underline">{projectName(entry.project_id)}</span>
 								</Table.Cell>
@@ -268,7 +284,7 @@
 											Running
 										</span>
 									{:else}
-										<span class="font-mono text-sm tabular-nums">{formatDuration(ms)}</span>
+										<span class="font-mono text-sm tabular-nums">{entryDuration(entry)}</span>
 									{/if}
 								</Table.Cell>
 							</Table.Row>
