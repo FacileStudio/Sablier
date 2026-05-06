@@ -2,7 +2,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
+	import { backend, type Project, type Task, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
@@ -14,7 +14,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Clock, BarChart3, Calendar, ArrowLeft, Timer, Pencil, Trash2, Check, X } from 'lucide-svelte';
 
-	const ctx = getContext<{ token: string; userEmail: string }>('app');
+	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
 	let loading = $state(true);
 	let error = $state('');
@@ -496,15 +496,17 @@
 											{/if}
 										</Table.Cell>
 										<Table.Cell class="text-right">
-											<Button
-												variant="ghost"
-												size="sm"
-												class="text-muted-foreground hover:text-destructive"
-												onclick={() => handleDelete(entry.id)}
-												disabled={deletingEntryId === entry.id}
-											>
-												{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
-											</Button>
+											{#if entry.user_id === Number(ctx.user?.id)}
+												<Button
+													variant="ghost"
+													size="sm"
+													class="text-muted-foreground hover:text-destructive"
+													onclick={() => handleDelete(entry.id)}
+													disabled={deletingEntryId === entry.id}
+												>
+													{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
+												</Button>
+											{/if}
 										</Table.Cell>
 									</Table.Row>
 								{/each}

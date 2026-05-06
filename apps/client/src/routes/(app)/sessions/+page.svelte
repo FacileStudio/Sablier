@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount, onDestroy } from 'svelte';
-	import { backend, type Project, type TimeEntry } from '$lib/backend';
+	import { backend, type Project, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -10,7 +10,7 @@
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 
-	const ctx = getContext<{ token: string; userEmail: string }>('app');
+	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
 	let projects = $state<Project[]>([]);
 	let entries = $state<TimeEntry[]>([]);
@@ -170,15 +170,17 @@
 						</Table.Cell>
 						<Table.Cell class="font-mono text-sm">{formatDuration(durationMs)}</Table.Cell>
 						<Table.Cell class="text-right">
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => handleDelete(entry.id)}
-								class="text-muted-foreground hover:text-destructive"
-								disabled={deletingEntryId === entry.id}
-							>
-								{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
-							</Button>
+							{#if entry.user_id === Number(ctx.user?.id)}
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => handleDelete(entry.id)}
+									class="text-muted-foreground hover:text-destructive"
+									disabled={deletingEntryId === entry.id}
+								>
+									{deletingEntryId === entry.id ? 'Removing…' : 'Remove'}
+								</Button>
+							{/if}
 						</Table.Cell>
 					</Table.Row>
 				{/each}
