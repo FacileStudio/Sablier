@@ -61,6 +61,7 @@ export type TimeEntry = {
 	user_name?: string;
 	user_email?: string;
 	user_color?: string;
+	user_avatar_url?: string;
 	started_at: string;
 	stopped_at: string | null;
 	created_at: string;
@@ -108,6 +109,13 @@ function resolveFileUrl(path: string) {
 		return path;
 	}
 	return `${backendBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function normalizeEntry(entry: TimeEntry): TimeEntry {
+	return {
+		...entry,
+		user_avatar_url: entry.user_avatar_url ? resolveFileUrl(entry.user_avatar_url) : ''
+	};
 }
 
 export const backend = {
@@ -199,10 +207,14 @@ export const backend = {
 
 	listEntries(token: string, projectId?: number) {
 		const qs = projectId ? `?project_id=${projectId}` : '';
-		return apiFetch<{ entries: TimeEntry[] }>(`/time-entries${qs}`, {}, token);
+		return apiFetch<{ entries: TimeEntry[] }>(`/time-entries${qs}`, {}, token).then((r) => ({
+			entries: r.entries.map(normalizeEntry)
+		}));
 	},
 	listRunningEntries(token: string) {
-		return apiFetch<{ entries: TimeEntry[] }>('/time-entries?running=true', {}, token);
+		return apiFetch<{ entries: TimeEntry[] }>('/time-entries?running=true', {}, token).then((r) => ({
+			entries: r.entries.map(normalizeEntry)
+		}));
 	},
 	getRunning(token: string) {
 		return apiFetch<{ entry: TimeEntry | null }>('/time-entries/running', {}, token);

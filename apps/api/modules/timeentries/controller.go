@@ -77,6 +77,7 @@ func rowsToResponse(records []timeEntryRow) *ListEntriesResponse {
 		items[i].UserEmail = r.UserEmail
 		items[i].UserName = r.UserName
 		items[i].UserColor = r.UserColor
+		items[i].UserAvatarURL = r.UserAvatarURL
 		items[i].TaskName = r.TaskName
 	}
 	return &ListEntriesResponse{Entries: items}

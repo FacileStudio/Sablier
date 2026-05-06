@@ -21,7 +21,7 @@
 	let description = $state('');
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
 
-	type ActiveUser = { key: string; color: string; label: string; initial: string };
+	type ActiveUser = { key: string; color: string; label: string; initial: string; avatarUrl: string };
 
 	function activeUsersForProject(projectId: number): ActiveUser[] {
 		const seen = new Set<string>();
@@ -32,9 +32,10 @@
 			if (seen.has(key)) continue;
 			seen.add(key);
 			const label = getEntryUserDisplayName(e);
-			const color = normalizeUserColor((e as TimeEntry & { user_color?: string }).user_color);
+			const color = normalizeUserColor(e.user_color);
 			const initial = (label[0] ?? '?').toUpperCase();
-			users.push({ key, color, label, initial });
+			const avatarUrl = e.user_avatar_url ?? '';
+			users.push({ key, color, label, initial, avatarUrl });
 		}
 		return users;
 	}
@@ -187,24 +188,33 @@
 								<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
 							</div>
 							{#if activeUsers.length > 0}
-								<div class="flex shrink-0 items-center">
+								<div class="flex shrink-0 items-center gap-1.5">
 									<div class="flex -space-x-2">
 										{#each activeUsers.slice(0, 4) as user}
-											<div
-												title="{user.label} — working now"
-												class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background text-[11px] font-semibold text-white shadow-sm ring-1 ring-black/10"
-												style="background-color: {user.color};"
-											>
-												{user.initial}
-											</div>
+											{#if user.avatarUrl}
+												<img
+													src={user.avatarUrl}
+													alt={user.label}
+													title="{user.label} — working now"
+													class="h-7 w-7 rounded-full object-cover shadow-sm ring-1 ring-black/10"
+												/>
+											{:else}
+												<div
+													title="{user.label} — working now"
+													class="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white shadow-sm ring-1 ring-black/10"
+													style="background-color: {user.color};"
+												>
+													{user.initial}
+												</div>
+											{/if}
 										{/each}
 										{#if activeUsers.length > 4}
-											<div class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium text-muted-foreground shadow-sm">
+											<div class="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground shadow-sm ring-1 ring-black/10">
 												+{activeUsers.length - 4}
 											</div>
 										{/if}
 									</div>
-									<span class="relative ml-2 flex h-2 w-2 shrink-0">
+									<span class="relative flex h-2 w-2 shrink-0">
 										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
 										<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
 									</span>
