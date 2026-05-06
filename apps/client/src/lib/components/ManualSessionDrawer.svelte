@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
+	import type { DateValue } from '@internationalized/date';
 	import { backend, type Project, type Task } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { Button } from '$lib/components/ui/button';
@@ -7,7 +9,10 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Drawer from '$lib/components/ui/drawer';
-	import { Plus } from 'lucide-svelte';
+	import * as Popover from '$lib/components/ui/popover';
+	import * as Calendar from '$lib/components/ui/calendar';
+	import { CalendarIcon, Plus } from 'lucide-svelte';
+	import { cn } from '$lib/utils';
 
 	type Props = {
 		projects: Project[];
@@ -23,8 +28,12 @@
 	let tasks = $state<Task[]>([]);
 	let taskName = $state('');
 	let taskProjectId = $state('');
-	let startedAt = $state('');
-	let stoppedAt = $state('');
+	let startDate = $state<DateValue | undefined>(undefined);
+	let startTime = $state('');
+	let endDate = $state<DateValue | undefined>(undefined);
+	let endTime = $state('');
+	let startPopoverOpen = $state(false);
+	let endPopoverOpen = $state(false);
 	let saving = $state(false);
 	let taskLoading = $state(false);
 	let error = $state('');
@@ -34,8 +43,20 @@
 		return projects.find((p) => p.id === id)?.name ?? String(id);
 	}
 
-	function toIso(localDatetime: string): string {
-		return new Date(localDatetime).toISOString();
+	function formatDate(date: DateValue | undefined): string {
+		if (!date) return 'Pick a date';
+		return new Date(date.year, date.month - 1, date.day).toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function buildIso(date: DateValue | undefined, time: string): string | null {
+		if (!date || !time) return null;
+		const [hours, minutes] = time.split(':').map(Number);
+		const d = new Date(date.year, date.month - 1, date.day, hours, minutes);
+		return d.toISOString();
 	}
 
 	function reset() {
@@ -43,8 +64,10 @@
 		tasks = [];
 		taskName = '';
 		taskProjectId = '';
-		startedAt = '';
-		stoppedAt = '';
+		startDate = undefined;
+		startTime = '';
+		endDate = undefined;
+		endTime = '';
 		error = '';
 	}
 
@@ -55,8 +78,8 @@
 		}
 		taskProjectId = projectId;
 		taskName = '';
+		tasks = [];
 		if (!projectId) {
-			tasks = [];
 			error = '';
 			return;
 		}
@@ -106,16 +129,16 @@
 			error = 'Pick a project.';
 			return;
 		}
-		if (!startedAt) {
-			error = 'Start time is required.';
+		const startIso = buildIso(startDate, startTime);
+		const stopIso = buildIso(endDate, endTime);
+		if (!startIso) {
+			error = 'Start date and time are required.';
 			return;
 		}
-		if (!stoppedAt) {
-			error = 'End time is required.';
+		if (!stopIso) {
+			error = 'End date and time are required.';
 			return;
 		}
-		const startIso = toIso(startedAt);
-		const stopIso = toIso(stoppedAt);
 		if (new Date(stopIso) <= new Date(startIso)) {
 			error = 'End time must be after start time.';
 			return;
@@ -168,20 +191,48 @@
 					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<div class="flex flex-col gap-1.5">
-							<Label for="manual-started-at">Start</Label>
-							<Input
-								id="manual-started-at"
-								type="datetime-local"
-								bind:value={startedAt}
-							/>
+							<Label>Start</Label>
+							<Popover.Root bind:open={startPopoverOpen}>
+								<Popover.Trigger>
+									<Button
+										variant="outline"
+										class={cn('w-full justify-start text-left font-normal gap-2', !startDate && 'text-muted-foreground')}
+									>
+										<CalendarIcon class="h-4 w-4 shrink-0" />
+										{formatDate(startDate)}
+									</Button>
+								</Popover.Trigger>
+								<Popover.Content class="w-auto p-0" align="start">
+									<Calendar.Calendar
+										type="single"
+										bind:value={startDate}
+										onValueChange={() => (startPopoverOpen = false)}
+									/>
+								</Popover.Content>
+							</Popover.Root>
+							<Input type="time" bind:value={startTime} class="w-full" />
 						</div>
 						<div class="flex flex-col gap-1.5">
-							<Label for="manual-stopped-at">End</Label>
-							<Input
-								id="manual-stopped-at"
-								type="datetime-local"
-								bind:value={stoppedAt}
-							/>
+							<Label>End</Label>
+							<Popover.Root bind:open={endPopoverOpen}>
+								<Popover.Trigger>
+									<Button
+										variant="outline"
+										class={cn('w-full justify-start text-left font-normal gap-2', !endDate && 'text-muted-foreground')}
+									>
+										<CalendarIcon class="h-4 w-4 shrink-0" />
+										{formatDate(endDate)}
+									</Button>
+								</Popover.Trigger>
+								<Popover.Content class="w-auto p-0" align="start">
+									<Calendar.Calendar
+										type="single"
+										bind:value={endDate}
+										onValueChange={() => (endPopoverOpen = false)}
+									/>
+								</Popover.Content>
+							</Popover.Root>
+							<Input type="time" bind:value={endTime} class="w-full" />
 						</div>
 					</div>
 					<div class="flex flex-col gap-1.5">
