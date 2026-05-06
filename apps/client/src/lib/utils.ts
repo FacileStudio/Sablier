@@ -11,7 +11,7 @@ type DurationFormatOptions = {
 };
 
 export function formatDuration(ms: number, options: DurationFormatOptions = {}) {
-	const { includeSeconds = false, underMinuteLabel = 'under a minute' } = options;
+	const { includeSeconds = false, underMinuteLabel = 'under a min' } = options;
 	const safeMs = Math.max(0, ms);
 	const totalSeconds = Math.floor(safeMs / 1000);
 
