@@ -2,7 +2,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
 	import { getUserDisplayName } from '$lib/user-display';
-	import { normalizeUserColor } from '$lib/user-colors';
+	import { normalizeUserColor, userColorLabel } from '$lib/user-colors';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -61,7 +61,6 @@
 							<div class="h-2.5 bg-muted rounded w-1/2"></div>
 						</div>
 					</div>
-					<div class="h-px bg-border mb-4"></div>
 					<div class="space-y-2">
 						<div class="h-2.5 bg-muted rounded w-full"></div>
 						<div class="h-2.5 bg-muted rounded w-2/3"></div>
@@ -76,9 +75,7 @@
 			{#each users as user (user.id)}
 				{@const color = userColor(user)}
 				{@const name = displayName(user)}
-				<div class="group rounded-lg border border-border bg-card overflow-hidden transition-shadow hover:shadow-md">
-					<div class="h-1.5 w-full" style="background-color: {color};"></div>
-
+				<div class="group rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
 					<div class="p-5">
 						<div class="flex items-center gap-3 mb-4">
 							{#if user.avatar_url}
@@ -98,29 +95,23 @@
 
 							<div class="min-w-0 flex-1">
 								<p class="truncate font-semibold text-sm leading-tight">{name}</p>
-								<p class="truncate text-xs text-muted-foreground mt-0.5">#{user.id}</p>
+								<p class="truncate text-xs text-muted-foreground mt-0.5">{user.email}</p>
 							</div>
 						</div>
 
-						<div class="h-px bg-border mb-4"></div>
-
 						<div class="space-y-2.5">
 							<div class="flex items-start gap-2">
-								<span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-14 shrink-0 pt-0.5">Email</span>
-								<span class="text-xs text-foreground truncate min-w-0">{user.email}</span>
-							</div>
-							<div class="flex items-start gap-2">
-								<span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-14 shrink-0 pt-0.5">Joined</span>
+								<span class="text-[10px] font-medium text-muted-foreground w-14 shrink-0 pt-0.5">Joined</span>
 								<span class="text-xs text-foreground">{formatDate(user.created_at)}</span>
 							</div>
 							<div class="flex items-start gap-2">
-								<span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-14 shrink-0 pt-0.5">Color</span>
+								<span class="text-[10px] font-medium text-muted-foreground w-14 shrink-0 pt-0.5">Color</span>
 								<div class="flex items-center gap-1.5 pt-0.5">
 									<span
 										class="inline-block h-2.5 w-2.5 rounded-full border border-black/10 shrink-0"
 										style="background-color: {color};"
 									></span>
-									<span class="text-xs text-foreground font-mono">#{color.replace(/^#/, '')}</span>
+									<span class="text-xs text-foreground">{userColorLabel(color).toLowerCase()}</span>
 								</div>
 							</div>
 						</div>
