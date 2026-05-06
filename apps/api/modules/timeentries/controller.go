@@ -112,6 +112,12 @@ func (c *Controller) update(ctx context.Context, userID string, entryID int64, r
 	if req.TaskID <= 0 {
 		return nil, errors.Invalid("task_id is required")
 	}
+	if req.StartedAt.IsZero() {
+		return nil, errors.Invalid("started_at is required")
+	}
+	if req.StoppedAt != nil && !req.StoppedAt.After(req.StartedAt) {
+		return nil, errors.Invalid("stopped_at must be after started_at")
+	}
 	record, taskName, err := c.service.updateEntry(ctx, userID, entryID, req)
 	if err != nil {
 		return nil, err

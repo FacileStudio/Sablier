@@ -239,7 +239,9 @@ export const backend = {
 		}));
 	},
 	getRunning(token: string) {
-		return apiFetch<{ entry: TimeEntry | null }>('/time-entries/running', {}, token);
+		return apiFetch<{ entry: TimeEntry | null }>('/time-entries/running', {}, token).then((result) => ({
+			entry: result.entry ? normalizeEntry(result.entry) : null
+		}));
 	},
 	startTimer(token: string, projectId: number, taskId: number) {
 		return apiFetch<TimeEntry>('/time-entries/start', {
@@ -256,10 +258,10 @@ export const backend = {
 			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
 		}, token);
 	},
-	updateEntry(token: string, id: number, taskId: number, startedAt: string, stoppedAt: string) {
+	updateEntry(token: string, id: number, projectId: number, taskId: number, startedAt: string, stoppedAt: string | null) {
 		return apiFetch<TimeEntry>(`/time-entries/${id}`, {
-			method: 'PATCH',
-			body: JSON.stringify({ task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
+			method: 'PUT',
+			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
 		}, token);
 	},
 	deleteEntry(token: string, id: number) {

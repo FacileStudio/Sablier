@@ -44,6 +44,7 @@
 	let error = $state('');
 
 	const isEditMode = $derived(editEntry != null);
+	const isRunningEdit = $derived(editEntry?.stopped_at == null);
 
 	function isoToDateValue(iso: string): DateValue {
 		const d = new Date(iso);
@@ -95,6 +96,9 @@
 		if (entry.stopped_at) {
 			endDate = isoToDateValue(entry.stopped_at);
 			endTime = isoToTime(entry.stopped_at);
+		} else {
+			endDate = undefined;
+			endTime = '';
 		}
 	}
 
@@ -174,16 +178,16 @@
 			return;
 		}
 		const startIso = buildIso(startDate, startTime);
-		const stopIso = buildIso(endDate, endTime);
+		const stopIso = isRunningEdit ? null : buildIso(endDate, endTime);
 		if (!startIso) {
 			error = 'Start date and time are required.';
 			return;
 		}
-		if (!stopIso) {
+		if (!isRunningEdit && !stopIso) {
 			error = 'End date and time are required.';
 			return;
 		}
-		if (new Date(stopIso) <= new Date(startIso)) {
+		if (stopIso && new Date(stopIso) <= new Date(startIso)) {
 			error = 'End time must be after start time.';
 			return;
 		}
@@ -193,8 +197,11 @@
 			const projectId = Number(selectedProjectId);
 			const taskId = await resolveTaskId(projectId);
 			if (isEditMode && editEntry) {
-				await backend.updateEntry(ctx.token, editEntry.id, taskId, startIso, stopIso);
+				await backend.updateEntry(ctx.token, editEntry.id, projectId, taskId, startIso, stopIso);
 			} else {
+				if (!stopIso) {
+					throw new Error('End date and time are required.');
+				}
 				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso);
 			}
 			reset();
@@ -228,7 +235,7 @@
 				<div class="flex flex-col gap-4">
 					<div class="flex flex-col gap-1.5">
 						<Label for="manual-project-select">Project</Label>
-						<Select.Root type="single" bind:value={selectedProjectId} disabled={isEditMode}>
+							<Select.Root type="single" bind:value={selectedProjectId}>
 							<Select.Trigger id="manual-project-select" class="w-full">
 								{selectedProjectId ? projectName(Number(selectedProjectId)) : 'Select a project'}
 							</Select.Trigger>
@@ -239,7 +246,7 @@
 							</Select.Content>
 						</Select.Root>
 					</div>
-					<div class="grid grid-cols-2 gap-3">
+					<div class={isRunningEdit ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
 						<div class="flex flex-col gap-1.5">
 							<Label>Start</Label>
 							<Popover.Root bind:open={startPopoverOpen}>
@@ -262,28 +269,30 @@
 							</Popover.Root>
 							<Input type="time" bind:value={startTime} class="w-full" />
 						</div>
-						<div class="flex flex-col gap-1.5">
-							<Label>End</Label>
-							<Popover.Root bind:open={endPopoverOpen}>
-								<Popover.Trigger>
-									<Button
-										variant="outline"
-										class={cn('w-full justify-start text-left font-normal gap-2', !endDate && 'text-muted-foreground')}
-									>
-										<CalendarIcon class="h-4 w-4 shrink-0" />
-										{formatDate(endDate)}
-									</Button>
-								</Popover.Trigger>
-								<Popover.Content class="w-auto p-0" align="start">
-									<Calendar.Calendar
-										type="single"
-										bind:value={endDate}
-										onValueChange={() => (endPopoverOpen = false)}
-									/>
-								</Popover.Content>
-							</Popover.Root>
-							<Input type="time" bind:value={endTime} class="w-full" />
-						</div>
+						{#if !isRunningEdit}
+							<div class="flex flex-col gap-1.5">
+								<Label>End</Label>
+								<Popover.Root bind:open={endPopoverOpen}>
+									<Popover.Trigger>
+										<Button
+											variant="outline"
+											class={cn('w-full justify-start text-left font-normal gap-2', !endDate && 'text-muted-foreground')}
+										>
+											<CalendarIcon class="h-4 w-4 shrink-0" />
+											{formatDate(endDate)}
+										</Button>
+									</Popover.Trigger>
+									<Popover.Content class="w-auto p-0" align="start">
+										<Calendar.Calendar
+											type="single"
+											bind:value={endDate}
+											onValueChange={() => (endPopoverOpen = false)}
+										/>
+									</Popover.Content>
+								</Popover.Root>
+								<Input type="time" bind:value={endTime} class="w-full" />
+							</div>
+						{/if}
 					</div>
 					<div class="flex flex-col gap-1.5">
 						<Label>Task</Label>
@@ -301,7 +310,7 @@
 					<Button class="gap-2 w-full h-12 text-base" onclick={handleSave} disabled={saving}>
 						{#if isEditMode}
 							<Pencil class="h-4 w-4" />
-							{saving ? 'Saving…' : 'Save changes'}
+							{saving ? 'Saving…' : isRunningEdit ? 'Update session' : 'Save changes'}
 						{:else}
 							<Plus class="h-4 w-4" />
 							{saving ? 'Saving…' : 'Add session'}

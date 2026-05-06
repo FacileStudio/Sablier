@@ -6,8 +6,9 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Drawer from '$lib/components/ui/drawer';
+	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
-	import { Play, Square } from 'lucide-svelte';
+	import { Play, Square, Pencil } from 'lucide-svelte';
 
 	type Props = {
 		projects: Project[];
@@ -31,6 +32,7 @@
 	let taskLoading = $state(false);
 	let stopping = $state(false);
 	let error = $state('');
+	let editDrawerOpen = $state(false);
 
 	function formatDuration(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -159,19 +161,44 @@
 			stopping = false;
 		}
 	}
+
+	async function handleRunningEditChange() {
+		const result = await backend.getRunning(ctx.token);
+		running = result.entry;
+		startTicker();
+		onchange?.();
+	}
 </script>
 
 {#if running}
 	<div class="flex items-center gap-4">
 		<span class="tabular-nums leading-none" style="font-family: var(--font-heading); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed)}</span>
-		<Button
-			class="gap-2 h-10 px-5 bg-red-600 hover:bg-red-700 text-white border-0"
-			onclick={stopTimer}
-			disabled={stopping}
-		>
-			<Square class="h-4 w-4" />
-			{stopping ? 'Stopping…' : 'Stop'}
-		</Button>
+		<div class="flex items-center gap-2">
+			<Button
+				class="gap-2 h-10 px-5 bg-red-600 hover:bg-red-700 text-white border-0"
+				onclick={stopTimer}
+				disabled={stopping}
+			>
+				<Square class="h-4 w-4" />
+				{stopping ? 'Stopping…' : 'Stop'}
+			</Button>
+			<Button
+				variant="outline"
+				size="icon"
+				class="h-10 w-10"
+				onclick={() => (editDrawerOpen = true)}
+				disabled={stopping}
+			>
+				<Pencil class="h-4 w-4" />
+			</Button>
+		</div>
+		<ManualSessionDrawer
+			{projects}
+			editEntry={running}
+			bind:open={editDrawerOpen}
+			hideTrigger
+			onchange={handleRunningEditChange}
+		/>
 	</div>
 {:else}
 	<Drawer.Root bind:open={drawerOpen} direction="bottom">
