@@ -173,7 +173,13 @@
 						<Table.Cell>{formatDate(entry.started_at)}</Table.Cell>
 						<Table.Cell>
 							{#if isRunning}
-								<Badge>Running</Badge>
+								<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
+									<span class="relative flex h-2 w-2">
+										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+										<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+									</span>
+									Running
+								</span>
 							{:else}
 								{formatDate(entry.stopped_at!)}
 							{/if}
