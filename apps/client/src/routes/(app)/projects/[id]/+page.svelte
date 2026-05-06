@@ -349,58 +349,36 @@
 		{:else if error}
 			<p class="text-sm text-destructive">{error}</p>
 		{:else if project}
-			<div class="flex flex-col gap-1">
-				<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
-				<p class="text-sm text-muted-foreground">
-					{project.description || 'No description'}
-				</p>
-				<p class="mt-1 text-xs text-muted-foreground">
-					Created {formatDateShort(project.created_at)}
-				</p>
+			<div class="flex items-start justify-between gap-4">
+				<div class="flex flex-col gap-1">
+					<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
+					<p class="text-sm text-muted-foreground">
+						{project.description || 'No description'}
+					</p>
+					<p class="mt-1 text-xs text-muted-foreground">
+						Created {formatDateShort(project.created_at)}
+					</p>
+				</div>
+				<div class="flex shrink-0 gap-2">
+					<Button variant="outline" size="sm" onclick={startProjectEdit}>
+						<Pencil class="h-4 w-4" />
+						Edit
+					</Button>
+					<Button
+						size="sm"
+						class="border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+						onclick={() => { projectDeleteDialogOpen = true; }}
+						disabled={deletingProject}
+					>
+						<Trash2 class="h-4 w-4" />
+						{deletingProject ? 'Deleting…' : 'Delete'}
+					</Button>
+				</div>
 			</div>
 
-			<Card.Root class="mt-6">
-				<Card.Header class="gap-4">
-					<div class="flex items-start justify-between gap-3">
-						<div>
-							<Card.Title>Project Settings</Card.Title>
-							<Card.Description>Edit metadata or delete the project from here, not from the grid.</Card.Description>
-						</div>
-						<div class="flex shrink-0 gap-2">
-							<Button variant="outline" size="sm" onclick={startProjectEdit}>
-								<Pencil class="h-4 w-4" />
-								Edit
-							</Button>
-							<Button
-								size="sm"
-								class="border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-								onclick={() => { projectDeleteDialogOpen = true; }}
-								disabled={deletingProject}
-							>
-								<Trash2 class="h-4 w-4" />
-								{deletingProject ? 'Deleting…' : 'Delete'}
-							</Button>
-						</div>
-					</div>
-				</Card.Header>
-				<Card.Content class="flex flex-col gap-4">
-					{#if projectActionError}
-						<p class="text-sm text-destructive">{projectActionError}</p>
-					{/if}
-					<div class="grid gap-4 md:grid-cols-2">
-						<div>
-							<p class="text-xs uppercase tracking-wide text-muted-foreground">Name</p>
-							<p class="mt-1 font-medium">{project.name}</p>
-						</div>
-						<div>
-							<p class="text-xs uppercase tracking-wide text-muted-foreground">Description</p>
-							<p class="mt-1 text-sm text-muted-foreground">
-								{project.description || 'No description'}
-							</p>
-						</div>
-					</div>
-				</Card.Content>
-			</Card.Root>
+			{#if projectActionError}
+				<p class="mt-4 text-sm text-destructive">{projectActionError}</p>
+			{/if}
 
 			<div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
 				<Card.Root>
