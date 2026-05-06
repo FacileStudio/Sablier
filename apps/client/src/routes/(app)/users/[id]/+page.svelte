@@ -8,6 +8,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ArrowLeft, Clock, Timer, Calendar } from 'lucide-svelte';
 	import * as Card from '$lib/components/ui/card';
+	import { formatDuration } from '$lib/utils';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -34,14 +35,6 @@
 			month: 'long',
 			day: 'numeric'
 		});
-	}
-
-	function formatDuration(ms: number): string {
-		const totalSeconds = Math.floor(ms / 1000);
-		const h = Math.floor(totalSeconds / 3600);
-		const m = Math.floor((totalSeconds % 3600) / 60);
-		const s = totalSeconds % 60;
-		return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 	}
 
 	function entryMs(e: TimeEntry): number {

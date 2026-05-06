@@ -15,6 +15,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { formatDuration } from '$lib/utils';
 	import { Clock, BarChart3, Calendar, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
@@ -54,14 +55,6 @@
 		color?: string;
 		ms: number;
 	};
-
-	function formatDuration(ms: number): string {
-		const totalSeconds = Math.floor(ms / 1000);
-		const h = Math.floor(totalSeconds / 3600);
-		const m = Math.floor((totalSeconds % 3600) / 60);
-		const s = totalSeconds % 60;
-		return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
-	}
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {

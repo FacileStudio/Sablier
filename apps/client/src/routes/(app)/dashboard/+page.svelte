@@ -8,6 +8,7 @@
 	import { Clock } from 'lucide-svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { goto } from '$app/navigation';
+	import { formatDuration } from '$lib/utils';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -17,14 +18,6 @@
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
-
-	function formatDuration(ms: number): string {
-		const totalSeconds = Math.floor(ms / 1000);
-		const h = Math.floor(totalSeconds / 3600);
-		const m = Math.floor((totalSeconds % 3600) / 60);
-		const s = totalSeconds % 60;
-		return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
-	}
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
@@ -299,7 +292,7 @@
 									</p>
 								</div>
 							</div>
-							<span class="font-mono text-sm tabular-nums text-muted-foreground">{formatDuration(elapsedMs)}</span>
+							<span class="font-mono text-sm tabular-nums text-muted-foreground">{formatDuration(elapsedMs, { includeSeconds: true })}</span>
 						</button>
 					{/each}
 				</div>

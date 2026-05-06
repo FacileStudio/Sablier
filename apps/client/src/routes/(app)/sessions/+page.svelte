@@ -11,6 +11,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
+	import { formatDuration } from '$lib/utils';
 	import { Trash2, Pencil } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
@@ -33,14 +34,6 @@
 			? entries
 			: entries.filter((e) => String(e.project_id) === selectedProjectId)
 	);
-
-	function formatDuration(ms: number): string {
-		const totalSecs = Math.floor(ms / 1000);
-		const h = Math.floor(totalSecs / 3600);
-		const m = Math.floor((totalSecs % 3600) / 60);
-		const s = totalSecs % 60;
-		return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
-	}
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
