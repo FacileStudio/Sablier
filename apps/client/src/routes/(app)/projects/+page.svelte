@@ -132,8 +132,8 @@
 		<h1 class="text-2xl font-semibold">Projects</h1>
 		<Drawer.Root bind:open={drawerOpen} direction="bottom">
 			<Drawer.Trigger>
-				<Button variant="outline" onclick={() => (drawerOpen = true)}>
-					<Plus class="mr-2 h-4 w-4" />
+				<Button variant="outline" class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
+					<Plus class="h-4 w-4" />
 					New project
 				</Button>
 			</Drawer.Trigger>
