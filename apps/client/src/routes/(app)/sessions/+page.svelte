@@ -108,7 +108,7 @@
 		<div class="flex items-center gap-3">
 			<TimerControl {projects} onchange={handleTimerChange} />
 			<ManualSessionDrawer {projects} onchange={handleTimerChange} />
-		<ManualSessionDrawer {projects} editEntry={editingEntry} bind:open={editDrawerOpen} onchange={handleTimerChange} onclose={() => { editingEntry = null; }} />
+		<ManualSessionDrawer {projects} editEntry={editingEntry} bind:open={editDrawerOpen} hideTrigger onchange={handleTimerChange} onclose={() => { editingEntry = null; }} />
 		</div>
 	</div>
 

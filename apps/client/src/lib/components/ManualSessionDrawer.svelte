@@ -19,11 +19,12 @@
 		projects: Project[];
 		editEntry?: TimeEntry | null;
 		open?: boolean;
+		hideTrigger?: boolean;
 		onchange?: () => void;
 		onclose?: () => void;
 	};
 
-	let { projects, editEntry = null, open = $bindable(false), onchange, onclose }: Props = $props();
+	let { projects, editEntry = null, open = $bindable(false), hideTrigger = false, onchange, onclose }: Props = $props();
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -208,7 +209,7 @@
 </script>
 
 <Drawer.Root bind:open={drawerOpen} direction="bottom">
-	{#if !editEntry}
+	{#if !hideTrigger}
 		<Drawer.Trigger>
 			<Button variant="outline" class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
 				<Plus class="h-4 w-4" />
