@@ -222,6 +222,12 @@ export const backend = {
 			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
 		}, token);
 	},
+	updateEntry(token: string, id: number, taskId: number, startedAt: string, stoppedAt: string) {
+		return apiFetch<TimeEntry>(`/time-entries/${id}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
+		}, token);
+	},
 	deleteEntry(token: string, id: number) {
 		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);
 	},

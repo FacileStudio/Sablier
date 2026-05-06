@@ -2,7 +2,7 @@
 	import { getContext } from 'svelte';
 	import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
 	import type { DateValue } from '@internationalized/date';
-	import { backend, type Project, type Task } from '$lib/backend';
+	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -12,15 +12,18 @@
 	import * as Popover from '$lib/components/ui/popover';
 	import * as Calendar from '$lib/components/ui/calendar';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
-	import { CalendarIcon, Plus } from 'lucide-svelte';
+	import { CalendarIcon, Plus, Pencil } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 
 	type Props = {
 		projects: Project[];
+		editEntry?: TimeEntry | null;
+		open?: boolean;
 		onchange?: () => void;
+		onclose?: () => void;
 	};
 
-	let { projects, onchange }: Props = $props();
+	let { projects, editEntry = null, open = $bindable(false), onchange, onclose }: Props = $props();
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -38,6 +41,18 @@
 	let saving = $state(false);
 	let taskLoading = $state(false);
 	let error = $state('');
+
+	const isEditMode = $derived(editEntry != null);
+
+	function isoToDateValue(iso: string): DateValue {
+		const d = new Date(iso);
+		return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+	}
+
+	function isoToTime(iso: string): string {
+		const d = new Date(iso);
+		return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+	}
 
 	function projectName(id: number): string {
 		return projects.find((p) => p.id === id)?.name ?? String(id);
@@ -71,6 +86,31 @@
 		error = '';
 	}
 
+	function populateFromEntry(entry: TimeEntry) {
+		selectedProjectId = String(entry.project_id);
+		taskName = entry.task_name ?? '';
+		startDate = isoToDateValue(entry.started_at);
+		startTime = isoToTime(entry.started_at);
+		if (entry.stopped_at) {
+			endDate = isoToDateValue(entry.stopped_at);
+			endTime = isoToTime(entry.stopped_at);
+		}
+	}
+
+	$effect(() => {
+		if (open && editEntry) {
+			populateFromEntry(editEntry);
+			drawerOpen = true;
+		}
+	});
+
+	$effect(() => {
+		if (!drawerOpen) {
+			open = false;
+			onclose?.();
+		}
+	});
+
 	$effect(() => {
 		const projectId = selectedProjectId;
 		if (projectId === taskProjectId) {
@@ -92,6 +132,9 @@
 					return;
 				}
 				tasks = result.tasks;
+				if (editEntry && String(editEntry.project_id) === projectId) {
+					taskName = editEntry.task_name ?? '';
+				}
 			})
 			.catch((e) => {
 				if (selectedProjectId !== projectId) {
@@ -148,7 +191,11 @@
 		try {
 			const projectId = Number(selectedProjectId);
 			const taskId = await resolveTaskId(projectId);
-			await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso);
+			if (isEditMode && editEntry) {
+				await backend.updateEntry(ctx.token, editEntry.id, taskId, startIso, stopIso);
+			} else {
+				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso);
+			}
 			reset();
 			drawerOpen = false;
 			onchange?.();
@@ -161,24 +208,26 @@
 </script>
 
 <Drawer.Root bind:open={drawerOpen} direction="bottom">
-	<Drawer.Trigger>
-		<Button variant="outline" class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
-			<Plus class="h-4 w-4" />
-			Add session
-		</Button>
-	</Drawer.Trigger>
+	{#if !editEntry}
+		<Drawer.Trigger>
+			<Button variant="outline" class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
+				<Plus class="h-4 w-4" />
+				Add session
+			</Button>
+		</Drawer.Trigger>
+	{/if}
 	<Drawer.Portal>
 		<Drawer.Overlay class="fixed inset-0 bg-black/40" />
 		<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
 			<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
 			<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
 				<Drawer.Header class="p-0">
-					<Drawer.Title>Add a session manually</Drawer.Title>
+					<Drawer.Title>{isEditMode ? 'Edit session' : 'Add a session manually'}</Drawer.Title>
 				</Drawer.Header>
 				<div class="flex flex-col gap-4">
 					<div class="flex flex-col gap-1.5">
 						<Label for="manual-project-select">Project</Label>
-						<Select.Root type="single" bind:value={selectedProjectId}>
+						<Select.Root type="single" bind:value={selectedProjectId} disabled={isEditMode}>
 							<Select.Trigger id="manual-project-select" class="w-full">
 								{selectedProjectId ? projectName(Number(selectedProjectId)) : 'Select a project'}
 							</Select.Trigger>
@@ -249,8 +298,13 @@
 						<p class="text-sm text-destructive">{error}</p>
 					{/if}
 					<Button class="gap-2 w-full h-12 text-base" onclick={handleSave} disabled={saving}>
-						<Plus class="h-4 w-4" />
-						{saving ? 'Saving…' : 'Add session'}
+						{#if isEditMode}
+							<Pencil class="h-4 w-4" />
+							{saving ? 'Saving…' : 'Save changes'}
+						{:else}
+							<Plus class="h-4 w-4" />
+							{saving ? 'Saving…' : 'Add session'}
+						{/if}
 					</Button>
 				</div>
 			</div>

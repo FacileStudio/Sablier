@@ -10,7 +10,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
-	import { Trash2 } from 'lucide-svelte';
+	import { Trash2, Pencil } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -20,6 +20,8 @@
 	let now = $state(Date.now());
 	let deleteError = $state('');
 	let deletingEntryId = $state<number | null>(null);
+	let editingEntry = $state<TimeEntry | null>(null);
+	let editDrawerOpen = $state(false);
 
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -106,6 +108,7 @@
 		<div class="flex items-center gap-3">
 			<TimerControl {projects} onchange={handleTimerChange} />
 			<ManualSessionDrawer {projects} onchange={handleTimerChange} />
+		<ManualSessionDrawer {projects} editEntry={editingEntry} bind:open={editDrawerOpen} onchange={handleTimerChange} onclose={() => { editingEntry = null; }} />
 		</div>
 	</div>
 
@@ -157,7 +160,9 @@
 						class="cursor-pointer"
 						onclick={() => goto(`/projects/${entry.project_id}`)}
 					>
-						<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
+						<Table.Cell class="font-medium">
+							<span class="hover:underline">{projectName(entry.project_id)}</span>
+						</Table.Cell>
 						<Table.Cell class="text-muted-foreground">
 							<div class="flex items-center gap-2">
 								<UserColorDot color={userColor(entry)} />
@@ -176,6 +181,14 @@
 						<Table.Cell class="font-mono text-sm">{formatDuration(durationMs)}</Table.Cell>
 						<Table.Cell class="text-right">
 							{#if entry.user_id === Number(ctx.user?.id)}
+								<Button
+									variant="ghost"
+									size="icon"
+									onclick={(e) => { e.stopPropagation(); editingEntry = entry; editDrawerOpen = true; }}
+									class="h-8 w-8 opacity-50 hover:opacity-100"
+								>
+									<Pencil class="h-4 w-4" />
+								</Button>
 								<Button
 									variant="ghost"
 									size="icon"

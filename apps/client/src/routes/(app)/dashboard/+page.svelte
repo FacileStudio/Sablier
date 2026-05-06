@@ -371,8 +371,10 @@
 					</Table.Header>
 					<Table.Body>
 						{#each recentEntries as entry}
-							<Table.Row>
-								<Table.Cell class="font-medium">{projectName(entry.project_id)}</Table.Cell>
+							<Table.Row class="cursor-pointer" onclick={() => goto(`/projects/${entry.project_id}`)}>
+								<Table.Cell class="font-medium">
+									<span class="hover:underline">{projectName(entry.project_id)}</span>
+								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">
 									<div class="flex items-center gap-2">
 										<UserColorDot color={userColor(entry)} />
