@@ -197,12 +197,7 @@
 
 {#if running}
 	<div class="flex items-center gap-4">
-		<div class="flex flex-col gap-1">
-			<span class="leading-none" style="font-family: var(--font-mono); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed, { includeSeconds: true })}</span>
-			{#if runningPaused}
-				<span class="text-xs font-medium uppercase tracking-[0.14em] text-amber-600 dark:text-amber-400">Paused</span>
-			{/if}
-		</div>
+		<span class="leading-none" style="font-family: var(--font-mono); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed, { includeSeconds: true })}</span>
 		<div class="flex items-center gap-2">
 			<Button
 				variant={runningPaused ? 'default' : 'outline'}
