@@ -92,6 +92,26 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
+		router.Post("/pause", func(w http.ResponseWriter, request *http.Request) {
+			identity, _ := authcontext.IdentityFromContext(request.Context())
+			resp, err := service.controller.pause(request.Context(), identity.UserID)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
+		router.Post("/resume", func(w http.ResponseWriter, request *http.Request) {
+			identity, _ := authcontext.IdentityFromContext(request.Context())
+			resp, err := service.controller.resume(request.Context(), identity.UserID)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
 		router.Post("/", func(w http.ResponseWriter, request *http.Request) {
 			identity, _ := authcontext.IdentityFromContext(request.Context())
 			var req CreateEntryRequest

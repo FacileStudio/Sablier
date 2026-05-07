@@ -8,7 +8,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ArrowLeft, Clock, Timer, Calendar } from 'lucide-svelte';
 	import * as Card from '$lib/components/ui/card';
-	import { formatDuration } from '$lib/utils';
+	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -38,9 +38,7 @@
 	}
 
 	function entryMs(e: TimeEntry): number {
-		const start = new Date(e.started_at).getTime();
-		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
-		return end - start;
+		return getTimeEntryDurationMs(e, now);
 	}
 
 	function entryDuration(e: TimeEntry): string {
@@ -571,12 +569,15 @@
 								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
 								<Table.Cell class="text-right">
 									{#if entry.stopped_at === null}
-										<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
-											<span class="relative flex h-2 w-2">
-												<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-												<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-											</span>
-											Running
+										{@const paused = isTimeEntryPaused(entry)}
+										<span class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${paused ? 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+											{#if !paused}
+												<span class="relative flex h-2 w-2">
+													<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+													<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+												</span>
+											{/if}
+											{paused ? 'Paused' : 'Running'}
 										</span>
 									{:else}
 										<span class="font-mono text-sm tabular-nums">{entryDuration(entry)}</span>

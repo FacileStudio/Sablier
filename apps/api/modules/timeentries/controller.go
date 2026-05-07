@@ -17,14 +17,16 @@ func newController(service *Service) *Controller {
 
 func toResponse(e *schemas.TimeEntry) TimeEntryResponse {
 	return TimeEntryResponse{
-		ID:        e.ID,
-		ProjectID: e.ProjectID,
-		TaskID:    e.TaskID,
-		UserID:    e.UserID,
-		StartedAt: e.StartedAt,
-		StoppedAt: e.StoppedAt,
-		CreatedAt: e.CreatedAt,
-		UpdatedAt: e.UpdatedAt,
+		ID:             e.ID,
+		ProjectID:      e.ProjectID,
+		TaskID:         e.TaskID,
+		UserID:         e.UserID,
+		StartedAt:      e.StartedAt,
+		StoppedAt:      e.StoppedAt,
+		PausedAt:       e.PausedAt,
+		PausedDuration: e.PausedDurationMs,
+		CreatedAt:      e.CreatedAt,
+		UpdatedAt:      e.UpdatedAt,
 	}
 }
 
@@ -46,6 +48,26 @@ func (c *Controller) start(ctx context.Context, userID string, req *StartTimerRe
 
 func (c *Controller) stop(ctx context.Context, userID string) (*TimeEntryResponse, error) {
 	record, taskName, err := c.service.stopTimer(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp := toResponse(record)
+	resp.TaskName = taskName
+	return &resp, nil
+}
+
+func (c *Controller) pause(ctx context.Context, userID string) (*TimeEntryResponse, error) {
+	record, taskName, err := c.service.pauseTimer(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp := toResponse(record)
+	resp.TaskName = taskName
+	return &resp, nil
+}
+
+func (c *Controller) resume(ctx context.Context, userID string) (*TimeEntryResponse, error) {
+	record, taskName, err := c.service.resumeTimer(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

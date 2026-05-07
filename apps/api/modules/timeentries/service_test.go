@@ -193,6 +193,82 @@ func TestUpdateEntryRejectsTurningStoppedEntryBackIntoRunning(t *testing.T) {
 	}
 }
 
+func TestPauseAndResumeTimerAdjustPausedDuration(t *testing.T) {
+	service := newTestService(t)
+	project := seedProject(t, service.orm, 1)
+	task := seedTask(t, service.orm, project.ID)
+	record, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID)
+	if err != nil {
+		t.Fatalf("start timer: %v", err)
+	}
+
+	paused, taskName, err := service.pauseTimer(context.Background(), "1")
+	if err != nil {
+		t.Fatalf("pause timer: %v", err)
+	}
+	if taskName != task.Name {
+		t.Fatalf("expected task name %q, got %q", task.Name, taskName)
+	}
+	if paused.PausedAt == nil {
+		t.Fatal("expected paused_at to be set")
+	}
+
+	time.Sleep(15 * time.Millisecond)
+
+	resumed, _, err := service.resumeTimer(context.Background(), "1")
+	if err != nil {
+		t.Fatalf("resume timer: %v", err)
+	}
+	if resumed.PausedAt != nil {
+		t.Fatalf("expected paused_at to be cleared, got %v", resumed.PausedAt)
+	}
+	if resumed.PausedDurationMs <= 0 {
+		t.Fatalf("expected paused duration to increase, got %d", resumed.PausedDurationMs)
+	}
+
+	stored, _, err := service.getRunningTimer(context.Background(), "1")
+	if err != nil {
+		t.Fatalf("get running timer: %v", err)
+	}
+	if stored == nil || stored.ID != record.ID {
+		t.Fatalf("expected running timer %d, got %#v", record.ID, stored)
+	}
+	if stored.PausedAt != nil {
+		t.Fatalf("expected stored timer to be resumed, got paused_at=%v", stored.PausedAt)
+	}
+	if stored.PausedDurationMs <= 0 {
+		t.Fatalf("expected stored paused duration to persist, got %d", stored.PausedDurationMs)
+	}
+}
+
+func TestStopTimerWhilePausedFinalizesPausedDuration(t *testing.T) {
+	service := newTestService(t)
+	project := seedProject(t, service.orm, 1)
+	task := seedTask(t, service.orm, project.ID)
+	if _, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID); err != nil {
+		t.Fatalf("start timer: %v", err)
+	}
+	if _, _, err := service.pauseTimer(context.Background(), "1"); err != nil {
+		t.Fatalf("pause timer: %v", err)
+	}
+
+	time.Sleep(15 * time.Millisecond)
+
+	stopped, _, err := service.stopTimer(context.Background(), "1")
+	if err != nil {
+		t.Fatalf("stop timer: %v", err)
+	}
+	if stopped.StoppedAt == nil {
+		t.Fatal("expected stopped_at to be set")
+	}
+	if stopped.PausedAt != nil {
+		t.Fatalf("expected paused_at to be cleared on stop, got %v", stopped.PausedAt)
+	}
+	if stopped.PausedDurationMs <= 0 {
+		t.Fatalf("expected paused duration to be retained on stop, got %d", stopped.PausedDurationMs)
+	}
+}
+
 func ptrTime(value time.Time) *time.Time {
 	return &value
 }

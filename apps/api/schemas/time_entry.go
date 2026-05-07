@@ -10,6 +10,8 @@ type TimeEntry struct {
 	LegacyDescription string     `gorm:"column:description"`
 	StartedAt         time.Time  `gorm:"column:started_at"`
 	StoppedAt         *time.Time `gorm:"column:stopped_at"`
+	PausedAt          *time.Time `gorm:"column:paused_at"`
+	PausedDurationMs  int64      `gorm:"column:paused_duration_ms"`
 	CreatedAt         time.Time  `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt         time.Time  `gorm:"column:updated_at;autoUpdateTime"`
 }

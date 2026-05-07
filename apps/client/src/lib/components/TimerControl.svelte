@@ -2,14 +2,14 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
-	import { formatDuration } from '$lib/utils';
+	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Drawer from '$lib/components/ui/drawer';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
-	import { Play, Square, Pencil } from 'lucide-svelte';
+	import { Play, Square, Pencil, Pause, TimerReset } from 'lucide-svelte';
 
 	type Props = {
 		projects: Project[];
@@ -32,8 +32,12 @@
 	let starting = $state(false);
 	let taskLoading = $state(false);
 	let stopping = $state(false);
+	let pausing = $state(false);
+	let resuming = $state(false);
 	let error = $state('');
 	let editDrawerOpen = $state(false);
+
+	const runningPaused = $derived(running ? isTimeEntryPaused(running) : false);
 
 	function projectName(id: number): string {
 		return projects.find((p) => p.id === id)?.name ?? String(id);
@@ -42,9 +46,9 @@
 	function startTicker() {
 		stopTicker();
 		if (running) {
-			elapsed = Math.max(0, Date.now() - new Date(running.started_at).getTime());
+			elapsed = getTimeEntryDurationMs(running);
 			ticker = setInterval(() => {
-				elapsed = Math.max(0, Date.now() - new Date(running!.started_at).getTime());
+				elapsed = getTimeEntryDurationMs(running!);
 			}, 1000);
 		}
 	}
@@ -155,6 +159,34 @@
 		}
 	}
 
+	async function pauseTimer() {
+		pausing = true;
+		error = '';
+		try {
+			running = await backend.pauseTimer(ctx.token);
+			startTicker();
+			onchange?.();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to pause timer.';
+		} finally {
+			pausing = false;
+		}
+	}
+
+	async function resumeTimer() {
+		resuming = true;
+		error = '';
+		try {
+			running = await backend.resumeTimer(ctx.token);
+			startTicker();
+			onchange?.();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to resume timer.';
+		} finally {
+			resuming = false;
+		}
+	}
+
 	async function handleRunningEditChange() {
 		const result = await backend.getRunning(ctx.token);
 		running = result.entry;
@@ -165,12 +197,31 @@
 
 {#if running}
 	<div class="flex items-center gap-4">
-		<span class="leading-none" style="font-family: var(--font-mono); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed, { includeSeconds: true })}</span>
+		<div class="flex flex-col gap-1">
+			<span class="leading-none" style="font-family: var(--font-mono); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700;">{formatDuration(elapsed, { includeSeconds: true })}</span>
+			{#if runningPaused}
+				<span class="text-xs font-medium uppercase tracking-[0.14em] text-amber-600 dark:text-amber-400">Paused</span>
+			{/if}
+		</div>
 		<div class="flex items-center gap-2">
+			<Button
+				variant={runningPaused ? 'default' : 'outline'}
+				class="gap-2 h-10 px-5"
+				onclick={runningPaused ? resumeTimer : pauseTimer}
+				disabled={stopping || pausing || resuming}
+			>
+				{#if runningPaused}
+					<TimerReset class="h-4 w-4" />
+					{resuming ? 'Resuming…' : 'Resume'}
+				{:else}
+					<Pause class="h-4 w-4" />
+					{pausing ? 'Pausing…' : 'Pause'}
+				{/if}
+			</Button>
 			<Button
 				class="gap-2 h-10 px-5 bg-red-600 hover:bg-red-700 text-white border-0"
 				onclick={stopTimer}
-				disabled={stopping}
+				disabled={stopping || pausing || resuming}
 			>
 				<Square class="h-4 w-4" />
 				{stopping ? 'Stopping…' : 'Stop'}
@@ -180,7 +231,7 @@
 				size="icon"
 				class="h-10 w-10"
 				onclick={() => (editDrawerOpen = true)}
-				disabled={stopping}
+				disabled={stopping || pausing || resuming}
 			>
 				<Pencil class="h-4 w-4" />
 			</Button>
@@ -193,6 +244,9 @@
 			onchange={handleRunningEditChange}
 		/>
 	</div>
+	{#if error}
+		<p class="text-sm text-destructive">{error}</p>
+	{/if}
 {:else}
 	<Drawer.Root bind:open={drawerOpen} direction="bottom">
 		<Drawer.Trigger>

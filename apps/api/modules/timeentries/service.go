@@ -57,6 +57,67 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 	return record, task.Name, nil
 }
 
+func (service *Service) pauseTimer(ctx context.Context, userID string) (*schemas.TimeEntry, string, error) {
+	uid, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return nil, "", errors.Invalid("invalid user id")
+	}
+
+	var record schemas.TimeEntry
+	err = service.orm.WithContext(ctx).Where("user_id = ? AND stopped_at IS NULL", uid).First(&record).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, "", errors.NotFound("no running timer")
+	}
+	if err != nil {
+		return nil, "", errors.Internal("failed to find running timer", err)
+	}
+	if record.PausedAt != nil {
+		return nil, "", errors.Failed("timer is already paused")
+	}
+
+	now := time.Now().UTC()
+	record.PausedAt = &now
+	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
+		return nil, "", errors.Internal("failed to pause timer", err)
+	}
+	taskName, err := service.taskName(ctx, record.TaskID)
+	if err != nil {
+		return nil, "", err
+	}
+	return &record, taskName, nil
+}
+
+func (service *Service) resumeTimer(ctx context.Context, userID string) (*schemas.TimeEntry, string, error) {
+	uid, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return nil, "", errors.Invalid("invalid user id")
+	}
+
+	var record schemas.TimeEntry
+	err = service.orm.WithContext(ctx).Where("user_id = ? AND stopped_at IS NULL", uid).First(&record).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, "", errors.NotFound("no running timer")
+	}
+	if err != nil {
+		return nil, "", errors.Internal("failed to find running timer", err)
+	}
+	if record.PausedAt == nil {
+		return nil, "", errors.Failed("timer is not paused")
+	}
+
+	now := time.Now().UTC()
+	record.PausedDurationMs += now.Sub(*record.PausedAt).Milliseconds()
+	record.PausedAt = nil
+	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
+		return nil, "", errors.Internal("failed to resume timer", err)
+	}
+	taskName, err := service.taskName(ctx, record.TaskID)
+	if err != nil {
+		return nil, "", err
+	}
+	return &record, taskName, nil
+}
+
 func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
@@ -73,6 +134,10 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	}
 
 	now := time.Now().UTC()
+	if record.PausedAt != nil {
+		record.PausedDurationMs += now.Sub(*record.PausedAt).Milliseconds()
+		record.PausedAt = nil
+	}
 	record.StoppedAt = &now
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to stop timer", err)

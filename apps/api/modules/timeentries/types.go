@@ -33,6 +33,8 @@ type TimeEntryResponse struct {
 	UserAvatarURL  string     `json:"user_avatar_url,omitempty"`
 	StartedAt      time.Time  `json:"started_at"`
 	StoppedAt      *time.Time `json:"stopped_at"`
+	PausedAt       *time.Time `json:"paused_at"`
+	PausedDuration int64      `json:"paused_duration_ms"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 }

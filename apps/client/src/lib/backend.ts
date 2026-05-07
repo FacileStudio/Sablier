@@ -67,6 +67,8 @@ export type TimeEntry = {
 	user_avatar_url?: string;
 	started_at: string;
 	stopped_at: string | null;
+	paused_at: string | null;
+	paused_duration_ms: number;
 	created_at: string;
 	updated_at: string;
 };
@@ -250,22 +252,28 @@ export const backend = {
 		return apiFetch<TimeEntry>('/time-entries/start', {
 			method: 'POST',
 			body: JSON.stringify({ project_id: projectId, task_id: taskId })
-		}, token);
+		}, token).then(normalizeEntry);
 	},
 	stopTimer(token: string) {
-		return apiFetch<TimeEntry>('/time-entries/stop', { method: 'POST' }, token);
+		return apiFetch<TimeEntry>('/time-entries/stop', { method: 'POST' }, token).then(normalizeEntry);
+	},
+	pauseTimer(token: string) {
+		return apiFetch<TimeEntry>('/time-entries/pause', { method: 'POST' }, token).then(normalizeEntry);
+	},
+	resumeTimer(token: string) {
+		return apiFetch<TimeEntry>('/time-entries/resume', { method: 'POST' }, token).then(normalizeEntry);
 	},
 	createEntry(token: string, projectId: number, taskId: number, startedAt: string, stoppedAt: string) {
 		return apiFetch<TimeEntry>('/time-entries', {
 			method: 'POST',
 			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
-		}, token);
+		}, token).then(normalizeEntry);
 	},
 	updateEntry(token: string, id: number, projectId: number, taskId: number, startedAt: string, stoppedAt: string | null) {
 		return apiFetch<TimeEntry>(`/time-entries/${id}`, {
 			method: 'PUT',
 			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
-		}, token);
+		}, token).then(normalizeEntry);
 	},
 	deleteEntry(token: string, id: number) {
 		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);

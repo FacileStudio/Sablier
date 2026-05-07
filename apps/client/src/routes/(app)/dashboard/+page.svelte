@@ -8,7 +8,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { Clock, Settings } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
-	import { formatDuration } from '$lib/utils';
+	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -42,11 +42,7 @@
 	function todayTotal(): string {
 		const ms = entries
 			.filter((e) => isToday(e.started_at))
-			.reduce((acc, e) => {
-				const start = new Date(e.started_at).getTime();
-				const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
-				return acc + (end - start);
-			}, 0);
+			.reduce((acc, e) => acc + getTimeEntryDurationMs(e, now), 0);
 		return formatDuration(ms);
 	}
 
@@ -55,9 +51,7 @@
 	}
 
 	function entryDuration(e: TimeEntry): string {
-		const start = new Date(e.started_at).getTime();
-		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
-		return formatDuration(end - start);
+		return formatDuration(getTimeEntryDurationMs(e, now));
 	}
 
 	function userColor(entry: TimeEntry) {
@@ -117,9 +111,7 @@
 			const userRate = userRates.get(entry.user_id);
 			if (!userRate || userRate.rate <= 0) continue;
 			anyRate = true;
-			const start = new Date(entry.started_at).getTime();
-			const end = entry.stopped_at ? new Date(entry.stopped_at).getTime() : now;
-			const hours = (end - start) / 3_600_000;
+			const hours = getTimeEntryDurationMs(entry, now) / 3_600_000;
 			total += userRate.rate_type === 'hourly' ? hours * userRate.rate : (hours / userRate.workday_hours) * userRate.rate;
 		}
 		if (!anyRate) return null;
@@ -172,9 +164,7 @@
 			const d = new Date(entry.started_at);
 			d.setHours(0, 0, 0, 0);
 			const key = localDateKey(d);
-			const start = new Date(entry.started_at).getTime();
-			const end = entry.stopped_at ? new Date(entry.stopped_at).getTime() : Date.now();
-			dayMinutes.set(key, (dayMinutes.get(key) ?? 0) + (end - start) / 60000);
+			dayMinutes.set(key, (dayMinutes.get(key) ?? 0) + getTimeEntryDurationMs(entry, now) / 60000);
 		}
 
 		const startDate = new Date(today);
@@ -305,7 +295,8 @@
 			{:else}
 				<div class="flex flex-col gap-2">
 					{#each runningEntries as entry}
-						{@const elapsedMs = now - new Date(entry.started_at).getTime()}
+						{@const elapsedMs = getTimeEntryDurationMs(entry, now)}
+						{@const paused = isTimeEntryPaused(entry)}
 						{@const avatarUrl = entry.user_avatar_url}
 						{@const label = getEntryUserDisplayName(entry)}
 						<button
@@ -331,7 +322,12 @@
 									</p>
 								</div>
 							</div>
-							<span class="font-mono text-sm tabular-nums text-muted-foreground">{formatDuration(elapsedMs, { includeSeconds: true })}</span>
+							<div class="flex flex-col items-end gap-1">
+								<span class="font-mono text-sm tabular-nums text-muted-foreground">{formatDuration(elapsedMs, { includeSeconds: true })}</span>
+								{#if paused}
+									<span class="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-600 dark:text-amber-400">Paused</span>
+								{/if}
+							</div>
 						</button>
 					{/each}
 				</div>
@@ -429,12 +425,15 @@
 								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
 								<Table.Cell class="text-right">
 									{#if entry.stopped_at === null}
-										<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
-											<span class="relative flex h-2 w-2">
-												<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-												<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-											</span>
-											Running
+										{@const paused = isTimeEntryPaused(entry)}
+										<span class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${paused ? 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+											{#if !paused}
+												<span class="relative flex h-2 w-2">
+													<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+													<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+												</span>
+											{/if}
+											{paused ? 'Paused' : 'Running'}
 										</span>
 									{:else}
 										<span class="font-mono text-sm tabular-nums">{entryDuration(entry)}</span>

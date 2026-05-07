@@ -15,7 +15,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { formatDuration } from '$lib/utils';
+	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
@@ -75,9 +75,7 @@
 	}
 
 	function entryMs(e: TimeEntry): number {
-		const start = new Date(e.started_at).getTime();
-		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : now;
-		return end - start;
+		return getTimeEntryDurationMs(e, now);
 	}
 
 	function userColor(entry: TimeEntry) {
@@ -569,7 +567,8 @@
 							<Table.Body>
 								{#each sortedEntries as entry}
 									{@const isRunning = entry.stopped_at === null}
-									{@const durationMs = isRunning ? now - new Date(entry.started_at).getTime() : entryMs(entry)}
+									{@const paused = isTimeEntryPaused(entry)}
+									{@const durationMs = entryMs(entry)}
 									<Table.Row>
 										<Table.Cell class="text-muted-foreground">
 											<div class="flex items-center gap-2">
@@ -585,12 +584,14 @@
 										<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
 										<Table.Cell>
 											{#if isRunning}
-												<span class="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
-													<span class="relative flex h-2 w-2">
-														<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-														<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-													</span>
-													Running
+												<span class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${paused ? 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+													{#if !paused}
+														<span class="relative flex h-2 w-2">
+															<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+															<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+														</span>
+													{/if}
+													{paused ? 'Paused' : 'Running'}
 												</span>
 											{:else}
 												<span class="font-mono text-sm tabular-nums">{formatDuration(durationMs)}</span>

@@ -10,6 +10,7 @@
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
+	import { getTimeEntryDurationMs } from '$lib/utils';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -56,9 +57,7 @@
 	}
 
 	function entryMs(e: TimeEntry): number {
-		const start = new Date(e.started_at).getTime();
-		const end = e.stopped_at ? new Date(e.stopped_at).getTime() : Date.now();
-		return end - start;
+		return getTimeEntryDurationMs(e);
 	}
 
 	function aggregateUserTimeSegments(entryList: TimeEntry[]): UserTimeSegment[] {
