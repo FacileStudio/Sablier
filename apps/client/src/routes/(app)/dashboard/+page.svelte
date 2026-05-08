@@ -2,6 +2,7 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
+	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
@@ -18,6 +19,7 @@
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
+	let stopTimeEntrySync: (() => void) | undefined;
 	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
 
 	function formatDate(iso: string): string {
@@ -89,11 +91,15 @@
 		userRates = map;
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
 		runningPoller = setInterval(loadRunning, 30_000);
+		stopTimeEntrySync = onTimeEntriesChanged(() => {
+			void loadEntries();
+		});
 	});
 
 	onDestroy(() => {
 		clearInterval(ticker);
 		clearInterval(runningPoller);
+		stopTimeEntrySync?.();
 	});
 
 	const recentEntries = $derived(

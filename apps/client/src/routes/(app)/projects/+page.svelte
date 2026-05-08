@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
+	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -21,6 +22,7 @@
 	let name = $state('');
 	let description = $state('');
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
+	let stopTimeEntrySync: (() => void) | undefined;
 
 	type ActiveUser = { key: string; color: string; label: string; initial: string; avatarUrl: string };
 
@@ -117,9 +119,15 @@
 	onMount(() => {
 		load();
 		runningPoller = setInterval(loadRunning, 30_000);
+		stopTimeEntrySync = onTimeEntriesChanged(() => {
+			void loadRunning();
+		});
 	});
 
-	onDestroy(() => clearInterval(runningPoller));
+	onDestroy(() => {
+		clearInterval(runningPoller);
+		stopTimeEntrySync?.();
+	});
 </script>
 
 <svelte:head>

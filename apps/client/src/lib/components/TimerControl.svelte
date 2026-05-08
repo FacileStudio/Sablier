@@ -2,6 +2,7 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
+	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
@@ -136,6 +137,7 @@
 			taskName = '';
 			drawerOpen = false;
 			startTicker();
+			notifyTimeEntriesChanged();
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to start timer.';
@@ -151,6 +153,7 @@
 			running = null;
 			stopTicker();
 			elapsed = 0;
+			notifyTimeEntriesChanged();
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to stop timer.';
@@ -165,6 +168,7 @@
 		try {
 			running = await backend.pauseTimer(ctx.token);
 			startTicker();
+			notifyTimeEntriesChanged();
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to pause timer.';
@@ -179,6 +183,7 @@
 		try {
 			running = await backend.resumeTimer(ctx.token);
 			startTicker();
+			notifyTimeEntriesChanged();
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to resume timer.';
@@ -191,6 +196,7 @@
 		const result = await backend.getRunning(ctx.token);
 		running = result.entry;
 		startTicker();
+		notifyTimeEntriesChanged();
 		onchange?.();
 	}
 </script>

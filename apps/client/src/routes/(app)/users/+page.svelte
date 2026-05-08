@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { backend, type TimeEntry, type UserProfile } from '$lib/backend';
+	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
 
@@ -10,6 +11,7 @@
 	let runningEntries = $state<TimeEntry[]>([]);
 	let loading = $state(true);
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
+	let stopTimeEntrySync: (() => void) | undefined;
 
 	function getInitials(value: string) {
 		const parts = value.trim().split(/\s+/).filter(Boolean);
@@ -53,10 +55,14 @@
 		runningEntries = runningResult.entries;
 		loading = false;
 		runningPoller = setInterval(loadRunningEntries, 30_000);
+		stopTimeEntrySync = onTimeEntriesChanged(() => {
+			void loadRunningEntries();
+		});
 	});
 
 	onDestroy(() => {
 		clearInterval(runningPoller);
+		stopTimeEntrySync?.();
 	});
 </script>
 

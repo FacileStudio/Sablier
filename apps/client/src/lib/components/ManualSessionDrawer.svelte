@@ -4,6 +4,7 @@
 	import type { DateValue } from '@internationalized/date';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
+	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -206,6 +207,7 @@
 			}
 			reset();
 			drawerOpen = false;
+			notifyTimeEntriesChanged();
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to save session.';
