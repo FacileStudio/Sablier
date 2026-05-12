@@ -10,7 +10,7 @@
 	import * as Drawer from '$lib/components/ui/drawer';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
-	import { Play, Square, Pencil, Pause, TimerReset } from 'lucide-svelte';
+	import { Play, Square, Pencil, Pause, TimerReset, Plus } from 'lucide-svelte';
 
 	type Props = {
 		projects: Project[];
@@ -37,6 +37,7 @@
 	let resuming = $state(false);
 	let error = $state('');
 	let editDrawerOpen = $state(false);
+	let manualDrawerOpen = $state(false);
 
 	const runningPaused = $derived(running ? isTimeEntryPaused(running) : false);
 
@@ -249,55 +250,71 @@
 		<p class="text-sm text-destructive">{error}</p>
 	{/if}
 {:else}
-	<Drawer.Root bind:open={drawerOpen} direction="bottom">
-		<Drawer.Trigger>
-			<Button class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
-				<Play class="h-4 w-4" />
-				Start Session
-			</Button>
-		</Drawer.Trigger>
-		<Drawer.Portal>
-			<Drawer.Overlay class="fixed inset-0 bg-black/40" />
-			<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
-				<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
-				<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
-					<Drawer.Header class="p-0">
-						<Drawer.Title>Start a timer</Drawer.Title>
-					</Drawer.Header>
-					<div class="flex flex-col gap-4">
-						<div class="flex flex-col gap-1.5">
-							<Label for="timer-project-select">Project</Label>
-							<Select.Root type="single" bind:value={selectedProjectId}>
-								<Select.Trigger id="timer-project-select" class="w-full">
-									{selectedProjectId ? projectName(Number(selectedProjectId)) : 'Select a project'}
-								</Select.Trigger>
-								<Select.Content>
-									{#each projects as project}
-										<Select.Item value={String(project.id)}>{project.name}</Select.Item>
-									{/each}
-								</Select.Content>
-						</Select.Root>
+	<div class="flex items-center gap-2">
+		<Drawer.Root bind:open={drawerOpen} direction="bottom">
+			<Drawer.Trigger>
+				<Button class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
+					<Play class="h-4 w-4" />
+					Start Session
+				</Button>
+			</Drawer.Trigger>
+			<Drawer.Portal>
+				<Drawer.Overlay class="fixed inset-0 bg-black/40" />
+				<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
+					<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
+					<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
+						<Drawer.Header class="p-0">
+							<Drawer.Title>Start a timer</Drawer.Title>
+						</Drawer.Header>
+						<div class="flex flex-col gap-4">
+							<div class="flex flex-col gap-1.5">
+								<Label for="timer-project-select">Project</Label>
+								<Select.Root type="single" bind:value={selectedProjectId}>
+									<Select.Trigger id="timer-project-select" class="w-full">
+										{selectedProjectId ? projectName(Number(selectedProjectId)) : 'Select a project'}
+									</Select.Trigger>
+									<Select.Content>
+										{#each projects as project}
+											<Select.Item value={String(project.id)}>{project.name}</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<Label>Task</Label>
+								<TaskCombobox
+									{tasks}
+									bind:value={taskName}
+									disabled={!selectedProjectId}
+									loading={taskLoading}
+									placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+								/>
+							</div>
+							{#if error}
+								<p class="text-sm text-destructive">{error}</p>
+							{/if}
+							<Button class="gap-2 w-full h-12 text-base" onclick={startTimer} disabled={starting}>
+								<Play class="h-4 w-4" />
+								{starting ? 'Starting…' : 'Start timer'}
+							</Button>
+						</div>
 					</div>
-					<div class="flex flex-col gap-1.5">
-						<Label>Task</Label>
-						<TaskCombobox
-							{tasks}
-							bind:value={taskName}
-							disabled={!selectedProjectId}
-							loading={taskLoading}
-							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
-						/>
-					</div>
-						{#if error}
-							<p class="text-sm text-destructive">{error}</p>
-						{/if}
-						<Button class="gap-2 w-full h-12 text-base" onclick={startTimer} disabled={starting}>
-							<Play class="h-4 w-4" />
-							{starting ? 'Starting…' : 'Start timer'}
-						</Button>
-					</div>
-				</div>
-			</Drawer.Content>
-		</Drawer.Portal>
-	</Drawer.Root>
+				</Drawer.Content>
+			</Drawer.Portal>
+		</Drawer.Root>
+		<Button
+			variant="outline"
+			size="icon"
+			class="h-10 w-10"
+			onclick={() => (manualDrawerOpen = true)}
+		>
+			<Plus class="h-4 w-4" />
+		</Button>
+		<ManualSessionDrawer
+			{projects}
+			bind:open={manualDrawerOpen}
+			hideTrigger
+			onchange
+		/>
+	</div>
 {/if}
