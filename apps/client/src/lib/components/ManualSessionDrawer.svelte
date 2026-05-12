@@ -104,8 +104,10 @@
 	}
 
 	$effect(() => {
-		if (open && editEntry) {
-			populateFromEntry(editEntry);
+		if (open) {
+			if (editEntry) {
+				populateFromEntry(editEntry);
+			}
 			drawerOpen = true;
 		}
 	});
