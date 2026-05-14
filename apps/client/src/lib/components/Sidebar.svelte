@@ -33,7 +33,7 @@
 
 <aside class="sticky top-0 flex h-screen w-60 flex-col border-r bg-background">
 	<div class="flex items-center gap-3 px-5 pt-8 pb-6">
-		<img class="w-7" src="/logo.svg" alt="logo" />
+		<iconify-icon icon="solar:hourglass-bold-duotone" width="28" class="text-foreground"></iconify-icon>
 		<span class="text-2xl font-bold font-heading tracking-tight">Sablier</span>
 	</div>
 

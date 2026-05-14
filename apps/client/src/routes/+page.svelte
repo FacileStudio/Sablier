@@ -44,7 +44,7 @@
 	<header class="border-b border-border">
 		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
             <div class="flex h-14 items-center gap-3">
-                <img class="w-7" src="/logo.svg" alt="logo"  />
+                <iconify-icon icon="solar:hourglass-bold-duotone" width="28" class="text-foreground"></iconify-icon>
                 <span class="text-2xl font-bold font-heading tracking-tight">Sablier</span>
             </div>
 			<div class="flex items-center gap-2">

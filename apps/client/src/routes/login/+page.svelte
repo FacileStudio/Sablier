@@ -60,7 +60,7 @@
 <div class="flex min-h-screen">
 	<div class="hidden lg:flex lg:w-1/2 flex-col bg-black px-12 py-10">
 		<a href="/" class="flex items-center gap-3 mb-auto">
-			<img class="w-7" src="/logo-white.svg" alt="Sablier logo" />
+			<iconify-icon icon="solar:hourglass-bold-duotone" width="28" class="text-white"></iconify-icon>
 			<span class="text-xl font-bold font-heading tracking-tight text-white">Sablier</span>
 		</a>
 
