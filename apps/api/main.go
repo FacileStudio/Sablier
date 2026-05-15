@@ -18,6 +18,7 @@ import (
 	"api/internal/logger"
 	"api/internal/middleware"
 	"api/modules/auth"
+	"api/modules/notifications"
 	"api/modules/projects"
 	"api/modules/settings"
 	"api/modules/timeentries"
@@ -67,6 +68,7 @@ func main() {
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
+	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
 			auth.Documentation,
@@ -74,6 +76,7 @@ func main() {
 			timeentries.Documentation,
 			users.Documentation,
 			settings.Documentation,
+			notifications.Documentation,
 		},
 	}
 
@@ -106,6 +109,7 @@ func main() {
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 	settings.RegisterRoutes(router, settingsService, authService)
+	notifications.RegisterRoutes(router, notificationsService, authService)
 
 	addr := ":" + appEnv.Port
 	server := &http.Server{

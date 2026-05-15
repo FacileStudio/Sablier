@@ -4,6 +4,8 @@
 	import { backend, type UserProfile, type Project } from '$lib/backend';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import { Toaster } from 'svelte-sonner';
+	import { NotificationService } from '$lib/notifications';
 
 	let { children } = $props();
 
@@ -35,6 +37,7 @@
 			loaded = true;
 			const p = await backend.listProjects(stored);
 			projects = p.projects;
+			NotificationService.init(stored);
 		} catch {
 			goto('/login');
 		}
@@ -48,6 +51,7 @@
 			{@render children()}
 		</main>
 	</div>
+	<Toaster richColors position="bottom-right" />
 	<div class="fixed top-0 left-1/2 z-50 -translate-x-1/2">
 		<div class="rounded-b-2xl border border-t-0 bg-background px-5 py-3 shadow-lg shadow-black/10">
 			<TimerControl {projects} />

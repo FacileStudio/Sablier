@@ -45,6 +45,16 @@ export type Task = {
 	updated_at: string;
 };
 
+export type VAPIDPublicKeyResponse = {
+	public_key: string;
+};
+
+export type PushSubscriptionPayload = {
+	endpoint: string;
+	p256dh: string;
+	auth: string;
+};
+
 export type UserSettings = {
 	webhook_url: string;
 	webhook_secret_header: string;
@@ -291,5 +301,19 @@ export const backend = {
 				webhook_secret_value: webhookSecretValue
 			})
 		}, token);
+	},
+
+	async getVapidPublicKey() {
+		const res = await apiFetch<VAPIDPublicKeyResponse>('/notifications/vapid-public-key');
+		return res;
+	},
+	savePushSubscription(token: string, subscription: PushSubscriptionPayload) {
+		return apiFetch<{ saved: boolean }>('/notifications/subscriptions', {
+			method: 'POST',
+			body: JSON.stringify(subscription)
+		}, token);
+	},
+	deletePushSubscription(token: string) {
+		return apiFetch<{ deleted: boolean }>('/notifications/subscriptions', { method: 'DELETE' }, token);
 	}
 };

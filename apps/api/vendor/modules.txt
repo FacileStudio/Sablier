@@ -1,3 +1,6 @@
+# github.com/SherClockHolmes/webpush-go v1.4.0
+## explicit; go 1.13
+github.com/SherClockHolmes/webpush-go
 # github.com/coreos/go-oidc/v3 v3.11.0
 ## explicit; go 1.21
 github.com/coreos/go-oidc/v3/oidc
@@ -10,6 +13,9 @@ github.com/go-chi/chi/v5/middleware
 github.com/go-jose/go-jose/v4
 github.com/go-jose/go-jose/v4/cipher
 github.com/go-jose/go-jose/v4/json
+# github.com/golang-jwt/jwt/v5 v5.2.1
+## explicit; go 1.18
+github.com/golang-jwt/jwt/v5
 # github.com/jackc/pgpassfile v1.0.0
 ## explicit; go 1.12
 github.com/jackc/pgpassfile
@@ -40,6 +46,9 @@ github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.5
 ## explicit; go 1.12
 github.com/jinzhu/now
+# github.com/joho/godotenv v1.5.1
+## explicit; go 1.12
+github.com/joho/godotenv
 # github.com/mattn/go-sqlite3 v1.14.22
 ## explicit; go 1.19
 github.com/mattn/go-sqlite3
@@ -47,6 +56,7 @@ github.com/mattn/go-sqlite3
 ## explicit; go 1.24.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
+golang.org/x/crypto/hkdf
 golang.org/x/crypto/pbkdf2
 # golang.org/x/oauth2 v0.21.0
 ## explicit; go 1.18

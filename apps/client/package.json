@@ -36,6 +36,7 @@
 	},
 	"dependencies": {
 		"class-variance-authority": "^0.7.1",
-		"lucide-svelte": "^1.0.1"
+		"lucide-svelte": "^1.0.1",
+		"svelte-sonner": "^1.1.1"
 	}
 }
