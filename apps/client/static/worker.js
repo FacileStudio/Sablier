@@ -7,7 +7,7 @@ self.addEventListener('push', (event) => {
 	event.waitUntil(
 		self.registration.showNotification(title, {
 			body,
-			icon: icon || '/favicon.png',
+			icon: icon || '/favicon.svg',
 		})
 	);
 });

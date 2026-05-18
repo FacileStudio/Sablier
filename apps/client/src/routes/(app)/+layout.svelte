@@ -6,6 +6,7 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { Toaster } from 'svelte-sonner';
 	import { NotificationService } from '$lib/notifications';
+    import { TOKEN_KEY } from '$lib/constants';
 
 	let { children } = $props();
 
@@ -25,7 +26,7 @@
 	});
 
 	onMount(async () => {
-		const stored = localStorage.getItem('sablier.token') ?? '';
+		const stored = localStorage.getItem(TOKEN_KEY) ?? '';
 		if (!stored) {
 			goto('/login');
 			return;
@@ -39,6 +40,7 @@
 			projects = p.projects;
 			NotificationService.init(stored);
 		} catch {
+			localStorage.removeItem(TOKEN_KEY);
 			goto('/login');
 		}
 	});

@@ -16,8 +16,6 @@ async function subscribeToPush(
 	vapidPublicKey: string
 ): Promise<PushSubscription | null> {
 	try {
-		const existing = await registration.pushManager.getSubscription();
-		if (existing) return existing;
 		return await registration.pushManager.subscribe({
 			userVisibleOnly: true,
 			applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
@@ -28,12 +26,22 @@ async function subscribeToPush(
 }
 
 export class NotificationService {
+
+
 	static async init(token: string): Promise<void> {
-        console.log('Initializing notifications...');
-		if (!('Notification' in window) || !('PushManager' in window)) return;
+		console.log('[notifications] init start');
+		if (!('Notification' in window) || !('PushManager' in window)) {
+			console.log('[notifications] API not supported — aborting');
+			return;
+		}
+
 
 		const permission = await Notification.requestPermission();
-		if (permission !== 'granted') return;
+		console.log('[notifications] permission:', permission);
+		if (permission !== 'granted') {
+			console.log('[notifications] permission not granted — aborting');
+			return;
+		}
 
 		const registration = await registerServiceWorker();
 		if (!registration) return;
@@ -41,6 +49,12 @@ export class NotificationService {
 		try {
 			const res = await backend.getVapidPublicKey();
 			if (!res.public_key) return;
+
+			const existing = await registration.pushManager.getSubscription();
+			if (existing) {
+				await backend.deletePushSubscription(token);
+				await existing.unsubscribe();
+			}
 
 			const subscription = await subscribeToPush(registration, res.public_key);
 			if (!subscription) return;
@@ -54,8 +68,8 @@ export class NotificationService {
 				p256dh: keys.p256dh,
 				auth: keys.auth
 			});
-		} catch {
-			// non-fatal — push is a progressive enhancement
+		} catch (err) {
+			console.error('[notifications] init error:', err);
 		}
 	}
 
@@ -71,6 +85,7 @@ export class NotificationService {
 			// non-fatal
 		}
 	}
+
 
 	static async triggerNotificationsPermission() {
 		if (Notification.permission === 'granted') return;

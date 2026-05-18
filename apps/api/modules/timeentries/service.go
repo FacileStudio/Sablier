@@ -45,11 +45,13 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 	}
 
 	record := &schemas.TimeEntry{
-		ProjectID: projectID,
-		TaskID:    task.ID,
-		UserID:    uid,
-		StartedAt: time.Now().UTC(),
+		ProjectID:          projectID,
+		TaskID:             task.ID,
+		UserID:             uid,
+		StartedAt:          time.Now().UTC(),
+		LastNotificationAt: nil,
 	}
+
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, "", errors.Internal("failed to start timer", err)
 	}
