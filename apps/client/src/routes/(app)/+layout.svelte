@@ -4,6 +4,9 @@
 	import { backend, type UserProfile, type Project } from '$lib/backend';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import { Toaster } from 'svelte-sonner';
+	import { NotificationService } from '$lib/notifications';
+    import { TOKEN_KEY } from '$lib/constants';
 
 	let { children } = $props();
 
@@ -23,7 +26,7 @@
 	});
 
 	onMount(async () => {
-		const stored = localStorage.getItem('sablier.token') ?? '';
+		const stored = localStorage.getItem(TOKEN_KEY) ?? '';
 		if (!stored) {
 			goto('/login');
 			return;
@@ -35,7 +38,9 @@
 			loaded = true;
 			const p = await backend.listProjects(stored);
 			projects = p.projects;
+			NotificationService.init(stored);
 		} catch {
+			localStorage.removeItem(TOKEN_KEY);
 			goto('/login');
 		}
 	});
@@ -48,6 +53,7 @@
 			{@render children()}
 		</main>
 	</div>
+	<Toaster richColors position="bottom-right" />
 	<div class="fixed top-0 left-1/2 z-50 -translate-x-1/2">
 		<div class="rounded-b-2xl border border-t-0 bg-background px-5 py-3 shadow-lg shadow-black/10">
 			<TimerControl {projects} />

@@ -60,9 +60,21 @@ export function getTimeEntryDurationMs(
 	return Math.max(0, activeStop - start - (entry.paused_duration_ms ?? 0));
 }
 
+export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+	const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+	const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+	const rawData = atob(base64);
+	const output = new Uint8Array(rawData.length);
+	for (let i = 0; i < rawData.length; i++) {
+		output[i] = rawData.charCodeAt(i);
+	}
+	return output.buffer;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WithoutChild<T> = T extends { child?: any } ? Omit<T, "child"> : T;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WithoutChildren<T> = T extends { children?: any } ? Omit<T, "children"> : T;
 export type WithoutChildrenOrChild<T> = WithoutChildren<WithoutChild<T>>;
 export type WithElementRef<T, U extends HTMLElement = HTMLElement> = T & { ref?: U | null };
+

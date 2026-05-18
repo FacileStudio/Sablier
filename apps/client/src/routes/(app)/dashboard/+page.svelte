@@ -10,6 +10,9 @@
 	import { Clock, Settings } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
+	import { NotificationService } from '$lib/notifications';
+
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -74,6 +77,18 @@
 		runningEntries = r.entries;
 	}
 
+	const ensureNotifications = () => {
+		if (Notification.permission !== 'granted') {
+			 toast('Please enable notifications to receive alerts about your time entries.', {
+				action: {
+					label: 'Enable',
+					onClick: () => NotificationService.triggerNotificationsPermission()
+				},
+			});
+		}
+	};
+	
+
 	onMount(async () => {
 		const [p, e, r, u] = await Promise.all([
 			backend.listProjects(ctx.token),
@@ -88,6 +103,7 @@
 		for (const user of u.users) {
 			map.set(Number(user.id), { rate: user.rate ?? 0, rate_type: user.rate_type ?? 'daily', workday_hours: user.workday_hours > 0 ? user.workday_hours : 8 });
 		}
+		ensureNotifications();
 		userRates = map;
 		ticker = setInterval(() => { now = Date.now(); }, 1000);
 		runningPoller = setInterval(loadRunning, 30_000);
@@ -219,6 +235,7 @@
 
 		return { weeks, monthHeaders, totalMinutes: Math.round(totalMinutes), activeDays, numWeeks: weeks.length };
 	});
+
 </script>
 
 <svelte:head>

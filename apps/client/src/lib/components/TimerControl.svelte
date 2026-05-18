@@ -11,6 +11,7 @@
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
 	import { Play, Square, Pencil, Pause, TimerReset, Plus } from 'lucide-svelte';
+    import { NotificationService } from '$lib/notifications';
 
 	type Props = {
 		projects: Project[];
@@ -139,6 +140,7 @@
 			drawerOpen = false;
 			startTicker();
 			notifyTimeEntriesChanged();
+			NotificationService.triggerTimerStarted(projectName(projectId));
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to start timer.';
@@ -150,11 +152,13 @@
 	async function stopTimer() {
 		stopping = true;
 		try {
+			const stoppedProjectId = running!.project_id;
 			await backend.stopTimer(ctx.token);
 			running = null;
 			stopTicker();
 			elapsed = 0;
 			notifyTimeEntriesChanged();
+			NotificationService.triggerTimerStopped(projectName(stoppedProjectId));
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to stop timer.';
@@ -170,6 +174,7 @@
 			running = await backend.pauseTimer(ctx.token);
 			startTicker();
 			notifyTimeEntriesChanged();
+			NotificationService.triggerTimerPaused(projectName(running!.project_id));
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to pause timer.';
@@ -185,6 +190,7 @@
 			running = await backend.resumeTimer(ctx.token);
 			startTicker();
 			notifyTimeEntriesChanged();
+			NotificationService.triggerTimerResumed(projectName(running!.project_id));
 			onchange?.();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to resume timer.';
@@ -314,7 +320,6 @@
 			{projects}
 			bind:open={manualDrawerOpen}
 			hideTrigger
-			onchange
 		/>
 	</div>
 {/if}
