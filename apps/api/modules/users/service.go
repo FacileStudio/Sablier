@@ -273,6 +273,59 @@ func mapUser(record schemas.User) *User {
 	}
 }
 
+func (service *Service) createApiToken(context context.Context, userID string, name string) (string, *schemas.ApiToken, error) {
+	id, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return "", nil, errors.Internal("failed to parse user id", err)
+	}
+
+	service.orm.WithContext(context).Where("user_id = ?", id).Delete(&schemas.ApiToken{})
+
+	rawToken, err := authcrypto.NewToken()
+	if err != nil {
+		return "", nil, errors.Internal("failed to generate token", err)
+	}
+
+	hasher := authcrypto.HashToken(rawToken)
+	record := &schemas.ApiToken{
+		Token:  hasher,
+		UserID: id,
+		Name:   name,
+	}
+	if err := service.orm.WithContext(context).Create(record).Error; err != nil {
+		return "", nil, errors.Internal("failed to store api token", err)
+	}
+
+	return rawToken, record, nil
+}
+
+func (service *Service) getApiToken(context context.Context, userID string) (*schemas.ApiToken, error) {
+	id, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return nil, errors.Internal("failed to parse user id", err)
+	}
+
+	var record schemas.ApiToken
+	err = service.orm.WithContext(context).Where("user_id = ?", id).First(&record).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Internal("failed to read api token", err)
+	}
+	return &record, nil
+}
+
+func (service *Service) deleteApiToken(context context.Context, userID string) error {
+	id, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return errors.Internal("failed to parse user id", err)
+	}
+
+	service.orm.WithContext(context).Where("user_id = ?", id).Delete(&schemas.ApiToken{})
+	return nil
+}
+
 func avatarExtension(contentType string) (string, bool) {
 	switch contentType {
 	case "image/png":

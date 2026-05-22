@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	stderrors "errors"
 	"strconv"
 	"strings"
@@ -88,7 +86,7 @@ func (service *Service) loginUser(context context.Context, email string, passwor
 
 func (service *Service) insertSession(context context.Context, token string, userID int64) error {
 	record := &schemas.Session{
-		Token:     hashToken(token),
+		Token:     authcrypto.HashToken(token),
 		UserID:    userID,
 		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
 	}
@@ -112,6 +110,8 @@ func (service *Service) authenticateRequest(context context.Context, authorizati
 		return "", nil, errors.Unauthorized("missing auth token")
 	}
 
+	hashed := authcrypto.HashToken(token)
+
 	var out struct {
 		UserID    int64
 		Email     string
@@ -121,19 +121,35 @@ func (service *Service) authenticateRequest(context context.Context, authorizati
 		Table("sessions s").
 		Select("u.id as user_id, u.email as email, s.expires_at as expires_at").
 		Joins("join users u on u.id = s.user_id").
-		Where("s.token = ?", hashToken(token)).
+		Where("s.token = ?", hashed).
 		Scan(&out).Error
 	if err != nil {
 		return "", nil, errors.Internal("failed to validate auth token", err)
 	}
-	if out.UserID == 0 {
-		return "", nil, errors.Unauthorized("invalid auth token")
-	}
-	if time.Now().After(out.ExpiresAt) {
-		return "", nil, errors.Unauthorized("expired auth token")
+	if out.UserID != 0 {
+		if time.Now().After(out.ExpiresAt) {
+			return "", nil, errors.Unauthorized("expired auth token")
+		}
+		return strconv.FormatInt(out.UserID, 10), &Data{Email: out.Email}, nil
 	}
 
-	return strconv.FormatInt(out.UserID, 10), &Data{Email: out.Email}, nil
+	var apiOut struct {
+		UserID int64
+		Email  string
+	}
+	err = service.orm.WithContext(context).
+		Table("api_tokens t").
+		Select("u.id as user_id, u.email as email").
+		Joins("join users u on u.id = t.user_id").
+		Where("t.token = ?", hashed).
+		Scan(&apiOut).Error
+	if err != nil {
+		return "", nil, errors.Internal("failed to validate api token", err)
+	}
+	if apiOut.UserID == 0 {
+		return "", nil, errors.Unauthorized("invalid auth token")
+	}
+	return strconv.FormatInt(apiOut.UserID, 10), &Data{Email: apiOut.Email}, nil
 }
 
 func (service *Service) Authenticate(context context.Context, authorization string) (string, any, error) {
@@ -167,7 +183,3 @@ func (service *Service) upsertOIDCUser(context context.Context, email string) (u
 	return strconv.FormatInt(record.ID, 10), token, nil
 }
 
-func hashToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
-}

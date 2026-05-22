@@ -279,6 +279,19 @@ export const backend = {
 		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);
 	},
 
+	getApiToken(token: string) {
+		return apiFetch<{ has_token: boolean; name?: string; created_at?: string }>('/users/me/api-token', {}, token);
+	},
+	createApiToken(token: string, name: string) {
+		return apiFetch<{ token: string; name: string; created_at: string }>('/users/me/api-token', {
+			method: 'POST',
+			body: JSON.stringify({ name })
+		}, token);
+	},
+	deleteApiToken(token: string) {
+		return apiFetch<{ deleted: boolean }>('/users/me/api-token', { method: 'DELETE' }, token);
+	},
+
 	getSettings(token: string) {
 		return apiFetch<SettingsResponse>('/settings/', {}, token);
 	},

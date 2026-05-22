@@ -72,5 +72,36 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			}
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
+
+		router.With(middleware.RequireAuth(authService)).Get("/me/api-token", func(w http.ResponseWriter, request *http.Request) {
+			resp, err := service.controller.getApiToken(request.Context())
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
+		router.With(middleware.RequireAuth(authService)).Post("/me/api-token", func(w http.ResponseWriter, request *http.Request) {
+			var req CreateApiTokenRequest
+			if err := httpjson.DecodeJSON(w, request, &req); err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			resp, err := service.controller.createApiToken(request.Context(), &req)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusCreated, resp)
+		})
+
+		router.With(middleware.RequireAuth(authService)).Delete("/me/api-token", func(w http.ResponseWriter, request *http.Request) {
+			if err := service.controller.deleteApiToken(request.Context()); err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+		})
 	})
 }
