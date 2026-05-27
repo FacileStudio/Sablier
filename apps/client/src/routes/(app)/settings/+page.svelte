@@ -6,6 +6,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Save } from 'lucide-svelte';
+	import NookIcon from '$lib/components/icons/NookIcon.svelte';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -181,7 +182,10 @@
 		<Card.Header>
 			<div class="flex items-center justify-between">
 				<div>
-					<Card.Title>Nook Pool</Card.Title>
+					<Card.Title class="flex items-center gap-2">
+						<NookIcon size={20} />
+						Nook Pool
+					</Card.Title>
 					<Card.Description>Sync projects and tasks with other Facile apps.</Card.Description>
 				</div>
 				<div class="flex items-center gap-2 text-sm">

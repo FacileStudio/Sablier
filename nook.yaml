@@ -1,6 +1,4 @@
 app: sablier
-instance: http://localhost:3400
-secret: dev-pool-secret
 events:
   emit:
     - project.created
