@@ -263,23 +263,32 @@
 				{poolSaving ? 'Saving...' : poolSaved ? 'Saved!' : 'Save'}
 			</Button>
 		</Card.Footer>
-		{#if poolConnected}
-			<Card.Content class="border-t border-border pt-4">
-				<div class="flex items-center justify-between">
+	</Card.Root>
+
+	{#if poolConnected}
+		<Card.Root class="max-w-xl">
+			<Card.Header>
+				<Card.Title>Initial sync</Card.Title>
+				<Card.Description>
+					Push all existing projects and tasks to the Pool so other connected apps can see them.
+				</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<div class="flex items-center justify-between rounded-md border border-border bg-muted/30 p-4">
 					<div class="flex flex-col gap-0.5">
 						<span class="text-sm font-medium">Sync existing data</span>
-						<span class="text-xs text-muted-foreground">Push all projects and tasks to the Pool. Safe to repeat.</span>
+						<span class="text-xs text-muted-foreground">Safe to run multiple times — duplicates are automatically skipped.</span>
 					</div>
-					<Button onclick={triggerSync} disabled={syncing} variant="outline" size="sm">
+					<Button onclick={triggerSync} disabled={syncing} size="sm">
 						{syncing ? 'Syncing...' : 'Sync all'}
 					</Button>
 				</div>
 				{#if syncResult}
-					<p class="mt-2 text-xs text-muted-foreground">
+					<p class="mt-3 text-xs text-muted-foreground">
 						Synced {syncResult.projects_synced} projects and {syncResult.tasks_synced} tasks.
 					</p>
 				{/if}
 			</Card.Content>
-		{/if}
-	</Card.Root>
+		</Card.Root>
+	{/if}
 </div>
