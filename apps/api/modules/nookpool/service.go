@@ -281,14 +281,20 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 
 	var allProjects []schemas.Project
 	s.orm.WithContext(ctx).Find(&allProjects)
+	projectCount := 0
 	for i := range allProjects {
 		if allProjects[i].FacileID == nil {
 			continue
 		}
 		s.EmitProjectEvent(enveloppe.ActionCreated, &allProjects[i])
-		if (i+1)%50 == 0 && i < len(allProjects)-1 {
+		projectCount++
+		if projectCount%50 == 0 {
 			time.Sleep(100 * time.Millisecond)
 		}
+	}
+
+	if projectCount > 0 {
+		time.Sleep(2 * time.Second)
 	}
 
 	var unflaggedTasks []schemas.Task
@@ -300,17 +306,19 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 	}
 
 	var allTasks []schemas.Task
-	s.orm.WithContext(ctx).Find(&allTasks)
+	s.orm.WithContext(ctx).Order("project_id ASC").Find(&allTasks)
+	taskCount := 0
 	for i := range allTasks {
 		if allTasks[i].FacileID == nil {
 			continue
 		}
 		var project schemas.Project
-		if err := s.orm.WithContext(ctx).Where("id = ?", allTasks[i].ProjectID).First(&project).Error; err != nil {
+		if err := s.orm.WithContext(ctx).Where("id = ? AND facile_id IS NOT NULL", allTasks[i].ProjectID).First(&project).Error; err != nil {
 			continue
 		}
 		s.EmitTaskEvent(enveloppe.ActionCreated, &allTasks[i], &project)
-		if (i+1)%50 == 0 && i < len(allTasks)-1 {
+		taskCount++
+		if taskCount%50 == 0 {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
