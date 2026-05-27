@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -39,34 +40,53 @@ func NewService(orm *gorm.DB, logger *slog.Logger) *Service {
 	return service
 }
 
+func getEnvPoolConfig() (string, string) {
+	return os.Getenv("NOOK_POOL_URL"), os.Getenv("NOOK_POOL_SECRET")
+}
+
 func (s *Service) AutoConnect(ctx context.Context) {
-	settings, err := s.getSettings(ctx)
+	settings, fromEnv, err := s.getSettings(ctx)
 	if err != nil {
 		s.logger.Error("pool: failed to load settings", slog.Any("error", err))
 		return
 	}
-	if !settings.Enabled || settings.URL == "" || settings.Secret == "" {
+	if settings.Enabled && settings.URL != "" && settings.Secret != "" {
+		if err := s.connect(settings.URL, settings.Secret); err != nil {
+			s.logger.Error("pool: auto-connect failed", slog.Any("error", err))
+		}
 		return
 	}
-	if err := s.connect(settings.URL, settings.Secret); err != nil {
-		s.logger.Error("pool: auto-connect failed", slog.Any("error", err))
+
+	if fromEnv && settings.URL != "" && settings.Secret != "" {
+		s.logger.Info("pool: using env vars for auto-connect")
+		if err := s.connect(settings.URL, settings.Secret); err != nil {
+			s.logger.Error("pool: auto-connect from env failed", slog.Any("error", err))
+		}
 	}
 }
 
-func (s *Service) getSettings(ctx context.Context) (*PoolSettings, error) {
+func (s *Service) getSettings(ctx context.Context) (*PoolSettings, bool, error) {
 	var record schemas.AppSetting
 	err := s.orm.WithContext(ctx).Where("id = ?", appSettingID).First(&record).Error
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return &PoolSettings{}, nil
+		envURL, envSecret := getEnvPoolConfig()
+		if envURL != "" && envSecret != "" {
+			return &PoolSettings{
+				URL:     envURL,
+				Secret:  envSecret,
+				Enabled: false,
+			}, true, nil
+		}
+		return &PoolSettings{}, false, nil
 	}
 	if err != nil {
-		return nil, errors.Internal("failed to get pool settings", err)
+		return nil, false, errors.Internal("failed to get pool settings", err)
 	}
 	return &PoolSettings{
 		URL:     record.NookPoolURL,
 		Secret:  record.NookPoolSecret,
 		Enabled: record.NookPoolEnabled,
-	}, nil
+	}, false, nil
 }
 
 func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettings, string, error) {

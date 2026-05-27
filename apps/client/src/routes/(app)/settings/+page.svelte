@@ -21,6 +21,7 @@
 	let poolSecret = $state('');
 	let poolEnabled = $state(false);
 	let poolConnected = $state(false);
+	let poolFromEnv = $state(false);
 	let poolSaving = $state(false);
 	let poolSaved = $state(false);
 	let poolError = $state('');
@@ -41,6 +42,7 @@
 			poolSecret = poolResult.pool_settings.nook_pool_secret;
 			poolEnabled = poolResult.pool_settings.nook_pool_enabled;
 			poolConnected = poolResult.connected;
+			poolFromEnv = poolResult.from_env ?? false;
 		} catch (e) {
 			poolError = e instanceof Error ? e.message : 'Failed to load pool settings';
 		}
@@ -208,6 +210,9 @@
 					placeholder="https://nook.example.com"
 					bind:value={poolUrl}
 				/>
+				{#if poolFromEnv}
+					<p class="text-xs text-muted-foreground">Pre-filled from environment variable</p>
+				{/if}
 			</div>
 			<div class="flex flex-col gap-1.5">
 				<Label for="pool-secret">Secret</Label>

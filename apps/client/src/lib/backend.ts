@@ -65,6 +65,7 @@ export type PoolSettingsResponse = {
 	pool_settings: PoolSettings;
 	connected: boolean;
 	connect_error?: string;
+	from_env?: boolean;
 };
 
 export type TimeEntry = {

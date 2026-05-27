@@ -13,13 +13,14 @@ func newController(service *Service) *Controller {
 }
 
 func (c *Controller) getSettings(ctx context.Context) (*PoolSettingsResponse, error) {
-	s, err := c.service.getSettings(ctx)
+	s, fromEnv, err := c.service.getSettings(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &PoolSettingsResponse{
 		Settings:  *s,
 		Connected: c.service.isConnected(),
+		FromEnv:   fromEnv,
 	}, nil
 }
 
