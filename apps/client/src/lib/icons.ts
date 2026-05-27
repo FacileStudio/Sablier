@@ -1,5 +1,14 @@
+const TYPO_CORRECTIONS: Record<string, string> = {
+	Palette2: 'solar:pallete-2-linear',
+	Sidebar: 'solar:siderbar-linear',
+	Magnifier: 'solar:magnifer-linear',
+	Conditioner: 'solar:condicioner-linear',
+	Conditioner2: 'solar:condicioner-2-linear',
+};
+
 export function toIconify(name: string | null | undefined): string {
 	if (!name) return 'solar:widget-2-linear';
+	if (name in TYPO_CORRECTIONS) return TYPO_CORRECTIONS[name];
 	const kebab = name
 		.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
 		.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
