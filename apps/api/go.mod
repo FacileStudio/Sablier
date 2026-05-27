@@ -3,7 +3,7 @@ module api
 go 1.24.0
 
 require (
-	github.com/FacileStudio/enveloppe/go v0.0.0-20260527004701-2ece3895c37d
+	github.com/FacileStudio/enveloppe/go v0.0.0-20260527224511-f8474e3d7e69
 	github.com/FacileStudio/pool/go v0.0.0-20260527212554-94142d46e0f5
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/go-chi/chi/v5 v5.2.3
