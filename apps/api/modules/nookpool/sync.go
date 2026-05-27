@@ -32,6 +32,7 @@ func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventM
 	record := schemas.Project{
 		Name:        evt.Payload.Name,
 		Description: desc,
+		Icon:        evt.Payload.Icon,
 		OwnerID:     1,
 		FacileID:    &facileID,
 	}
@@ -62,6 +63,9 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 	record.Name = evt.Payload.Name
 	if evt.Payload.Description != nil {
 		record.Description = *evt.Payload.Description
+	}
+	if evt.Payload.Icon != nil {
+		record.Icon = evt.Payload.Icon
 	}
 	if err := s.orm.Save(&record).Error; err != nil {
 		s.logger.Error("pool: failed to update synced project", slog.Any("error", err))

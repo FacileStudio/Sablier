@@ -212,6 +212,7 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 			FacileID:    *project.FacileID,
 			Name:        project.Name,
 			Description: desc,
+			Icon:        project.Icon,
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
 		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *project.FacileID, time.Now().UnixMilli()),

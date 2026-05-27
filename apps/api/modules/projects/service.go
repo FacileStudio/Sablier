@@ -29,15 +29,20 @@ func (service *Service) SetPoolService(ps *nookpool.Service) {
 	service.poolService = ps
 }
 
-func (service *Service) createProject(ctx context.Context, userID string, name, description string) (*schemas.Project, error) {
+func (service *Service) createProject(ctx context.Context, userID string, name, description string, icon *string) (*schemas.Project, error) {
 	ownerID, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Invalid("invalid user id")
 	}
 	facileID := nookpool.GenerateFacileID()
+	defaultIcon := "Layout"
+	if icon == nil || *icon == "" {
+		icon = &defaultIcon
+	}
 	record := &schemas.Project{
 		Name:        name,
 		Description: description,
+		Icon:        icon,
 		OwnerID:     ownerID,
 		FacileID:    &facileID,
 	}
@@ -70,13 +75,16 @@ func (service *Service) getProject(ctx context.Context, projectID int64) (*schem
 	return &record, nil
 }
 
-func (service *Service) updateProject(ctx context.Context, projectID int64, name, description string) (*schemas.Project, error) {
+func (service *Service) updateProject(ctx context.Context, projectID int64, name, description string, icon *string) (*schemas.Project, error) {
 	record, err := service.getProject(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
 	record.Name = name
 	record.Description = description
+	if icon != nil {
+		record.Icon = icon
+	}
 	if err := service.orm.WithContext(ctx).Save(record).Error; err != nil {
 		return nil, errors.Internal("failed to update project", err)
 	}

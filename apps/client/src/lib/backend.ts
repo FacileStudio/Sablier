@@ -32,6 +32,7 @@ export type Project = {
 	id: number;
 	name: string;
 	description: string;
+	icon: string | null;
 	owner_id: number;
 	created_at: string;
 	updated_at: string;
@@ -208,16 +209,16 @@ export const backend = {
 	getProject(token: string, id: number) {
 		return apiFetch<Project>(`/projects/${id}`, {}, token);
 	},
-	createProject(token: string, name: string, description: string) {
+	createProject(token: string, name: string, description: string, icon?: string) {
 		return apiFetch<Project>('/projects', {
 			method: 'POST',
-			body: JSON.stringify({ name, description })
+			body: JSON.stringify({ name, description, icon })
 		}, token);
 	},
-	updateProject(token: string, id: number, name: string, description: string) {
+	updateProject(token: string, id: number, name: string, description: string, icon?: string) {
 		return apiFetch<Project>(`/projects/${id}`, {
 			method: 'PUT',
-			body: JSON.stringify({ name, description })
+			body: JSON.stringify({ name, description, icon })
 		}, token);
 	},
 	deleteProject(token: string, id: number) {

@@ -3,13 +3,15 @@ package projects
 import "time"
 
 type CreateProjectRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Icon        *string `json:"icon"`
 }
 
 type UpdateProjectRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Icon        *string `json:"icon"`
 }
 
 type CreateTaskRequest struct {
@@ -24,6 +26,7 @@ type ProjectResponse struct {
 	ID          int64     `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	Icon        *string   `json:"icon"`
 	OwnerID     int64     `json:"owner_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`

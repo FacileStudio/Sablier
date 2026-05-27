@@ -44,6 +44,7 @@ type Project struct {
 	FacileID    string  `json:"facile_id"`
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
+	Icon        *string `json:"icon"`
 }
 
 type Task struct {

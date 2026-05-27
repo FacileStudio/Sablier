@@ -17,6 +17,8 @@
 	import { Label } from '$lib/components/ui/label';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
+	import IconPicker from '$lib/components/IconPicker.svelte';
+	import { toIconify } from '$lib/icons';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -29,6 +31,7 @@
 	let projectEditDrawerOpen = $state(false);
 	let editName = $state('');
 	let editDescription = $state('');
+	let editIcon = $state('Layout');
 	let projectActionError = $state('');
 	let savingProject = $state(false);
 	let deletingProject = $state(false);
@@ -258,6 +261,7 @@
 		projectActionError = '';
 		editName = project.name;
 		editDescription = project.description;
+		editIcon = project.icon || 'Layout';
 		projectEditDrawerOpen = true;
 	}
 
@@ -266,6 +270,7 @@
 		projectActionError = '';
 		editName = '';
 		editDescription = '';
+		editIcon = 'Layout';
 	}
 
 	async function saveProject() {
@@ -275,7 +280,7 @@
 		savingProject = true;
 		projectActionError = '';
 		try {
-			project = await backend.updateProject(ctx.token, project.id, editName, editDescription);
+			project = await backend.updateProject(ctx.token, project.id, editName, editDescription, editIcon);
 			projectEditDrawerOpen = false;
 			editName = '';
 			editDescription = '';
@@ -356,7 +361,10 @@
 		{:else if project}
 			<div class="flex items-start justify-between gap-4">
 				<div class="flex flex-col gap-1">
-					<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
+					<div class="flex items-center gap-2.5">
+						<iconify-icon icon={toIconify(project.icon)} width="24" height="24" class="text-muted-foreground shrink-0"></iconify-icon>
+						<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
+					</div>
 					<p class="text-sm text-muted-foreground">
 						{project.description || 'No description'}
 					</p>
@@ -683,6 +691,10 @@
 					{/if}
 
 					<div class="flex flex-col gap-4">
+						<div class="flex flex-col gap-1.5">
+							<Label>Icon</Label>
+							<IconPicker value={editIcon} onSelect={(icon) => (editIcon = icon)} />
+						</div>
 						<div class="flex flex-col gap-1.5">
 							<Label for="project-edit-name">Name</Label>
 							<Input id="project-edit-name" bind:value={editName} />

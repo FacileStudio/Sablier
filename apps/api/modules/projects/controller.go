@@ -21,6 +21,7 @@ func toResponse(p *schemas.Project) ProjectResponse {
 		ID:          p.ID,
 		Name:        p.Name,
 		Description: p.Description,
+		Icon:        p.Icon,
 		OwnerID:     p.OwnerID,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
@@ -42,7 +43,7 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateProje
 	if name == "" {
 		return nil, errors.Invalid("project name is required")
 	}
-	record, err := c.service.createProject(ctx, userID, name, strings.TrimSpace(req.Description))
+	record, err := c.service.createProject(ctx, userID, name, strings.TrimSpace(req.Description), req.Icon)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func (c *Controller) update(ctx context.Context, projectID int64, req *UpdatePro
 	if name == "" {
 		return nil, errors.Invalid("project name is required")
 	}
-	record, err := c.service.updateProject(ctx, projectID, name, strings.TrimSpace(req.Description))
+	record, err := c.service.updateProject(ctx, projectID, name, strings.TrimSpace(req.Description), req.Icon)
 	if err != nil {
 		return nil, err
 	}

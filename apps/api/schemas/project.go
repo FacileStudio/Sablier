@@ -6,6 +6,7 @@ type Project struct {
 	ID          int64     `gorm:"column:id;primaryKey"`
 	Name        string    `gorm:"column:name"`
 	Description string    `gorm:"column:description"`
+	Icon        *string   `gorm:"column:icon;default:'Layout'" json:"icon,omitempty"`
 	OwnerID     int64     `gorm:"column:owner_id;index"`
 	FacileID    *string   `gorm:"column:facile_id;uniqueIndex" json:"facile_id,omitempty"`
 	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
