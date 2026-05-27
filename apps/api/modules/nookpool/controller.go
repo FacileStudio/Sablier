@@ -24,12 +24,16 @@ func (c *Controller) getSettings(ctx context.Context) (*PoolSettingsResponse, er
 }
 
 func (c *Controller) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettingsResponse, error) {
-	s, err := c.service.updateSettings(ctx, req)
+	s, connectErr, err := c.service.updateSettings(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return &PoolSettingsResponse{
+	resp := &PoolSettingsResponse{
 		Settings:  *s,
 		Connected: c.service.isConnected(),
-	}, nil
+	}
+	if connectErr != "" {
+		resp.ConnectError = connectErr
+	}
+	return resp, nil
 }

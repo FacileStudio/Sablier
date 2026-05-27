@@ -73,7 +73,11 @@
 			poolSecret = result.pool_settings.nook_pool_secret;
 			poolEnabled = result.pool_settings.nook_pool_enabled;
 			poolConnected = result.connected;
-			poolSaved = true;
+			if (result.connect_error) {
+				poolError = result.connect_error;
+			} else {
+				poolSaved = true;
+			}
 			setTimeout(() => (poolSaved = false), 2000);
 		} catch (e) {
 			poolError = e instanceof Error ? e.message : 'Failed to save pool settings';

@@ -13,6 +13,7 @@ type UpdatePoolRequest struct {
 }
 
 type PoolSettingsResponse struct {
-	Settings  PoolSettings `json:"pool_settings"`
-	Connected bool         `json:"connected"`
+	Settings     PoolSettings `json:"pool_settings"`
+	Connected    bool         `json:"connected"`
+	ConnectError string       `json:"connect_error,omitempty"`
 }

@@ -69,7 +69,7 @@ func (s *Service) getSettings(ctx context.Context) (*PoolSettings, error) {
 	}, nil
 }
 
-func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettings, error) {
+func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettings, string, error) {
 	record := schemas.AppSetting{
 		ID:              appSettingID,
 		NookPoolURL:     strings.TrimSpace(req.URL),
@@ -80,12 +80,14 @@ func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"nook_pool_url", "nook_pool_secret", "nook_pool_enabled"}),
 	}).Create(&record).Error; err != nil {
-		return nil, errors.Internal("failed to update pool settings", err)
+		return nil, "", errors.Internal("failed to update pool settings", err)
 	}
 
+	var connectErr string
 	if req.Enabled && req.URL != "" && req.Secret != "" {
 		if err := s.connect(req.URL, req.Secret); err != nil {
 			s.logger.Error("pool: connect failed after settings update", slog.Any("error", err))
+			connectErr = err.Error()
 		}
 	} else {
 		s.disconnect()
@@ -95,7 +97,7 @@ func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*
 		URL:     record.NookPoolURL,
 		Secret:  record.NookPoolSecret,
 		Enabled: record.NookPoolEnabled,
-	}, nil
+	}, connectErr, nil
 }
 
 func (s *Service) connect(instanceURL, secret string) error {
