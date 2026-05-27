@@ -15,6 +15,14 @@ var Documentation = documentation.Module{
 			ResponseBody: "PoolSettingsResponse",
 		},
 		{
+			Method:       "POST",
+			Path:         "/nook-pool/sync",
+			Summary:      "Trigger initial sync",
+			Description:  "Syncs all existing projects and tasks to the Pool. Safe to run multiple times.",
+			Auth:         "required",
+			ResponseBody: "SyncResult",
+		},
+		{
 			Method:       "PUT",
 			Path:         "/nook-pool/",
 			Summary:      "Update pool settings",

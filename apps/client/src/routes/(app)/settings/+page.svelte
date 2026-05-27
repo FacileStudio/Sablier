@@ -26,6 +26,9 @@
 	let poolSaved = $state(false);
 	let poolError = $state('');
 
+	let syncing = $state(false);
+	let syncResult = $state<{ projects_synced: number; tasks_synced: number } | null>(null);
+
 	onMount(async () => {
 		try {
 			const result = await backend.getSettings(ctx.token);
@@ -63,6 +66,18 @@
 			error = e instanceof Error ? e.message : 'Failed to save settings';
 		} finally {
 			saving = false;
+		}
+	}
+
+	async function triggerSync() {
+		syncing = true;
+		syncResult = null;
+		try {
+			syncResult = await backend.triggerSync(ctx.token);
+		} catch (e) {
+			poolError = e instanceof Error ? e.message : 'Sync failed';
+		} finally {
+			syncing = false;
 		}
 	}
 
@@ -248,5 +263,23 @@
 				{poolSaving ? 'Saving...' : poolSaved ? 'Saved!' : 'Save'}
 			</Button>
 		</Card.Footer>
+		{#if poolConnected}
+			<Card.Content class="border-t border-border pt-4">
+				<div class="flex items-center justify-between">
+					<div class="flex flex-col gap-0.5">
+						<span class="text-sm font-medium">Sync existing data</span>
+						<span class="text-xs text-muted-foreground">Push all projects and tasks to the Pool. Safe to repeat.</span>
+					</div>
+					<Button onclick={triggerSync} disabled={syncing} variant="outline" size="sm">
+						{syncing ? 'Syncing...' : 'Sync all'}
+					</Button>
+				</div>
+				{#if syncResult}
+					<p class="mt-2 text-xs text-muted-foreground">
+						Synced {syncResult.projects_synced} projects and {syncResult.tasks_synced} tasks.
+					</p>
+				{/if}
+			</Card.Content>
+		{/if}
 	</Card.Root>
 </div>

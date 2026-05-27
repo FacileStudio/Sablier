@@ -23,6 +23,15 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
+		r.Post("/sync", func(w http.ResponseWriter, req *http.Request) {
+			result, err := service.controller.triggerSync(req.Context())
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, result)
+		})
+
 		r.Put("/", func(w http.ResponseWriter, req *http.Request) {
 			var body UpdatePoolRequest
 			if err := httpjson.DecodeJSON(w, req, &body); err != nil {

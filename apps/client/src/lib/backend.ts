@@ -322,6 +322,12 @@ export const backend = {
 	getPoolSettings(token: string) {
 		return apiFetch<PoolSettingsResponse>('/nook-pool/', {}, token);
 	},
+	triggerSync(token: string) {
+		return apiFetch<{ projects_synced: number; tasks_synced: number }>('/nook-pool/sync', {
+			method: 'POST'
+		}, token);
+	},
+
 	updatePoolSettings(token: string, url: string, secret: string, enabled: boolean) {
 		return apiFetch<PoolSettingsResponse>('/nook-pool/', {
 			method: 'PUT',

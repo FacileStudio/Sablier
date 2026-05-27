@@ -261,6 +261,65 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 	}
 }
 
+func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
+	s.mu.RLock()
+	client := s.client
+	s.mu.RUnlock()
+
+	if client == nil || !client.IsConnected() {
+		return nil, errors.Failed("pool is not connected")
+	}
+
+	var unflaggedProjects []schemas.Project
+	s.orm.WithContext(ctx).Where("facile_id IS NULL").Find(&unflaggedProjects)
+	for i := range unflaggedProjects {
+		fid := GenerateFacileID()
+		unflaggedProjects[i].FacileID = &fid
+		s.orm.WithContext(ctx).Save(&unflaggedProjects[i])
+	}
+
+	var allProjects []schemas.Project
+	s.orm.WithContext(ctx).Find(&allProjects)
+	for i := range allProjects {
+		if allProjects[i].FacileID == nil {
+			continue
+		}
+		s.EmitProjectEvent(enveloppe.ActionCreated, &allProjects[i])
+		if (i+1)%50 == 0 && i < len(allProjects)-1 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	var unflaggedTasks []schemas.Task
+	s.orm.WithContext(ctx).Where("facile_id IS NULL").Find(&unflaggedTasks)
+	for i := range unflaggedTasks {
+		fid := GenerateFacileID()
+		unflaggedTasks[i].FacileID = &fid
+		s.orm.WithContext(ctx).Save(&unflaggedTasks[i])
+	}
+
+	var allTasks []schemas.Task
+	s.orm.WithContext(ctx).Find(&allTasks)
+	for i := range allTasks {
+		if allTasks[i].FacileID == nil {
+			continue
+		}
+		var project schemas.Project
+		if err := s.orm.WithContext(ctx).Where("id = ?", allTasks[i].ProjectID).First(&project).Error; err != nil {
+			continue
+		}
+		s.EmitTaskEvent(enveloppe.ActionCreated, &allTasks[i], &project)
+		if (i+1)%50 == 0 && i < len(allTasks)-1 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	return &SyncResult{
+		ProjectsSynced: len(allProjects),
+		TasksSynced:    len(allTasks),
+	}, nil
+}
+
 func GenerateFacileID() string {
 	b := make([]byte, 10)
 	rand.Read(b)

@@ -18,3 +18,8 @@ type PoolSettingsResponse struct {
 	ConnectError string       `json:"connect_error,omitempty"`
 	FromEnv      bool         `json:"from_env,omitempty"`
 }
+
+type SyncResult struct {
+	ProjectsSynced int `json:"projects_synced"`
+	TasksSynced    int `json:"tasks_synced"`
+}
