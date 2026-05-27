@@ -1,0 +1,35 @@
+package nookpool
+
+import (
+	"context"
+)
+
+type Controller struct {
+	service *Service
+}
+
+func newController(service *Service) *Controller {
+	return &Controller{service: service}
+}
+
+func (c *Controller) getSettings(ctx context.Context) (*PoolSettingsResponse, error) {
+	s, err := c.service.getSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &PoolSettingsResponse{
+		Settings:  *s,
+		Connected: c.service.isConnected(),
+	}, nil
+}
+
+func (c *Controller) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettingsResponse, error) {
+	s, err := c.service.updateSettings(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &PoolSettingsResponse{
+		Settings:  *s,
+		Connected: c.service.isConnected(),
+	}, nil
+}

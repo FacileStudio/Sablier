@@ -16,6 +16,14 @@
 	let saved = $state(false);
 	let error = $state('');
 
+	let poolUrl = $state('');
+	let poolSecret = $state('');
+	let poolEnabled = $state(false);
+	let poolConnected = $state(false);
+	let poolSaving = $state(false);
+	let poolSaved = $state(false);
+	let poolError = $state('');
+
 	onMount(async () => {
 		try {
 			const result = await backend.getSettings(ctx.token);
@@ -24,6 +32,16 @@
 			webhookSecretValue = result.settings.webhook_secret_value;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load settings';
+		}
+
+		try {
+			const poolResult = await backend.getPoolSettings(ctx.token);
+			poolUrl = poolResult.pool_settings.nook_pool_url;
+			poolSecret = poolResult.pool_settings.nook_pool_secret;
+			poolEnabled = poolResult.pool_settings.nook_pool_enabled;
+			poolConnected = poolResult.connected;
+		} catch (e) {
+			poolError = e instanceof Error ? e.message : 'Failed to load pool settings';
 		}
 	});
 
@@ -42,6 +60,25 @@
 			error = e instanceof Error ? e.message : 'Failed to save settings';
 		} finally {
 			saving = false;
+		}
+	}
+
+	async function savePool() {
+		poolSaving = true;
+		poolSaved = false;
+		poolError = '';
+		try {
+			const result = await backend.updatePoolSettings(ctx.token, poolUrl, poolSecret, poolEnabled);
+			poolUrl = result.pool_settings.nook_pool_url;
+			poolSecret = result.pool_settings.nook_pool_secret;
+			poolEnabled = result.pool_settings.nook_pool_enabled;
+			poolConnected = result.connected;
+			poolSaved = true;
+			setTimeout(() => (poolSaved = false), 2000);
+		} catch (e) {
+			poolError = e instanceof Error ? e.message : 'Failed to save pool settings';
+		} finally {
+			poolSaving = false;
 		}
 	}
 </script>
@@ -134,5 +171,69 @@
   }
 }`}</pre>
 		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="max-w-xl">
+		<Card.Header>
+			<div class="flex items-center justify-between">
+				<div>
+					<Card.Title>Nook Pool</Card.Title>
+					<Card.Description>Sync projects and tasks with other Facile apps.</Card.Description>
+				</div>
+				<div class="flex items-center gap-2 text-sm">
+					{#if poolConnected}
+						<span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>
+						<span class="text-muted-foreground">Connected</span>
+					{:else}
+						<span class="inline-block h-2.5 w-2.5 rounded-full bg-gray-400"></span>
+						<span class="text-muted-foreground">Not connected</span>
+					{/if}
+				</div>
+			</div>
+		</Card.Header>
+		<Card.Content class="flex flex-col gap-4">
+			<div class="flex flex-col gap-1.5">
+				<Label for="pool-url">Instance URL</Label>
+				<Input
+					id="pool-url"
+					type="url"
+					placeholder="https://nook.example.com"
+					bind:value={poolUrl}
+				/>
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<Label for="pool-secret">Secret</Label>
+				<Input
+					id="pool-secret"
+					type="password"
+					placeholder="Shared secret for authentication"
+					bind:value={poolSecret}
+				/>
+			</div>
+			<div class="flex items-center gap-3">
+				<button
+					type="button"
+					role="switch"
+					aria-checked={poolEnabled}
+					aria-label="Enable Nook Pool sync"
+					class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors {poolEnabled ? 'bg-primary' : 'bg-muted'}"
+					onclick={() => (poolEnabled = !poolEnabled)}
+				>
+					<span
+						class="pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform {poolEnabled ? 'translate-x-5' : 'translate-x-0'}"
+					></span>
+				</button>
+				<Label>Enable sync</Label>
+			</div>
+			{#if poolError}
+				<p class="text-sm text-red-500">{poolError}</p>
+			{/if}
+		</Card.Content>
+		<Card.Footer>
+			<Button onclick={savePool} disabled={poolSaving}>
+				<Save class="h-4 w-4" />
+				{poolSaving ? 'Saving...' : poolSaved ? 'Saved!' : 'Save'}
+			</Button>
+		</Card.Footer>
 	</Card.Root>
 </div>

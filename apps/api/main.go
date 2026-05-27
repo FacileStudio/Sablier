@@ -18,6 +18,7 @@ import (
 	"api/internal/logger"
 	"api/internal/middleware"
 	"api/modules/auth"
+	"api/modules/nookpool"
 	"api/modules/projects"
 	"api/modules/settings"
 	"api/modules/timeentries"
@@ -67,6 +68,8 @@ func main() {
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
+	nookPoolService := nookpool.NewService(db, appLogger)
+	projectService.SetPoolService(nookPoolService)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
 			auth.Documentation,
@@ -106,6 +109,9 @@ func main() {
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 	settings.RegisterRoutes(router, settingsService, authService)
+	nookpool.RegisterRoutes(router, nookPoolService, authService)
+
+	nookPoolService.AutoConnect(context.Background())
 
 	addr := ":" + appEnv.Port
 	server := &http.Server{
@@ -132,6 +138,7 @@ func main() {
 		}
 	case <-shutdownSignal.Done():
 		appLogger.Info("server shutting down")
+		nookPoolService.Shutdown()
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownContext); err != nil {

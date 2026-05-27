@@ -6,14 +6,17 @@ import (
 	"strconv"
 
 	"api/internal/errors"
+	"api/modules/nookpool"
 	"api/schemas"
 
+	enveloppe "github.com/FacileStudio/enveloppe/go"
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	orm        *gorm.DB
-	controller *Controller
+	orm         *gorm.DB
+	controller  *Controller
+	poolService *nookpool.Service
 }
 
 func NewService(orm *gorm.DB) *Service {
@@ -22,18 +25,27 @@ func NewService(orm *gorm.DB) *Service {
 	return service
 }
 
+func (service *Service) SetPoolService(ps *nookpool.Service) {
+	service.poolService = ps
+}
+
 func (service *Service) createProject(ctx context.Context, userID string, name, description string) (*schemas.Project, error) {
 	ownerID, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Invalid("invalid user id")
 	}
+	facileID := nookpool.GenerateFacileID()
 	record := &schemas.Project{
 		Name:        name,
 		Description: description,
 		OwnerID:     ownerID,
+		FacileID:    &facileID,
 	}
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, errors.Internal("failed to create project", err)
+	}
+	if service.poolService != nil {
+		go service.poolService.EmitProjectEvent(enveloppe.ActionCreated, record)
 	}
 	return record, nil
 }
@@ -68,16 +80,26 @@ func (service *Service) updateProject(ctx context.Context, projectID int64, name
 	if err := service.orm.WithContext(ctx).Save(record).Error; err != nil {
 		return nil, errors.Internal("failed to update project", err)
 	}
+	if service.poolService != nil {
+		go service.poolService.EmitProjectEvent(enveloppe.ActionUpdated, record)
+	}
 	return record, nil
 }
 
 func (service *Service) deleteProject(ctx context.Context, projectID int64) error {
+	record, err := service.getProject(ctx, projectID)
+	if err != nil {
+		return err
+	}
 	result := service.orm.WithContext(ctx).Where("id = ?", projectID).Delete(&schemas.Project{})
 	if result.Error != nil {
 		return errors.Internal("failed to delete project", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return errors.NotFound("project not found")
+	}
+	if service.poolService != nil {
+		go service.poolService.EmitProjectEvent(enveloppe.ActionDeleted, record)
 	}
 	return nil
 }
@@ -120,6 +142,10 @@ func (service *Service) deleteTask(ctx context.Context, projectID int64, taskID 
 	if err := service.orm.WithContext(ctx).Delete(&task).Error; err != nil {
 		return 0, errors.Internal("failed to delete task", err)
 	}
+	if service.poolService != nil {
+		project, _ := service.getProject(ctx, projectID)
+		go service.poolService.EmitTaskEvent(enveloppe.ActionDeleted, &task, project)
+	}
 	return count, nil
 }
 
@@ -148,27 +174,37 @@ func (service *Service) updateTask(ctx context.Context, projectID int64, taskID 
 	if err := service.orm.WithContext(ctx).Save(&task).Error; err != nil {
 		return nil, errors.Internal("failed to update task", err)
 	}
+	if service.poolService != nil {
+		project, _ := service.getProject(ctx, projectID)
+		go service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, &task, project)
+	}
 	return &task, nil
 }
 
 func (service *Service) createTask(ctx context.Context, projectID int64, name string) (*schemas.Task, error) {
-	if _, err := service.getProject(ctx, projectID); err != nil {
+	project, err := service.getProject(ctx, projectID)
+	if err != nil {
 		return nil, err
 	}
 	var existing schemas.Task
-	err := service.orm.WithContext(ctx).Where("project_id = ? AND lower(name) = lower(?)", projectID, name).First(&existing).Error
+	err = service.orm.WithContext(ctx).Where("project_id = ? AND lower(name) = lower(?)", projectID, name).First(&existing).Error
 	if err == nil {
 		return &existing, nil
 	}
 	if !stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.Internal("failed to check task", err)
 	}
+	facileID := nookpool.GenerateFacileID()
 	record := &schemas.Task{
 		ProjectID: projectID,
 		Name:      name,
+		FacileID:  &facileID,
 	}
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, errors.Internal("failed to create task", err)
+	}
+	if service.poolService != nil {
+		go service.poolService.EmitTaskEvent(enveloppe.ActionCreated, record, project)
 	}
 	return record, nil
 }

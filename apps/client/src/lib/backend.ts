@@ -55,6 +55,17 @@ export type SettingsResponse = {
 	settings: UserSettings;
 };
 
+export type PoolSettings = {
+	nook_pool_url: string;
+	nook_pool_secret: string;
+	nook_pool_enabled: boolean;
+};
+
+export type PoolSettingsResponse = {
+	pool_settings: PoolSettings;
+	connected: boolean;
+};
+
 export type TimeEntry = {
 	id: number;
 	project_id: number;
@@ -302,6 +313,20 @@ export const backend = {
 				webhook_url: webhookUrl,
 				webhook_secret_header: webhookSecretHeader,
 				webhook_secret_value: webhookSecretValue
+			})
+		}, token);
+	},
+
+	getPoolSettings(token: string) {
+		return apiFetch<PoolSettingsResponse>('/nook-pool/', {}, token);
+	},
+	updatePoolSettings(token: string, url: string, secret: string, enabled: boolean) {
+		return apiFetch<PoolSettingsResponse>('/nook-pool/', {
+			method: 'PUT',
+			body: JSON.stringify({
+				nook_pool_url: url,
+				nook_pool_secret: secret,
+				nook_pool_enabled: enabled
 			})
 		}, token);
 	}
