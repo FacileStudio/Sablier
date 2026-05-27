@@ -77,8 +77,10 @@ func main() {
 			timeentries.Documentation,
 			users.Documentation,
 			settings.Documentation,
+			nookpool.Documentation,
 		},
 	}
+	openapiSpec := documentation.ToOpenAPI(docs)
 
 	router := chi.NewRouter()
 	router.Use(chimiddleware.RequestID)
@@ -99,8 +101,23 @@ func main() {
 		}
 		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
-	router.Get("/docs", func(w http.ResponseWriter, request *http.Request) {
-		httpjson.WriteJSON(w, http.StatusOK, docs)
+	router.Get("/docs", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!doctype html>
+<html>
+<head>
+  <title>Sablier API</title>
+  <meta charset="utf-8" />
+</head>
+<body>
+  <script id="api-reference" data-url="/openapi"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>`))
+	})
+	router.Get("/openapi", func(w http.ResponseWriter, _ *http.Request) {
+		httpjson.WriteJSON(w, http.StatusOK, openapiSpec)
 	})
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
