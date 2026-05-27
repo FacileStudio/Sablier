@@ -212,7 +212,7 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 			FacileID:    *project.FacileID,
 			Name:        project.Name,
 			Description: desc,
-			Icon:        project.Icon,
+			Icon:        normalizeIcon(project.Icon),
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
 		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *project.FacileID, time.Now().UnixMilli()),
@@ -324,8 +324,8 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 	}
 
 	return &SyncResult{
-		ProjectsSynced: len(allProjects),
-		TasksSynced:    len(allTasks),
+		ProjectsSynced: projectCount,
+		TasksSynced:    taskCount,
 	}, nil
 }
 
@@ -333,6 +333,44 @@ func GenerateFacileID() string {
 	b := make([]byte, 10)
 	rand.Read(b)
 	return "fac_" + hex.EncodeToString(b)
+}
+
+var iconTypoMap = map[string]string{
+	"Pallete2":                    "Palette2",
+	"Siderbar":                    "Sidebar",
+	"Magnifer":                    "Magnifier",
+	"MagniferBug":                 "MagnifierBug",
+	"MagniferZoomIn":              "MagnifierZoomIn",
+	"MagniferZoomOut":             "MagnifierZoomOut",
+	"MinimalisticMagnifer":        "MinimalisticMagnifier",
+	"MinimalisticMagniferBug":     "MinimalisticMagnifierBug",
+	"MinimalisticMagniferZoomIn":  "MinimalisticMagnifierZoomIn",
+	"MinimalisticMagniferZoomOut": "MinimalisticMagnifierZoomOut",
+	"RoundedMagnifer":             "RoundedMagnifier",
+	"RoundedMagniferBug":          "RoundedMagnifierBug",
+	"RoundedMagniferZoomIn":       "RoundedMagnifierZoomIn",
+	"RoundedMagniferZoomOut":      "RoundedMagnifierZoomOut",
+	"Condicioner":                 "Conditioner",
+	"Condicioner2":                "Conditioner2",
+	"ColourTuneing":               "ColourTuning",
+	"MaskHapply":                  "MaskHappy",
+	"SpedometerLow":               "SpeedometerLow",
+	"SpedometerMax":               "SpeedometerMax",
+	"SpedometerMiddle":            "SpeedometerMiddle",
+	"CardRecive":                  "CardReceive",
+	"ReciveSquare":                "ReceiveSquare",
+	"ReciveTwiceSquare":           "ReceiveTwiceSquare",
+	"PlaaylistMinimalistic":       "PlaylistMinimalistic",
+}
+
+func normalizeIcon(icon *string) *string {
+	if icon == nil {
+		return nil
+	}
+	if corrected, ok := iconTypoMap[*icon]; ok {
+		return &corrected
+	}
+	return icon
 }
 
 func (s *Service) setupListeners() {

@@ -3,6 +3,7 @@ package nookpool
 import (
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 	pool "github.com/FacileStudio/pool/go"
@@ -32,7 +33,7 @@ func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventM
 	record := schemas.Project{
 		Name:        evt.Payload.Name,
 		Description: desc,
-		Icon:        evt.Payload.Icon,
+		Icon:        normalizeIcon(evt.Payload.Icon),
 		OwnerID:     1,
 		FacileID:    &facileID,
 	}
@@ -65,7 +66,7 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 		record.Description = *evt.Payload.Description
 	}
 	if evt.Payload.Icon != nil {
-		record.Icon = evt.Payload.Icon
+		record.Icon = normalizeIcon(evt.Payload.Icon)
 	}
 	if err := s.orm.Save(&record).Error; err != nil {
 		s.logger.Error("pool: failed to update synced project", slog.Any("error", err))
@@ -102,8 +103,16 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 	}
 
 	var project schemas.Project
-	if err := s.orm.Where("facile_id = ?", evt.Payload.ProjectFacileID).First(&project).Error; err != nil {
-		s.logger.Warn("pool: parent project not found for task sync",
+	var found bool
+	for attempt := 0; attempt < 5; attempt++ {
+		if err := s.orm.Where("facile_id = ?", evt.Payload.ProjectFacileID).First(&project).Error; err == nil {
+			found = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	if !found {
+		s.logger.Warn("pool: parent project not found for task sync after retries",
 			slog.String("project_facile_id", evt.Payload.ProjectFacileID),
 			slog.String("task_facile_id", evt.Payload.FacileID))
 		return
