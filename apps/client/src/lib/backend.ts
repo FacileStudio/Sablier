@@ -42,6 +42,7 @@ export type Task = {
 	id: number;
 	project_id: number;
 	name: string;
+	status: string;
 	created_at: string;
 	updated_at: string;
 };
@@ -233,10 +234,10 @@ export const backend = {
 			body: JSON.stringify({ name })
 		}, token);
 	},
-	updateTask(token: string, projectId: number, taskId: number, name: string) {
+	updateTask(token: string, projectId: number, taskId: number, payload: { name?: string; status?: string }) {
 		return apiFetch<Task>(`/projects/${projectId}/tasks/${taskId}`, {
 			method: 'PUT',
-			body: JSON.stringify({ name })
+			body: JSON.stringify(payload)
 		}, token);
 	},
 	deleteTask(token: string, projectId: number, taskId: number) {

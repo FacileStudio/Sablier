@@ -239,7 +239,7 @@
 		savingTaskId = taskId;
 		taskSaveError = '';
 		try {
-			const updated = await backend.updateTask(ctx.token, project.id, taskId, taskDraftName);
+			const updated = await backend.updateTask(ctx.token, project.id, taskId, { name: taskDraftName });
 			tasks = tasks
 				.map((task) => task.id === taskId ? updated : task)
 				.sort((a, b) => a.name.localeCompare(b.name));
@@ -252,6 +252,17 @@
 		} finally {
 			savingTaskId = null;
 		}
+	}
+
+	async function toggleTaskStatus(taskId: number) {
+		if (!project) return;
+		const task = tasks.find((t) => t.id === taskId);
+		if (!task) return;
+		const nextStatus = task.status === 'done' ? 'to-do' : task.status === 'in-progress' ? 'done' : 'in-progress';
+		try {
+			const updated = await backend.updateTask(ctx.token, project.id, taskId, { status: nextStatus });
+			tasks = tasks.map((t) => (t.id === taskId ? updated : t));
+		} catch {}
 	}
 
 	function startProjectEdit() {
@@ -478,41 +489,56 @@
 					{:else}
 						<div class="space-y-3">
 							{#each tasksWithStats as task}
-								<div class="rounded-xl border p-4">
+								<div class="rounded-xl border p-4 {task.status === 'done' ? 'opacity-60' : ''}">
 									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											{#if editingTaskId === task.id}
-												<div class="flex flex-col gap-2">
-													<Input
-														bind:value={taskDraftName}
-														class="h-8"
-														maxlength={200}
-													/>
-													<div class="flex flex-wrap gap-2">
-														<Button
-															size="sm"
-															onclick={() => saveTaskName(task.id)}
-															disabled={savingTaskId === task.id}
-														>
-															<Check class="h-4 w-4" />
-															{savingTaskId === task.id ? 'Saving…' : 'Save'}
-														</Button>
-														<Button
-															variant="outline"
-															size="sm"
-															onclick={cancelTaskEdit}
-															disabled={savingTaskId === task.id}
-														>
-															<X class="h-4 w-4" />
-															Cancel
-														</Button>
+										<div class="flex min-w-0 items-start gap-3">
+											<button
+												type="button"
+												class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {task.status === 'done' ? 'border-green-500 bg-green-500' : task.status === 'in-progress' ? 'border-amber-400 bg-amber-400' : 'border-muted-foreground/40 hover:border-foreground/60'}"
+												title={task.status === 'done' ? 'Done' : task.status === 'in-progress' ? 'In progress' : 'To do'}
+												onclick={() => toggleTaskStatus(task.id)}
+											>
+												{#if task.status === 'done'}
+													<Check class="h-2.5 w-2.5 text-white" />
+												{/if}
+											</button>
+											<div class="min-w-0">
+												{#if editingTaskId === task.id}
+													<div class="flex flex-col gap-2">
+														<Input
+															bind:value={taskDraftName}
+															class="h-8"
+															maxlength={200}
+														/>
+														<div class="flex flex-wrap gap-2">
+															<Button
+																size="sm"
+																onclick={() => saveTaskName(task.id)}
+																disabled={savingTaskId === task.id}
+															>
+																<Check class="h-4 w-4" />
+																{savingTaskId === task.id ? 'Saving…' : 'Save'}
+															</Button>
+															<Button
+																variant="outline"
+																size="sm"
+																onclick={cancelTaskEdit}
+																disabled={savingTaskId === task.id}
+															>
+																<X class="h-4 w-4" />
+																Cancel
+															</Button>
+														</div>
 													</div>
-												</div>
-											{:else}
-												<p class="truncate font-medium" title={task.name}>{task.name}</p>
-											{/if}
+												{:else}
+													<p class="truncate font-medium {task.status === 'done' ? 'line-through text-muted-foreground' : ''}" title={task.name}>{task.name}</p>
+												{/if}
+											</div>
 										</div>
 										<div class="flex items-center gap-1">
+											<Badge variant={task.status === 'done' ? 'default' : task.status === 'in-progress' ? 'outline' : 'secondary'} class="tabular-nums text-xs">
+												{task.status === 'done' ? 'Done' : task.status === 'in-progress' ? 'In progress' : 'To do'}
+											</Badge>
 											<Badge variant="secondary" class="tabular-nums">
 												{formatDuration(task.totalMs)}
 											</Badge>

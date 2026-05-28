@@ -19,7 +19,8 @@ type CreateTaskRequest struct {
 }
 
 type UpdateTaskRequest struct {
-	Name string `json:"name"`
+	Name   string  `json:"name"`
+	Status *string `json:"status"`
 }
 
 type ProjectResponse struct {
@@ -40,6 +41,7 @@ type TaskResponse struct {
 	ID        int64     `json:"id"`
 	ProjectID int64     `json:"project_id"`
 	Name      string    `json:"name"`
+	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
