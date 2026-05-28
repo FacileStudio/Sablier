@@ -254,13 +254,24 @@
 		}
 	}
 
+	const STATUS_CYCLE = ['to-do', 'in-progress', 'in-review', 'done'] as const;
+
+	function nextTaskStatus(current: string): string {
+		const idx = STATUS_CYCLE.indexOf(current as typeof STATUS_CYCLE[number]);
+		return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+	}
+
+	function statusLabel(status: string): string {
+		const labels: Record<string, string> = { 'to-do': 'Not started', 'in-progress': 'In progress', 'in-review': 'In review', 'done': 'Completed' };
+		return labels[status] ?? 'Not started';
+	}
+
 	async function toggleTaskStatus(taskId: number) {
 		if (!project) return;
 		const task = tasks.find((t) => t.id === taskId);
 		if (!task) return;
-		const nextStatus = task.status === 'done' ? 'to-do' : task.status === 'in-progress' ? 'done' : 'in-progress';
 		try {
-			const updated = await backend.updateTask(ctx.token, project.id, taskId, { status: nextStatus });
+			const updated = await backend.updateTask(ctx.token, project.id, taskId, { status: nextTaskStatus(task.status) });
 			tasks = tasks.map((t) => (t.id === taskId ? updated : t));
 		} catch {}
 	}
@@ -494,8 +505,8 @@
 										<div class="flex min-w-0 items-start gap-3">
 											<button
 												type="button"
-												class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {task.status === 'done' ? 'border-green-500 bg-green-500' : task.status === 'in-progress' ? 'border-amber-400 bg-amber-400' : 'border-muted-foreground/40 hover:border-foreground/60'}"
-												title={task.status === 'done' ? 'Done' : task.status === 'in-progress' ? 'In progress' : 'To do'}
+												class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {task.status === 'done' ? 'border-green-500 bg-green-500' : task.status === 'in-review' ? 'border-blue-400 bg-blue-400' : task.status === 'in-progress' ? 'border-amber-400 bg-amber-400' : 'border-muted-foreground/40 hover:border-foreground/60'}"
+												title={statusLabel(task.status)}
 												onclick={() => toggleTaskStatus(task.id)}
 											>
 												{#if task.status === 'done'}
@@ -536,8 +547,8 @@
 											</div>
 										</div>
 										<div class="flex items-center gap-1">
-											<Badge variant={task.status === 'done' ? 'default' : task.status === 'in-progress' ? 'outline' : 'secondary'} class="tabular-nums text-xs">
-												{task.status === 'done' ? 'Done' : task.status === 'in-progress' ? 'In progress' : 'To do'}
+											<Badge variant={task.status === 'done' ? 'default' : task.status === 'in-review' ? 'outline' : task.status === 'in-progress' ? 'outline' : 'secondary'} class="tabular-nums text-xs">
+												{statusLabel(task.status)}
 											</Badge>
 											<Badge variant="secondary" class="tabular-nums">
 												{formatDuration(task.totalMs)}

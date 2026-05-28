@@ -119,9 +119,11 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 	}
 
 	facileID := evt.Payload.FacileID
+	status := normalizeStatus(evt.Payload.Status)
 	record := schemas.Task{
 		ProjectID: project.ID,
 		Name:      evt.Payload.Name,
+		Status:    status,
 		FacileID:  &facileID,
 	}
 	if err := s.orm.Create(&record).Error; err != nil {
@@ -148,7 +150,12 @@ func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta
 		return
 	}
 
-	record.Name = evt.Payload.Name
+	if evt.Payload.Name != "" {
+		record.Name = evt.Payload.Name
+	}
+	if evt.Payload.Status != "" {
+		record.Status = normalizeStatus(evt.Payload.Status)
+	}
 	if err := s.orm.Save(&record).Error; err != nil {
 		s.logger.Error("pool: failed to update synced task", slog.Any("error", err))
 		return
