@@ -1,4 +1,4 @@
-app: sablier
+app: Sablier
 events:
   emit:
     - project.created

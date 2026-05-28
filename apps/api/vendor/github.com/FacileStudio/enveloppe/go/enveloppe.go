@@ -3,12 +3,12 @@ package enveloppe
 type App string
 
 const (
-	AppSablier  App = "sablier"
-	AppOpus     App = "opus"
-	AppArdoise  App = "ardoise"
-	AppPlume    App = "plume"
-	AppGlouton  App = "glouton"
-	AppVision   App = "vision"
+	AppSablier  App = "Sablier"
+	AppOpus     App = "Opus"
+	AppArdoise  App = "Ardoise"
+	AppPlume    App = "Plume"
+	AppGlouton  App = "Glouton"
+	AppVision   App = "Vision"
 )
 
 type Action string

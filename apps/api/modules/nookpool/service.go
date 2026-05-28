@@ -124,7 +124,7 @@ func (s *Service) connect(instanceURL, secret string) error {
 	s.disconnect()
 
 	cfg := &pool.Config{
-		App:      "sablier",
+		App:      "Sablier",
 		Instance: instanceURL,
 		Secret:   secret,
 		Events: pool.EventConfig{
