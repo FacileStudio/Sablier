@@ -99,6 +99,23 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 
 	var existing schemas.Task
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&existing).Error; err == nil {
+		updates := map[string]interface{}{}
+		if evt.Payload.Name != "" && evt.Payload.Name != existing.Name {
+			updates["name"] = evt.Payload.Name
+		}
+		if evt.Payload.Status != "" {
+			normalized := schemas.NormalizeStatus(evt.Payload.Status)
+			if normalized != existing.Status {
+				updates["status"] = normalized
+			}
+		}
+		if len(updates) > 0 {
+			if err := s.orm.Model(&existing).Updates(updates).Error; err != nil {
+				s.logger.Error("pool: failed to upsert task on created event", slog.Any("error", err))
+			} else {
+				s.logger.Info("pool: synced task updated via created event", slog.String("facile_id", evt.Payload.FacileID))
+			}
+		}
 		return
 	}
 

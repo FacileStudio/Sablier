@@ -16,7 +16,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
-	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
+	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save, Search } from 'lucide-svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { toIconify } from '$lib/icons';
 
@@ -50,6 +50,7 @@
 	let savingTaskId = $state<number | null>(null);
 	let editingEntry = $state<TimeEntry | null>(null);
 	let editDrawerOpen = $state(false);
+	let taskSearch = $state('');
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -165,6 +166,14 @@
 							: null
 				};
 			})
+	);
+
+	const filteredTasks = $derived(
+		taskSearch.trim() === ''
+			? tasksWithStats
+			: tasksWithStats.filter((t) =>
+					t.name.toLowerCase().includes(taskSearch.toLowerCase())
+				)
 	);
 
 	function openEntryDeleteDialog(entry: TimeEntry) {
@@ -489,9 +498,16 @@
 			<section class="mt-6">
 				<div class="mb-4 flex items-start justify-between gap-3">
 					<h2 class="text-lg font-semibold">Tasks</h2>
-					<p class="text-right text-xs text-muted-foreground">
-						Time shown is total time spent per task.
-					</p>
+					{#if tasksWithStats.length > 0}
+						<div class="relative w-56">
+							<Search class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								bind:value={taskSearch}
+								placeholder="Filter tasks…"
+								class="h-8 pl-8 text-sm"
+							/>
+						</div>
+					{/if}
 				</div>
 				<div>
 					{#if taskSaveError}
@@ -499,9 +515,11 @@
 					{/if}
 					{#if tasksWithStats.length === 0}
 						<p class="text-sm text-muted-foreground">No tasks yet.</p>
+					{:else if filteredTasks.length === 0}
+						<p class="text-sm text-muted-foreground">No tasks matching "{taskSearch}".</p>
 					{:else}
 						<div class="space-y-3">
-							{#each tasksWithStats as task}
+							{#each filteredTasks as task}
 								<div class="rounded-xl border p-4 {task.status === 'done' ? 'opacity-60' : ''}">
 									<div class="flex items-start justify-between gap-3">
 										<div class="flex min-w-0 items-start gap-3">
