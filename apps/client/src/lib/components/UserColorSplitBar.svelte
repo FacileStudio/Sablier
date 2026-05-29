@@ -37,18 +37,18 @@
 </script>
 
 <div class="space-y-3">
-	<div class={`flex w-full overflow-hidden rounded-full bg-muted/40 ${barClass}`}>
+	<div class={`flex w-full gap-[3px] ${barClass}`}>
 		{#if totalMs > 0}
-			{#each segments as segment, index (segment.key)}
+			{#each segments as segment (segment.key)}
 				<div
-					class={`h-full ${index === 0 ? 'rounded-l-full' : ''} ${index === segments.length - 1 ? 'rounded-r-full' : ''}`}
-					style={`width: ${(segment.ms / totalMs) * 100}%; background-color: ${normalizeUserColor(segment.color)};`}
+					class="h-full rounded-full"
+					style={`width: ${(segment.ms / totalMs) * 100}%; min-width: 6px; background-color: ${normalizeUserColor(segment.color)};`}
 					title={`${segment.label}: ${sharePercent(segment.ms)}%`}
 					aria-label={`${segment.label}: ${sharePercent(segment.ms)}%`}
 				></div>
 			{/each}
 		{:else}
-			<div class="h-full w-full bg-muted"></div>
+			<div class="h-full w-full rounded-full bg-muted/40"></div>
 		{/if}
 	</div>
 
@@ -63,9 +63,8 @@
 							color={segment.color}
 							class="h-6 w-6 text-[10px]"
 						/>
-					{:else}
-						<UserColorDot color={segment.color} class="h-2.5 w-2.5" />
 					{/if}
+					<UserColorDot color={segment.color} class="h-2.5 w-2.5" />
 					<span class="font-medium text-foreground/90">{segment.label}</span>
 					{#if showDuration}
 						<span class="font-mono tabular-nums">{formatDuration(segment.ms)}</span>
