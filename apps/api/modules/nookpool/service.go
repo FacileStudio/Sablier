@@ -341,6 +341,14 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 		projectFacileID = *project.FacileID
 	}
 
+	var actorEmail string
+	if task.ActorID != nil {
+		var user schemas.User
+		if err := s.orm.Select("email").Where("id = ?", *task.ActorID).First(&user).Error; err == nil {
+			actorEmail = user.Email
+		}
+	}
+
 	evt := enveloppe.Event[enveloppe.Task]{
 		App:      enveloppe.AppSablier,
 		Object:   enveloppe.ObjectTask,
@@ -351,6 +359,7 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 			ProjectFacileID: projectFacileID,
 			Name:            task.Name,
 			Status:          schemas.NormalizeStatus(task.Status),
+			ActorEmail:      actorEmail,
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
 		IdempotencyKey: fmt.Sprintf("sablier_task_%s_%s_%d", action, *task.FacileID, time.Now().UnixMilli()),

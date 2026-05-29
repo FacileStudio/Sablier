@@ -52,6 +52,7 @@ type Task struct {
 	ProjectFacileID string `json:"project_facile_id"`
 	Name            string `json:"name"`
 	Status          string `json:"status"`
+	ActorEmail      string `json:"actor_email,omitempty"`
 }
 
 type User struct {

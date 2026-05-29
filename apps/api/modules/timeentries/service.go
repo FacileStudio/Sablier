@@ -71,11 +71,13 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 		needsTaskUpdate = true
 	}
 	if needsTaskUpdate {
-		service.orm.WithContext(ctx).Save(task)
-		if service.poolService != nil {
-			var project schemas.Project
-			service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project)
-			go service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
+		if err := service.orm.WithContext(ctx).Save(task).Error; err == nil {
+			if service.poolService != nil {
+				var project schemas.Project
+				if err := service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project).Error; err == nil {
+					go service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
+				}
+			}
 		}
 	}
 
