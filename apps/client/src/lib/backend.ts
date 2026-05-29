@@ -330,6 +330,10 @@ export const backend = {
 		}, token);
 	},
 
+	syncProfile(token: string) {
+		return apiFetch<{ synced: boolean }>('/auth/sync-profile', { method: 'POST' }, token);
+	},
+
 	updatePoolSettings(token: string, url: string, secret: string, enabled: boolean) {
 		return apiFetch<PoolSettingsResponse>('/nook-pool/', {
 			method: 'PUT',

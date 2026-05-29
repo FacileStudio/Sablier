@@ -35,6 +35,12 @@
 			loaded = true;
 			const p = await backend.listProjects(stored);
 			projects = p.projects;
+			backend.syncProfile(stored).then(async (r) => {
+				if (r.synced) {
+					const fresh = await backend.me(stored);
+					user = fresh.user;
+				}
+			}).catch(() => {});
 		} catch {
 			goto('/login');
 		}
