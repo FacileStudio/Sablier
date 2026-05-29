@@ -44,6 +44,7 @@ export type Task = {
 	project_id: number;
 	name: string;
 	status: string;
+	actor_id: number | null;
 	created_at: string;
 	updated_at: string;
 };

@@ -47,6 +47,7 @@ type Task struct {
 	ProjectID int64     `gorm:"column:project_id;index;uniqueIndex:idx_tasks_project_name,priority:1"`
 	Name      string    `gorm:"column:name;uniqueIndex:idx_tasks_project_name,priority:2"`
 	Status    string    `gorm:"column:status;default:to-do"`
+	ActorID   *int64    `gorm:"column:actor_id;index"`
 	FacileID  *string   `gorm:"column:facile_id;uniqueIndex" json:"facile_id,omitempty"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`

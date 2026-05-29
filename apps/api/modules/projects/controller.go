@@ -38,6 +38,7 @@ func toTaskResponse(task *schemas.Task) TaskResponse {
 		ProjectID: task.ProjectID,
 		Name:      task.Name,
 		Status:    status,
+		ActorID:   task.ActorID,
 		CreatedAt: task.CreatedAt,
 		UpdatedAt: task.UpdatedAt,
 	}

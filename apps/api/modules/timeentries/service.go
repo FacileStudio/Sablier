@@ -11,6 +11,7 @@ import (
 	"api/modules/nookpool"
 	"api/schemas"
 
+	enveloppe "github.com/FacileStudio/enveloppe/go"
 	"gorm.io/gorm"
 )
 
@@ -59,6 +60,25 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, "", errors.Internal("failed to start timer", err)
 	}
+
+	needsTaskUpdate := false
+	if task.Status != schemas.StatusInProgress {
+		task.Status = schemas.StatusInProgress
+		needsTaskUpdate = true
+	}
+	if task.ActorID == nil || *task.ActorID != uid {
+		task.ActorID = &uid
+		needsTaskUpdate = true
+	}
+	if needsTaskUpdate {
+		service.orm.WithContext(ctx).Save(task)
+		if service.poolService != nil {
+			var project schemas.Project
+			service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project)
+			go service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
+		}
+	}
+
 	service.fireWebhook(ctx, uid, "timer_started", record)
 	return record, task.Name, nil
 }

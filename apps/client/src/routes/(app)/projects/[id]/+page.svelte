@@ -28,6 +28,7 @@
 	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
 	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
+	let usersById = $state<Map<number, UserProfile>>(new Map());
 	let projectEditDrawerOpen = $state(false);
 	let editName = $state('');
 	let editDescription = $state('');
@@ -361,11 +362,15 @@
 			project = proj;
 			tasks = taskResult.tasks;
 			entries = ents.entries;
-			const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
+			const rateMap = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
+			const userMap = new Map<number, UserProfile>();
 			for (const u of usersResult.users) {
-				map.set(Number(u.id), { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily', workday_hours: u.workday_hours > 0 ? u.workday_hours : 8 });
+				const uid = Number(u.id);
+				rateMap.set(uid, { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily', workday_hours: u.workday_hours > 0 ? u.workday_hours : 8 });
+				userMap.set(uid, u);
 			}
-			userRates = map;
+			userRates = rateMap;
+			usersById = userMap;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load project.';
 		} finally {
@@ -567,6 +572,12 @@
 											</div>
 										</div>
 										<div class="flex items-center gap-1">
+											{#if task.actor_id}
+												{@const actor = usersById.get(task.actor_id)}
+												{#if actor}
+													<UserAvatarBadge name={actor.name} avatarUrl={actor.avatar_url} color={actor.color} class="h-6 w-6 text-[10px]" />
+												{/if}
+											{/if}
 											<Badge variant={task.status === 'done' ? 'default' : task.status === 'in-review' ? 'outline' : task.status === 'in-progress' ? 'outline' : 'secondary'} class="tabular-nums text-xs">
 												{statusLabel(task.status)}
 											</Badge>

@@ -42,6 +42,7 @@ type TaskResponse struct {
 	ProjectID int64     `json:"project_id"`
 	Name      string    `json:"name"`
 	Status    string    `json:"status"`
+	ActorID   *int64    `json:"actor_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
