@@ -57,6 +57,7 @@
 		key: string;
 		label: string;
 		color?: string;
+		avatarUrl?: string;
 		ms: number;
 	};
 
@@ -112,6 +113,7 @@
 				key,
 				label: userLabel(entry),
 				color: userColor(entry),
+				avatarUrl: entry.user_avatar_url,
 				ms
 			});
 		}
@@ -479,7 +481,7 @@
 					{#if projectUserSegments.length === 0}
 						<p class="text-sm text-muted-foreground">No tracked time yet.</p>
 					{:else}
-						<UserColorSplitBar segments={projectUserSegments} barClass="h-4" />
+						<UserColorSplitBar segments={projectUserSegments} barClass="h-4" showAvatars showDuration />
 					{/if}
 				</div>
 			</section>
