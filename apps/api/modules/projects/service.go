@@ -182,6 +182,9 @@ func (service *Service) updateTask(ctx context.Context, projectID int64, taskID 
 	}
 
 	if status != nil {
+		if err := schemas.ValidateStatus(*status); err != nil {
+			return nil, errors.Invalid(err.Error())
+		}
 		task.Status = *status
 	}
 

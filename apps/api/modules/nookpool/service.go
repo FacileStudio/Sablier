@@ -350,7 +350,7 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 			FacileID:        *task.FacileID,
 			ProjectFacileID: projectFacileID,
 			Name:            task.Name,
-			Status:          normalizeStatus(task.Status),
+			Status:          schemas.NormalizeStatus(task.Status),
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
 		IdempotencyKey: fmt.Sprintf("sablier_task_%s_%s_%d", action, *task.FacileID, time.Now().UnixMilli()),
@@ -429,19 +429,6 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 	}, nil
 }
 
-var validStatuses = map[string]bool{
-	"to-do":       true,
-	"in-progress": true,
-	"in-review":   true,
-	"done":        true,
-}
-
-func normalizeStatus(status string) string {
-	if validStatuses[status] {
-		return status
-	}
-	return "to-do"
-}
 
 func GenerateFacileID() string {
 	b := make([]byte, 10)
