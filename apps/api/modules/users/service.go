@@ -267,6 +267,7 @@ func mapUser(record schemas.User) *User {
 		Email:        record.Email,
 		Name:         record.Name,
 		AvatarURL:    record.AvatarURL,
+		AvatarSource: record.AvatarSource,
 		Color:        record.Color,
 		Rate:         record.Rate,
 		RateType:     rateType,

@@ -5,6 +5,7 @@ type User struct {
 	Email        string  `json:"email"`
 	Name         string  `json:"name"`
 	AvatarURL    string  `json:"avatar_url"`
+	AvatarSource string  `json:"avatar_source"`
 	Color        string  `json:"color"`
 	Rate         float64 `json:"rate"`
 	RateType     string  `json:"rate_type"`

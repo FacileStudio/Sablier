@@ -337,6 +337,9 @@
 				{/if}
 
 				<div class="space-y-2">
+					{#if ctx.user?.avatar_source === 'oidc'}
+						<p class="text-xs text-muted-foreground">Synced from SSO</p>
+					{/if}
 					<Label for="avatar">Avatar image</Label>
 					<Input
 						id="avatar"
