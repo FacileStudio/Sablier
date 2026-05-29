@@ -148,6 +148,7 @@ func (service *Service) storeAvatar(context context.Context, userID string, read
 	newAvatarURL := "/files/" + strings.ReplaceAll(relativePath, string(filepath.Separator), "/")
 	oldAvatarURL := record.AvatarURL
 	record.AvatarURL = newAvatarURL
+	record.AvatarSource = "upload"
 
 	if err := service.orm.WithContext(context).Save(&record).Error; err != nil {
 		_ = os.Remove(absolutePath)
@@ -181,6 +182,7 @@ func (service *Service) clearAvatar(context context.Context, userID string) (*Us
 
 	oldAvatarURL := record.AvatarURL
 	record.AvatarURL = ""
+	record.AvatarSource = ""
 	if err := service.orm.WithContext(context).Save(&record).Error; err != nil {
 		return nil, errors.Internal("failed to clear avatar", err)
 	}

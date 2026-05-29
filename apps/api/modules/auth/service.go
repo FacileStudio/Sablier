@@ -3,12 +3,14 @@ package auth
 import (
 	"context"
 	stderrors "errors"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
 	"api/internal/authcrypto"
 	"api/internal/errors"
+	"api/internal/oidcavatar"
 	"api/internal/usercolor"
 	"api/schemas"
 
@@ -17,11 +19,13 @@ import (
 
 type Service struct {
 	orm        *gorm.DB
+	storageDir string
+	logger     *slog.Logger
 	controller *Controller
 }
 
-func NewService(orm *gorm.DB) *Service {
-	service := &Service{orm: orm}
+func NewService(orm *gorm.DB, storageDir string, logger *slog.Logger) *Service {
+	service := &Service{orm: orm, storageDir: storageDir, logger: logger}
 	service.controller = newController(service)
 	return service
 }
@@ -156,20 +160,62 @@ func (service *Service) Authenticate(context context.Context, authorization stri
 	return service.authenticateRequest(context, authorization)
 }
 
-func (service *Service) upsertOIDCUser(context context.Context, email string) (userID string, token string, err error) {
+func (service *Service) upsertOIDCUser(ctx context.Context, email string, profile oidcavatar.Profile) (userID string, token string, err error) {
 	var record schemas.User
-	err = service.orm.WithContext(context).Where("email = ?", email).First(&record).Error
+	err = service.orm.WithContext(ctx).Where("email = ?", email).First(&record).Error
 	if err != nil && !stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return "", "", errors.Internal("failed to look up user", err)
 	}
-	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		color, colorErr := usercolor.NextAvailable(context, service.orm)
+
+	isNew := stderrors.Is(err, gorm.ErrRecordNotFound)
+	if isNew {
+		color, colorErr := usercolor.NextAvailable(ctx, service.orm)
 		if colorErr != nil {
 			return "", "", errors.Internal("failed to choose user color", colorErr)
 		}
 		record = schemas.User{Email: email, Color: color}
-		if err := service.orm.WithContext(context).Create(&record).Error; err != nil {
+		if displayName := profile.DisplayName(); displayName != "" {
+			record.Name = displayName
+		}
+		if err := service.orm.WithContext(ctx).Create(&record).Error; err != nil {
 			return "", "", errors.Internal("failed to create user", err)
+		}
+		if profile.Picture != "" {
+			relPath, fetchErr := oidcavatar.FetchAvatar(profile.Picture, service.storageDir, record.ID, service.logger)
+			if fetchErr != nil {
+				service.logger.Warn("failed to fetch OIDC avatar for new user", slog.Int64("user_id", record.ID), slog.Any("error", fetchErr))
+			} else {
+				record.AvatarURL = "/files/" + relPath
+				record.AvatarSource = "oidc"
+				record.OIDCPictureURL = profile.Picture
+				service.orm.WithContext(ctx).Save(&record)
+			}
+		}
+	} else {
+		changed := false
+		if displayName := profile.DisplayName(); displayName != "" {
+			record.Name = displayName
+			changed = true
+		}
+		if profile.Picture != "" {
+			if profile.Picture != record.OIDCPictureURL {
+				if record.AvatarSource != "upload" {
+					oidcavatar.RemoveFile(service.storageDir, strings.TrimPrefix(record.AvatarURL, "/files/"))
+					relPath, fetchErr := oidcavatar.FetchAvatar(profile.Picture, service.storageDir, record.ID, service.logger)
+					if fetchErr != nil {
+						service.logger.Warn("failed to fetch OIDC avatar", slog.Int64("user_id", record.ID), slog.Any("error", fetchErr))
+					} else {
+						record.AvatarURL = "/files/" + relPath
+						record.AvatarSource = "oidc"
+						changed = true
+					}
+				}
+				record.OIDCPictureURL = profile.Picture
+				changed = true
+			}
+		}
+		if changed {
+			service.orm.WithContext(ctx).Save(&record)
 		}
 	}
 
@@ -177,7 +223,7 @@ func (service *Service) upsertOIDCUser(context context.Context, email string) (u
 	if err != nil {
 		return "", "", errors.Internal("failed to create session", err)
 	}
-	if err := service.insertSession(context, token, record.ID); err != nil {
+	if err := service.insertSession(ctx, token, record.ID); err != nil {
 		return "", "", err
 	}
 	return strconv.FormatInt(record.ID, 10), token, nil

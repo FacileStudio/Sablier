@@ -6,8 +6,10 @@ type User struct {
 	ID           int64     `gorm:"column:id;primaryKey"`
 	Email        string    `gorm:"column:email;uniqueIndex"`
 	Name         string    `gorm:"column:name"`
-	AvatarURL    string    `gorm:"column:avatar_url"`
-	Color        string    `gorm:"column:color"`
+	AvatarURL      string    `gorm:"column:avatar_url"`
+	AvatarSource   string    `gorm:"column:avatar_source"`
+	OIDCPictureURL string    `gorm:"column:oidc_picture_url"`
+	Color          string    `gorm:"column:color"`
 	PasswordHash string    `gorm:"column:password_hash"`
 	Rate         float64   `gorm:"column:rate;not null;default:0"`
 	RateType     string    `gorm:"column:rate_type;not null;default:'daily'"`

@@ -63,7 +63,7 @@ func main() {
 		}
 	}()
 
-	authService := auth.NewService(db)
+	authService := auth.NewService(db, appEnv.StorageDir, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
