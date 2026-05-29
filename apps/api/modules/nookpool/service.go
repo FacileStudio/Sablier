@@ -128,7 +128,7 @@ func (s *Service) connect(instanceURL, secret string) error {
 		Instance: instanceURL,
 		Secret:   secret,
 		Events: pool.EventConfig{
-			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted"},
+			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "timer.started", "timer.stopped"},
 			Listen: []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted"},
 		},
 	}
@@ -185,12 +185,97 @@ func (s *Service) Shutdown() {
 	s.disconnect()
 }
 
+func (s *Service) IsPoolEventEnabled(event string) bool {
+	var record schemas.AppSetting
+	if err := s.orm.Where("id = ?", appSettingID).First(&record).Error; err != nil {
+		return true
+	}
+	if record.PoolEvents == "" {
+		return true
+	}
+	var toggles map[string]bool
+	if err := json.Unmarshal([]byte(record.PoolEvents), &toggles); err != nil {
+		return true
+	}
+	enabled, exists := toggles[event]
+	if !exists {
+		return true
+	}
+	return enabled
+}
+
+func (s *Service) getPoolEvents(ctx context.Context) (*PoolEventsResponse, error) {
+	var record schemas.AppSetting
+	s.orm.WithContext(ctx).Where("id = ?", appSettingID).First(&record)
+
+	toggles := make(map[string]bool)
+	if record.PoolEvents != "" {
+		json.Unmarshal([]byte(record.PoolEvents), &toggles)
+	}
+
+	events := make([]PoolEventToggle, len(AllPoolEvents))
+	for i, evt := range AllPoolEvents {
+		enabled, exists := toggles[evt]
+		if !exists {
+			enabled = true
+		}
+		events[i] = PoolEventToggle{Event: evt, Enabled: enabled}
+	}
+	return &PoolEventsResponse{Events: events}, nil
+}
+
+func (s *Service) updatePoolEvents(ctx context.Context, req *UpdatePoolEventsRequest) (*PoolEventsResponse, error) {
+	toggles := make(map[string]bool)
+	for _, evt := range req.Events {
+		toggles[evt.Event] = evt.Enabled
+	}
+	data, err := json.Marshal(toggles)
+	if err != nil {
+		return nil, errors.Internal("failed to serialize pool events", err)
+	}
+
+	s.orm.WithContext(ctx).Model(&schemas.AppSetting{}).Where("id = ?", appSettingID).Update("pool_events", string(data))
+
+	return s.getPoolEvents(ctx)
+}
+
+func (s *Service) EmitTimerEvent(event string, payload *TimerEventPayload) {
+	s.mu.RLock()
+	client := s.client
+	s.mu.RUnlock()
+
+	if client == nil || !client.IsConnected() {
+		return
+	}
+
+	if !s.IsPoolEventEnabled(event) {
+		return
+	}
+
+	evt := TimerEvent{
+		App:            "sablier",
+		Event:          event,
+		Payload:        *payload,
+		Timestamp:      time.Now().UTC().Format(time.RFC3339),
+		IdempotencyKey: fmt.Sprintf("sablier_%s_%d_%d", event, payload.ID, time.Now().UnixMilli()),
+	}
+
+	if err := client.Emit(event, evt); err != nil {
+		s.logger.Error("pool: failed to emit timer event", slog.Any("error", err), slog.String("event", event))
+	}
+}
+
 func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Project) {
 	s.mu.RLock()
 	client := s.client
 	s.mu.RUnlock()
 
 	if client == nil || !client.IsConnected() {
+		return
+	}
+
+	channel := fmt.Sprintf("project.%s", action)
+	if !s.IsPoolEventEnabled(channel) {
 		return
 	}
 
@@ -218,7 +303,6 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *project.FacileID, time.Now().UnixMilli()),
 	}
 
-	channel := fmt.Sprintf("project.%s", action)
 	if err := client.Emit(channel, evt); err != nil {
 		s.logger.Error("pool: failed to emit project event", slog.Any("error", err), slog.String("action", string(action)))
 	}
@@ -230,6 +314,10 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 	s.mu.RUnlock()
 
 	if client == nil || !client.IsConnected() {
+		return
+	}
+
+	if !s.IsPoolEventEnabled(fmt.Sprintf("task.%s", action)) {
 		return
 	}
 

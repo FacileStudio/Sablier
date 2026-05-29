@@ -70,6 +70,7 @@ func main() {
 	settingsService := settings.NewService(db)
 	nookPoolService := nookpool.NewService(db, appLogger)
 	projectService.SetPoolService(nookPoolService)
+	timeEntryService.SetPoolService(nookPoolService)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
 			auth.Documentation,

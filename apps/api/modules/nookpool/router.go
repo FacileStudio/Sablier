@@ -45,5 +45,28 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			}
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
+
+		r.Get("/events", func(w http.ResponseWriter, req *http.Request) {
+			resp, err := service.controller.getPoolEvents(req.Context())
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
+		r.Put("/events", func(w http.ResponseWriter, req *http.Request) {
+			var body UpdatePoolEventsRequest
+			if err := httpjson.DecodeJSON(w, req, &body); err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			resp, err := service.controller.updatePoolEvents(req.Context(), &body)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
 	})
 }

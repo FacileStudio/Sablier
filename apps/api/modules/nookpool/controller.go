@@ -42,3 +42,11 @@ func (c *Controller) updateSettings(ctx context.Context, req *UpdatePoolRequest)
 	}
 	return resp, nil
 }
+
+func (c *Controller) getPoolEvents(ctx context.Context) (*PoolEventsResponse, error) {
+	return c.service.getPoolEvents(ctx)
+}
+
+func (c *Controller) updatePoolEvents(ctx context.Context, req *UpdatePoolEventsRequest) (*PoolEventsResponse, error) {
+	return c.service.updatePoolEvents(ctx, req)
+}

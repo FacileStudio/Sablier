@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { backend } from '$lib/backend';
+	import { backend, type PoolEventToggle } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -32,6 +32,9 @@
 	let syncing = $state(false);
 	let syncResult = $state<{ projects_synced: number; tasks_synced: number } | null>(null);
 
+	let poolEvents = $state<PoolEventToggle[]>([]);
+	let poolEventsLoading = $state(false);
+
 	onMount(async () => {
 		try {
 			const result = await backend.getSettings(ctx.token);
@@ -52,6 +55,11 @@
 		} catch (e) {
 			poolError = e instanceof Error ? e.message : 'Failed to load pool settings';
 		}
+
+		try {
+			const eventsResult = await backend.getPoolEvents(ctx.token);
+			poolEvents = eventsResult.events;
+		} catch {}
 	});
 
 	async function save() {
@@ -85,6 +93,28 @@
 			toast.error(poolError);
 		} finally {
 			syncing = false;
+		}
+	}
+
+	const eventLabels: Record<string, string> = {
+		'timer.started': 'Timer started',
+		'timer.stopped': 'Timer stopped',
+		'project.created': 'Project created',
+		'project.updated': 'Project updated',
+		'project.deleted': 'Project deleted',
+		'task.created': 'Task created',
+		'task.updated': 'Task updated',
+		'task.deleted': 'Task deleted'
+	};
+
+	async function togglePoolEvent(event: string, enabled: boolean) {
+		poolEvents = poolEvents.map((e) => (e.event === event ? { ...e, enabled } : e));
+		try {
+			const result = await backend.updatePoolEvents(ctx.token, poolEvents);
+			poolEvents = result.events;
+		} catch (e) {
+			poolEvents = poolEvents.map((ev) => (ev.event === event ? { ...ev, enabled: !enabled } : ev));
+			toast.error('Failed to update event toggle');
 		}
 	}
 
@@ -294,6 +324,39 @@
 		</Card.Root>
 
 		{#if poolConnected}
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Pool events</Card.Title>
+					<Card.Description>
+						Choose which events are sent to Nook when they happen. Nook handles routing from there.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex flex-col divide-y divide-border">
+						{#each poolEvents as evt}
+							<div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+								<div class="flex flex-col gap-0.5">
+									<span class="text-sm font-medium">{eventLabels[evt.event] ?? evt.event}</span>
+									<span class="font-mono text-xs text-muted-foreground">{evt.event}</span>
+								</div>
+								<button
+									type="button"
+									role="switch"
+									aria-checked={evt.enabled}
+									aria-label="Toggle {evt.event}"
+									class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors {evt.enabled ? 'bg-primary' : 'bg-muted'}"
+									onclick={() => togglePoolEvent(evt.event, !evt.enabled)}
+								>
+									<span
+										class="pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform {evt.enabled ? 'translate-x-5' : 'translate-x-0'}"
+									></span>
+								</button>
+							</div>
+						{/each}
+					</div>
+				</Card.Content>
+			</Card.Root>
+
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>Initial sync</Card.Title>

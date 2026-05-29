@@ -8,4 +8,5 @@ type AppSetting struct {
 	NookPoolURL         string `gorm:"column:nook_pool_url;not null;default:''" json:"nook_pool_url"`
 	NookPoolSecret      string `gorm:"column:nook_pool_secret;not null;default:''" json:"nook_pool_secret"`
 	NookPoolEnabled     bool   `gorm:"column:nook_pool_enabled;not null;default:false" json:"nook_pool_enabled"`
+	PoolEvents          string `gorm:"column:pool_events;not null;default:''" json:"pool_events"`
 }

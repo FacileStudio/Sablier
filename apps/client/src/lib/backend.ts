@@ -70,6 +70,11 @@ export type PoolSettingsResponse = {
 	from_env?: boolean;
 };
 
+export type PoolEventToggle = {
+	event: string;
+	enabled: boolean;
+};
+
 export type TimeEntry = {
 	id: number;
 	project_id: number;
@@ -342,6 +347,16 @@ export const backend = {
 				nook_pool_secret: secret,
 				nook_pool_enabled: enabled
 			})
+		}, token);
+	},
+
+	getPoolEvents(token: string) {
+		return apiFetch<{ events: PoolEventToggle[] }>('/nook-pool/events', {}, token);
+	},
+	updatePoolEvents(token: string, events: PoolEventToggle[]) {
+		return apiFetch<{ events: PoolEventToggle[] }>('/nook-pool/events', {
+			method: 'PUT',
+			body: JSON.stringify({ events })
 		}, token);
 	}
 };
