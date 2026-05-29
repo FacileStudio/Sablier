@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { backend } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -63,9 +64,11 @@
 			webhookSecretHeader = result.settings.webhook_secret_header;
 			webhookSecretValue = result.settings.webhook_secret_value;
 			saved = true;
+			toast.success('Webhook settings saved');
 			setTimeout(() => (saved = false), 2000);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to save settings';
+			toast.error(error);
 		} finally {
 			saving = false;
 		}
@@ -76,8 +79,10 @@
 		syncResult = null;
 		try {
 			syncResult = await backend.triggerSync(ctx.token);
+			toast.success(`Synced ${syncResult.projects_synced} projects and ${syncResult.tasks_synced} tasks`);
 		} catch (e) {
 			poolError = e instanceof Error ? e.message : 'Sync failed';
+			toast.error(poolError);
 		} finally {
 			syncing = false;
 		}
@@ -95,12 +100,15 @@
 			poolConnected = result.connected;
 			if (result.connect_error) {
 				poolError = result.connect_error;
+				toast.error(poolError);
 			} else {
 				poolSaved = true;
+				toast.success(poolConnected ? 'Connected to Nook Pool' : 'Pool settings saved');
 			}
 			setTimeout(() => (poolSaved = false), 2000);
 		} catch (e) {
 			poolError = e instanceof Error ? e.message : 'Failed to save pool settings';
+			toast.error(poolError);
 		} finally {
 			poolSaving = false;
 		}
