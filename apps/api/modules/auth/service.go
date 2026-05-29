@@ -201,20 +201,17 @@ func (service *Service) upsertOIDCUser(ctx context.Context, email string, profil
 		if displayName := profile.DisplayName(); displayName != "" {
 			record.Name = displayName
 		}
-		if profile.Picture != "" {
-			if profile.Picture != record.OIDCPictureURL {
-				if record.AvatarSource != "upload" {
-					oidcavatar.RemoveFile(service.storageDir, strings.TrimPrefix(record.AvatarURL, "/files/"))
-					relPath, fetchErr := oidcavatar.FetchAvatar(profile.Picture, service.storageDir, record.ID, service.logger)
-					if fetchErr != nil {
-						service.logger.Warn("failed to fetch OIDC avatar", slog.Int64("user_id", record.ID), slog.Any("error", fetchErr))
-					} else {
-						record.AvatarURL = "/files/" + relPath
-						record.AvatarSource = "oidc"
-					}
-				}
-				record.OIDCPictureURL = profile.Picture
+		needsAvatar := profile.Picture != "" && (profile.Picture != record.OIDCPictureURL || (record.AvatarSource != "upload" && record.AvatarURL == ""))
+		if needsAvatar && record.AvatarSource != "upload" {
+			oidcavatar.RemoveFile(service.storageDir, strings.TrimPrefix(record.AvatarURL, "/files/"))
+			relPath, fetchErr := oidcavatar.FetchAvatar(profile.Picture, service.storageDir, record.ID, service.logger)
+			if fetchErr != nil {
+				service.logger.Warn("failed to fetch OIDC avatar", slog.Int64("user_id", record.ID), slog.Any("error", fetchErr))
+			} else {
+				record.AvatarURL = "/files/" + relPath
+				record.AvatarSource = "oidc"
 			}
+			record.OIDCPictureURL = profile.Picture
 		}
 		record.OIDCAccessToken = oauth2Token.AccessToken
 		record.OIDCRefreshToken = oauth2Token.RefreshToken
@@ -289,16 +286,15 @@ func (service *Service) SyncOIDCProfile(ctx context.Context, userID string, prov
 		record.Name = displayName
 	}
 
-	if profile.Picture != "" && profile.Picture != record.OIDCPictureURL {
-		if record.AvatarSource != "upload" {
-			oidcavatar.RemoveFile(service.storageDir, strings.TrimPrefix(record.AvatarURL, "/files/"))
-			relPath, fetchErr := oidcavatar.FetchAvatar(profile.Picture, service.storageDir, record.ID, service.logger)
-			if fetchErr != nil {
-				service.logger.Warn("failed to fetch OIDC avatar during sync", slog.Int64("user_id", record.ID), slog.Any("error", fetchErr))
-			} else {
-				record.AvatarURL = "/files/" + relPath
-				record.AvatarSource = "oidc"
-			}
+	needsAvatar := profile.Picture != "" && (profile.Picture != record.OIDCPictureURL || (record.AvatarSource != "upload" && record.AvatarURL == ""))
+	if needsAvatar && record.AvatarSource != "upload" {
+		oidcavatar.RemoveFile(service.storageDir, strings.TrimPrefix(record.AvatarURL, "/files/"))
+		relPath, fetchErr := oidcavatar.FetchAvatar(profile.Picture, service.storageDir, record.ID, service.logger)
+		if fetchErr != nil {
+			service.logger.Warn("failed to fetch OIDC avatar during sync", slog.Int64("user_id", record.ID), slog.Any("error", fetchErr))
+		} else {
+			record.AvatarURL = "/files/" + relPath
+			record.AvatarSource = "oidc"
 		}
 		record.OIDCPictureURL = profile.Picture
 	}
