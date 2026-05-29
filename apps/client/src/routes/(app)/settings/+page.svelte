@@ -8,6 +8,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Save, Webhook } from 'lucide-svelte';
 	import NookIcon from '$lib/components/icons/NookIcon.svelte';
+	import { Switch } from '$lib/components/ui/switch';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -297,18 +298,11 @@
 					/>
 				</div>
 				<div class="flex items-center gap-3">
-					<button
-						type="button"
-						role="switch"
-						aria-checked={poolEnabled}
+					<Switch
+						bind:checked={poolEnabled}
 						aria-label="Enable Nook Pool sync"
-						class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors {poolEnabled ? 'bg-primary' : 'bg-muted'}"
-						onclick={() => (poolEnabled = !poolEnabled)}
-					>
-						<span
-							class="pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform {poolEnabled ? 'translate-x-5' : 'translate-x-0'}"
-						></span>
-					</button>
+						class="data-[state=checked]:bg-green-600"
+					/>
 					<Label>Enable sync</Label>
 				</div>
 				{#if poolError}
@@ -339,18 +333,12 @@
 									<span class="text-sm font-medium">{eventLabels[evt.event] ?? evt.event}</span>
 									<span class="font-mono text-xs text-muted-foreground">{evt.event}</span>
 								</div>
-								<button
-									type="button"
-									role="switch"
-									aria-checked={evt.enabled}
+								<Switch
+									checked={evt.enabled}
 									aria-label="Toggle {evt.event}"
-									class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors {evt.enabled ? 'bg-primary' : 'bg-muted'}"
-									onclick={() => togglePoolEvent(evt.event, !evt.enabled)}
-								>
-									<span
-										class="pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform {evt.enabled ? 'translate-x-5' : 'translate-x-0'}"
-									></span>
-								</button>
+									class="data-[state=checked]:bg-green-600"
+									onCheckedChange={(v) => togglePoolEvent(evt.event, v)}
+								/>
 							</div>
 						{/each}
 					</div>
