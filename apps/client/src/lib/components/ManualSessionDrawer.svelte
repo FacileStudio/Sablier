@@ -45,7 +45,7 @@
 	let error = $state('');
 
 	const isEditMode = $derived(editEntry != null);
-	const isRunningEdit = $derived(editEntry?.stopped_at == null);
+	const isRunningEdit = $derived(editEntry != null && editEntry.stopped_at == null);
 
 	function isoToDateValue(iso: string): DateValue {
 		const d = new Date(iso);
@@ -103,10 +103,27 @@
 		}
 	}
 
+	function nowTime(): string {
+		const n = new Date();
+		return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+	}
+
+	function todayDate(): DateValue {
+		return today(getLocalTimeZone());
+	}
+
 	$effect(() => {
 		if (open) {
 			if (editEntry) {
 				populateFromEntry(editEntry);
+			} else {
+				startDate = todayDate();
+				startTime = nowTime();
+				endDate = todayDate();
+				endTime = nowTime();
+				if (projects.length === 1) {
+					selectedProjectId = String(projects[0].id);
+				}
 			}
 			drawerOpen = true;
 		}
@@ -228,13 +245,10 @@
 			</Button>
 		</Drawer.Trigger>
 	{/if}
-	<Drawer.Portal>
-		<Drawer.Overlay class="fixed inset-0 bg-black/40" />
-		<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
-			<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
-			<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
+	<Drawer.Content class="rounded-t-2xl">
+			<div class="px-6 pb-8 pt-4 flex flex-col gap-6 max-w-lg mx-auto w-full">
 				<Drawer.Header class="p-0">
-					<Drawer.Title>{isEditMode ? 'Edit session' : 'Add a session manually'}</Drawer.Title>
+					<Drawer.Title>{isEditMode ? 'Edit session' : 'Add a session'}</Drawer.Title>
 				</Drawer.Header>
 				<div class="flex flex-col gap-4">
 					<div class="flex flex-col gap-1.5">
@@ -323,5 +337,4 @@
 				</div>
 			</div>
 		</Drawer.Content>
-	</Drawer.Portal>
 </Drawer.Root>
