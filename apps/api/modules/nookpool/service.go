@@ -280,7 +280,9 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 	}
 
 	if project.FacileID == nil {
-		return
+		fid := GenerateFacileID()
+		project.FacileID = &fid
+		s.orm.Model(project).Update("facile_id", fid)
 	}
 
 	var desc *string
@@ -322,7 +324,16 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 	}
 
 	if task.FacileID == nil {
-		return
+		fid := GenerateFacileID()
+		task.FacileID = &fid
+		s.orm.Model(task).Update("facile_id", fid)
+	}
+
+	if project != nil && project.FacileID == nil {
+		fid := GenerateFacileID()
+		project.FacileID = &fid
+		s.orm.Model(project).Update("facile_id", fid)
+		s.EmitProjectEvent(enveloppe.ActionCreated, project)
 	}
 
 	projectFacileID := ""
