@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry, type UserProfile } from '$lib/backend';
+	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
@@ -54,6 +55,7 @@
 	let taskSearch = $state('');
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
+	let stopTimeEntrySync: (() => void) | undefined;
 
 	type UserTimeSegment = {
 		key: string;
@@ -376,9 +378,21 @@
 		} finally {
 			loading = false;
 		}
+		stopTimeEntrySync = onTimeEntriesChanged(async () => {
+			if (!project) return;
+			const [taskResult, ents] = await Promise.all([
+				backend.listTasks(ctx.token, project.id),
+				backend.listEntries(ctx.token, project.id)
+			]);
+			tasks = taskResult.tasks;
+			entries = ents.entries;
+		});
 	});
 
-	onDestroy(() => clearInterval(ticker));
+	onDestroy(() => {
+		clearInterval(ticker);
+		stopTimeEntrySync?.();
+	});
 </script>
 
 <svelte:head>
