@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 type OIDCConfig struct {
@@ -23,9 +25,17 @@ type Config struct {
 	StorageDir         string
 	OIDC               *OIDCConfig
 	SSOOnly            bool
+	VAPIDPublicKey     string
+	VAPIDPrivateKey    string
+	VAPIDSubject       string
 }
 
 func Load() (Config, error) {
+	err := godotenv.Load()
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to load .env file: %w", err)
+	}
+
 	env := Config{
 		DatabaseURL: valueOrDefault("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/sablier?sslmode=disable"),
 		Port:        valueOrDefault("PORT", "4000"),
@@ -51,6 +61,9 @@ func Load() (Config, error) {
 	}
 
 	env.SSOOnly = strings.ToLower(os.Getenv("SSO_ONLY")) == "true"
+	env.VAPIDPublicKey = os.Getenv("VAPID_PUBLIC_KEY")
+	env.VAPIDPrivateKey = os.Getenv("VAPID_PRIVATE_KEY")
+	env.VAPIDSubject = valueOrDefault("VAPID_SUBJECT", "mailto:admin@example.com")
 
 	if issuer := os.Getenv("OIDC_ISSUER"); issuer != "" {
 		clientID := os.Getenv("OIDC_CLIENT_ID")
