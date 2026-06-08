@@ -31,9 +31,8 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	err := godotenv.Load()
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to load .env file: %w", err)
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		return Config{}, fmt.Errorf("failed to parse .env file: %w", err)
 	}
 
 	env := Config{
