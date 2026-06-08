@@ -124,10 +124,6 @@ func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed in
 	}
 
 	for _, entry := range entries {
-
-		//log the whole entry for debugging
-		s.logger.Info("sending reminder notification", "entry", entry)
-
 		resp, err := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{
 			Endpoint: entry.Endpoint,
 			Keys: webpush.Keys{
@@ -139,21 +135,18 @@ func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed in
 		if resp != nil {
 			resp.Body.Close()
 		}
-		if err != nil || resp.StatusCode >= 400 {
-
-			s.logger.Error("failed to send notification", "entry", entry, "error", err)
+		if err != nil || (resp != nil && resp.StatusCode >= 400) {
+			s.logger.Error("failed to send notification", "user_id", entry.UserID, "error", err)
 			failed++
 			continue
 		}
-		sent++
-	}
 
-	for _, entry := range entries {
 		if err := s.orm.WithContext(ctx).Model(&schemas.TimeEntry{}).
 			Where("user_id = ? AND stopped_at IS NULL", entry.UserID).
 			Update("last_notification_at", gorm.Expr("NOW()")).Error; err != nil {
 			s.logger.Error("failed to update last_notification_at", "user_id", entry.UserID, "error", err)
 		}
+		sent++
 	}
 
 	return sent, failed
@@ -181,12 +174,14 @@ func (s *Service) broadcastNotification(ctx context.Context, req *BroadcastReque
 				P256dh: sub.P256DH,
 			},
 		}, opts)
-		if err != nil || resp.StatusCode >= 400 {
-			s.orm.Logger.Error(ctx, "failed to send notification", "user_id", sub.UserID, "error", err, "status_code", resp.StatusCode)
+		if resp != nil {
+			resp.Body.Close()
+		}
+		if err != nil || (resp != nil && resp.StatusCode >= 400) {
+			s.logger.Error("failed to send notification", "user_id", sub.UserID, "error", err)
 			failed++
 			continue
 		}
-		resp.Body.Close()
 		sent++
 	}
 	return sent, failed
