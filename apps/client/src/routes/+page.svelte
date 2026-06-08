@@ -7,8 +7,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
+    import { TOKEN_KEY } from '$lib/constants';
 
-	const TOKEN_KEY = 'sablier.token';
 
 	let redirecting = $state(true);
 	let ssoOnly = $state(false);

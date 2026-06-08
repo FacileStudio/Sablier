@@ -17,7 +17,9 @@ import (
 	"api/internal/httpjson"
 	"api/internal/logger"
 	"api/internal/middleware"
+	"api/internal/worker"
 	"api/modules/auth"
+	"api/modules/notifications"
 	"api/modules/nookpool"
 	"api/modules/projects"
 	"api/modules/settings"
@@ -27,48 +29,19 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"gorm.io/gorm"
 )
 
-func main() {
-	appEnv, err := env.Load()
-	appLogger := logger.New("info")
-	if err != nil {
-		appLogger.Error("failed to load config", slog.Any("error", err))
-		return
-	}
-	appLogger = logger.New(appEnv.LogLevel)
+type sqlPinger interface {
+	PingContext(ctx context.Context) error
+}
 
-	db, err := database.Open(appEnv.DatabaseURL)
-	if err != nil {
-		appLogger.Error("failed to open database", slog.Any("error", err))
-		return
-	}
-
-	if err := schemas.Migrate(db); err != nil {
-		appLogger.Error("failed to run migrations", slog.Any("error", err))
-		return
-	}
-	if err := os.MkdirAll(filepath.Join(appEnv.StorageDir, "avatars"), 0o755); err != nil {
-		appLogger.Error("failed to prepare storage", slog.Any("error", err))
-		return
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		appLogger.Error("failed to access database handle", slog.Any("error", err))
-		return
-	}
-	defer func() {
-		if err := sqlDB.Close(); err != nil {
-			appLogger.Error("failed to close database", slog.Any("error", err))
-		}
-	}()
-
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) (*http.Server, error) {
 	authService := auth.NewService(db, appEnv.StorageDir, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
-	nookPoolService := nookpool.NewService(db, appLogger)
 	projectService.SetPoolService(nookPoolService)
 	timeEntryService.SetPoolService(nookPoolService)
 	docs := documentation.Response{
@@ -79,6 +52,7 @@ func main() {
 			users.Documentation,
 			settings.Documentation,
 			nookpool.Documentation,
+			notifications.Documentation,
 		},
 	}
 	openapiSpec := documentation.ToOpenAPI(docs)
@@ -122,12 +96,13 @@ func main() {
 	})
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
-	auth.RegisterRoutes(router, authService, appEnv)
+	auth.RegisterRoutes(router, authService, *appEnv)
 	projects.RegisterRoutes(router, projectService, authService)
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 	settings.RegisterRoutes(router, settingsService, authService)
 	nookpool.RegisterRoutes(router, nookPoolService, authService)
+	notifications.RegisterRoutes(router, notificationsService, authService)
 
 	nookPoolService.AutoConnect(context.Background())
 
@@ -140,15 +115,73 @@ func main() {
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+
+	return server, nil
+}
+
+func main() {
+	appEnv, err := env.Load()
+	appLogger := logger.New("info")
+	if err != nil {
+		appLogger.Error("failed to load config", slog.Any("error", err))
+		return
+	}
+	appLogger = logger.New(appEnv.LogLevel)
+
+	db, err := database.Open(appEnv.DatabaseURL)
+	if err != nil {
+		appLogger.Error("failed to open database", slog.Any("error", err))
+		return
+	}
+
+	if err := schemas.Migrate(db); err != nil {
+		appLogger.Error("failed to run migrations", slog.Any("error", err))
+		return
+	} else {
+		appLogger.Info("database migrations applied")
+	}
+
+	if err := os.MkdirAll(filepath.Join(appEnv.StorageDir, "avatars"), 0o755); err != nil {
+		appLogger.Error("failed to prepare storage", slog.Any("error", err))
+		return
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		appLogger.Error("failed to access database handle", slog.Any("error", err))
+		return
+	}
+
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			appLogger.Error("failed to close database", slog.Any("error", err))
+		}
+	}()
+
+	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
+	nookPoolService := nookpool.NewService(db, appLogger)
+
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, nookPoolService)
+	if err != nil {
+		appLogger.Error("failed to create server", slog.Any("error", err))
+		return
+	}
 	serverErrCh := make(chan error, 1)
+
 	go func() {
 		serverErrCh <- server.ListenAndServe()
 	}()
 
+	appLogger.Info("API server started", slog.String("address", server.Addr))
+
 	shutdownSignal, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	appLogger.Info("server starting", slog.String("addr", addr))
+	go func() {
+		worker.RunNotificationWorker(shutdownSignal, notificationsService, appLogger)
+	}()
+
+	appLogger.Info("notification worker started")
+
 	select {
 	case err := <-serverErrCh:
 		if !errors.Is(err, http.ErrServerClosed) {
