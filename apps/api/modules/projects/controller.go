@@ -21,6 +21,7 @@ func toResponse(p *schemas.Project) ProjectResponse {
 		ID:          p.ID,
 		Name:        p.Name,
 		Description: p.Description,
+		Icon:        p.Icon,
 		OwnerID:     p.OwnerID,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
@@ -28,10 +29,16 @@ func toResponse(p *schemas.Project) ProjectResponse {
 }
 
 func toTaskResponse(task *schemas.Task) TaskResponse {
+	status := task.Status
+	if status == "" {
+		status = "to-do"
+	}
 	return TaskResponse{
 		ID:        task.ID,
 		ProjectID: task.ProjectID,
 		Name:      task.Name,
+		Status:    status,
+		ActorID:   task.ActorID,
 		CreatedAt: task.CreatedAt,
 		UpdatedAt: task.UpdatedAt,
 	}
@@ -42,7 +49,7 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateProje
 	if name == "" {
 		return nil, errors.Invalid("project name is required")
 	}
-	record, err := c.service.createProject(ctx, userID, name, strings.TrimSpace(req.Description))
+	record, err := c.service.createProject(ctx, userID, name, strings.TrimSpace(req.Description), req.Icon)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +83,7 @@ func (c *Controller) update(ctx context.Context, projectID int64, req *UpdatePro
 	if name == "" {
 		return nil, errors.Invalid("project name is required")
 	}
-	record, err := c.service.updateProject(ctx, projectID, name, strings.TrimSpace(req.Description))
+	record, err := c.service.updateProject(ctx, projectID, name, strings.TrimSpace(req.Description), req.Icon)
 	if err != nil {
 		return nil, err
 	}
@@ -106,10 +113,10 @@ func (c *Controller) deleteTask(ctx context.Context, projectID int64, taskID int
 
 func (c *Controller) updateTask(ctx context.Context, projectID int64, taskID int64, req *UpdateTaskRequest) (*TaskResponse, error) {
 	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return nil, errors.Invalid("task name is required")
+	if name == "" && req.Status == nil {
+		return nil, errors.Invalid("task name or status is required")
 	}
-	record, err := c.service.updateTask(ctx, projectID, taskID, name)
+	record, err := c.service.updateTask(ctx, projectID, taskID, name, req.Status)
 	if err != nil {
 		return nil, err
 	}

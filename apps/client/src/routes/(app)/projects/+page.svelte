@@ -9,6 +9,8 @@
 	import * as Drawer from '$lib/components/ui/drawer';
 	import { Plus } from 'lucide-svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
+	import IconPicker from '$lib/components/IconPicker.svelte';
+	import { toIconify } from '$lib/icons';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
 	import { getTimeEntryDurationMs } from '$lib/utils';
@@ -21,6 +23,7 @@
 	let drawerOpen = $state(false);
 	let name = $state('');
 	let description = $state('');
+	let newProjectIcon = $state('Layout');
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
 	let stopTimeEntrySync: (() => void) | undefined;
 
@@ -109,9 +112,10 @@
 	}
 
 	async function create() {
-		await backend.createProject(ctx.token, name, description);
+		await backend.createProject(ctx.token, name, description, newProjectIcon);
 		name = '';
 		description = '';
+		newProjectIcon = 'Layout';
 		drawerOpen = false;
 		await load();
 	}
@@ -160,6 +164,10 @@
 							}}
 						>
 							<div class="flex flex-col gap-1.5">
+								<Label>Icon</Label>
+								<IconPicker value={newProjectIcon} onSelect={(icon) => (newProjectIcon = icon)} />
+							</div>
+							<div class="flex flex-col gap-1.5">
 								<Label for="proj-name">Name</Label>
 								<Input id="proj-name" bind:value={name} required />
 							</div>
@@ -190,9 +198,12 @@
 				>
 					<Card.Header class="gap-4">
 						<div class="flex items-start justify-between gap-2">
-							<div class="min-w-0 flex-1">
-								<Card.Title class="truncate">{project.name}</Card.Title>
-								<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+							<div class="min-w-0 flex-1 flex items-start gap-2.5">
+								<iconify-icon icon={toIconify(project.icon)} width="20" height="20" class="text-muted-foreground shrink-0 mt-0.5"></iconify-icon>
+								<div class="min-w-0">
+									<Card.Title class="truncate">{project.name}</Card.Title>
+									<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+								</div>
 							</div>
 							{#if activeUsers.length > 0}
 								<div class="flex shrink-0 items-center gap-1.5">

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"time"
+
 	"api/internal/authcontext"
 	"api/internal/errors"
 	"api/internal/usercolor"
@@ -180,4 +182,51 @@ func (controller *Controller) uploadAvatar(context context.Context, request *htt
 	}
 
 	return &MeResponse{User: *user}, nil
+}
+
+func (controller *Controller) getApiToken(context context.Context) (*ApiTokenStatusResponse, error) {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
+		return nil, errors.Unauthorized("missing auth")
+	}
+	record, err := controller.service.getApiToken(context, identity.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if record == nil {
+		return &ApiTokenStatusResponse{HasToken: false}, nil
+	}
+	return &ApiTokenStatusResponse{
+		HasToken:  true,
+		Name:      record.Name,
+		CreatedAt: record.CreatedAt.UTC().Format(time.RFC3339),
+	}, nil
+}
+
+func (controller *Controller) createApiToken(context context.Context, req *CreateApiTokenRequest) (*ApiTokenResponse, error) {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
+		return nil, errors.Unauthorized("missing auth")
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = "CLI"
+	}
+	rawToken, record, err := controller.service.createApiToken(context, identity.UserID, name)
+	if err != nil {
+		return nil, err
+	}
+	return &ApiTokenResponse{
+		Token:     rawToken,
+		Name:      record.Name,
+		CreatedAt: record.CreatedAt.UTC().Format(time.RFC3339),
+	}, nil
+}
+
+func (controller *Controller) deleteApiToken(context context.Context) error {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
+		return errors.Unauthorized("missing auth")
+	}
+	return controller.service.deleteApiToken(context, identity.UserID)
 }

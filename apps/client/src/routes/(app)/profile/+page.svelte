@@ -7,7 +7,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { USER_COLORS, normalizeUserColor, userColorLabel } from '$lib/user-colors';
-	import { Save } from '@lucide/svelte';
+	import { Save, Copy, KeyRound, Trash2 } from '@lucide/svelte';
 
 	const ctx = getContext<{
 		token: string;
@@ -29,6 +29,70 @@
 	let error = $state('');
 	let rateError = $state('');
 	let previewUrl = $state('');
+
+	let apiTokenLoading = $state(true);
+	let apiTokenHas = $state(false);
+	let apiTokenName = $state('');
+	let apiTokenCreatedAt = $state('');
+	let apiTokenRevealed = $state('');
+	let apiTokenGenerating = $state(false);
+	let apiTokenDeleting = $state(false);
+	let apiTokenError = $state('');
+	let apiTokenCopied = $state(false);
+
+	async function loadApiToken() {
+		try {
+			const res = await backend.getApiToken(ctx.token);
+			apiTokenHas = res.has_token;
+			apiTokenName = res.name ?? '';
+			apiTokenCreatedAt = res.created_at ?? '';
+		} catch {
+			apiTokenHas = false;
+		} finally {
+			apiTokenLoading = false;
+		}
+	}
+
+	async function generateApiToken() {
+		apiTokenGenerating = true;
+		apiTokenError = '';
+		apiTokenRevealed = '';
+		try {
+			const res = await backend.createApiToken(ctx.token, 'CLI');
+			apiTokenRevealed = res.token;
+			apiTokenHas = true;
+			apiTokenName = res.name;
+			apiTokenCreatedAt = res.created_at;
+		} catch (err) {
+			apiTokenError = err instanceof Error ? err.message : 'Failed to generate token.';
+		} finally {
+			apiTokenGenerating = false;
+		}
+	}
+
+	async function revokeApiToken() {
+		apiTokenDeleting = true;
+		apiTokenError = '';
+		try {
+			await backend.deleteApiToken(ctx.token);
+			apiTokenHas = false;
+			apiTokenRevealed = '';
+			apiTokenName = '';
+			apiTokenCreatedAt = '';
+		} catch (err) {
+			apiTokenError = err instanceof Error ? err.message : 'Failed to revoke token.';
+		} finally {
+			apiTokenDeleting = false;
+		}
+	}
+
+	async function copyToken() {
+		await navigator.clipboard.writeText(apiTokenRevealed);
+		apiTokenCopied = true;
+		setTimeout(() => (apiTokenCopied = false), 2000);
+	}
+
+	loadApiToken();
 
 	$effect(() => {
 		name = ctx.user?.name ?? '';
@@ -205,6 +269,56 @@
 
 	<Card.Root class="max-w-2xl">
 		<Card.Header>
+			<Card.Title class="flex items-center gap-2"><KeyRound class="h-4 w-4" /> API Token</Card.Title>
+			<Card.Description>
+				Generate a token to use with the Sablier CLI or any API client. Only one token per account — generating a new one revokes the previous.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="flex flex-col gap-4">
+			{#if apiTokenLoading}
+				<p class="text-sm text-muted-foreground">Loading...</p>
+			{:else if apiTokenRevealed}
+				<div class="flex flex-col gap-2">
+					<p class="text-sm font-medium text-emerald-600">Token created — copy it now, it won't be shown again.</p>
+					<div class="flex items-center gap-2">
+						<code class="flex-1 rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm break-all select-all">{apiTokenRevealed}</code>
+						<Button variant="outline" size="sm" onclick={copyToken}>
+							<Copy class="h-4 w-4" />
+							{apiTokenCopied ? 'Copied!' : 'Copy'}
+						</Button>
+					</div>
+					<p class="text-xs text-muted-foreground">Paste this into your <code class="font-mono">~/.sablier.yml</code> config file.</p>
+				</div>
+			{:else if apiTokenHas}
+				<div class="flex items-center justify-between">
+					<div>
+						<p class="text-sm">Active token: <span class="font-medium">{apiTokenName}</span></p>
+						{#if apiTokenCreatedAt}
+							<p class="text-xs text-muted-foreground">Created {new Date(apiTokenCreatedAt).toLocaleDateString()}</p>
+						{/if}
+					</div>
+					<Button variant="ghost" size="sm" class="text-destructive opacity-70 hover:opacity-100 hover:text-destructive" onclick={revokeApiToken} disabled={apiTokenDeleting}>
+						<Trash2 class="h-4 w-4" />
+						{apiTokenDeleting ? 'Revoking…' : 'Revoke'}
+					</Button>
+				</div>
+			{:else}
+				<p class="text-sm text-muted-foreground">No API token configured.</p>
+			{/if}
+			{#if apiTokenError}
+				<p class="text-sm text-red-500">{apiTokenError}</p>
+			{/if}
+		</Card.Content>
+		<Card.Footer>
+			<Button onclick={generateApiToken} disabled={apiTokenGenerating || apiTokenLoading}>
+				<KeyRound class="h-4 w-4" />
+				{apiTokenGenerating ? 'Generating…' : apiTokenHas ? 'Regenerate token' : 'Generate token'}
+			</Button>
+		</Card.Footer>
+	</Card.Root>
+
+	<Card.Root class="max-w-2xl">
+		<Card.Header>
 			<Card.Title>Identity</Card.Title>
 			<Card.Description>Bottom-left avatar now comes from here instead of divine intervention.</Card.Description>
 		</Card.Header>
@@ -223,6 +337,9 @@
 				{/if}
 
 				<div class="space-y-2">
+					{#if ctx.user?.avatar_source === 'oidc'}
+						<p class="text-xs text-muted-foreground">Synced from SSO</p>
+					{/if}
 					<Label for="avatar">Avatar image</Label>
 					<Input
 						id="avatar"

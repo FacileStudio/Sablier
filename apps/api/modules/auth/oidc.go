@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"time"
 
+	"api/internal/authcontext"
 	"api/internal/env"
 	"api/internal/errors"
 	"api/internal/httpjson"
+	"api/internal/oidcavatar"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -39,7 +41,7 @@ func newOIDCHandler(ctx context.Context, cfg *env.OIDCConfig, service *Service) 
 		ClientSecret: cfg.ClientSecret,
 		RedirectURL:  cfg.RedirectURL,
 		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{gooidc.ScopeOpenID, "email", "profile"},
+		Scopes:       []string{gooidc.ScopeOpenID, "email", "profile", "offline_access"},
 	}
 	verifier := provider.Verifier(&gooidc.Config{ClientID: cfg.ClientID})
 	return &oidcHandler{
@@ -101,8 +103,13 @@ func (h *oidcHandler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var claims struct {
-		Email         string `json:"email"`
-		EmailVerified bool   `json:"email_verified"`
+		Email            string `json:"email"`
+		EmailVerified    bool   `json:"email_verified"`
+		Name             string `json:"name"`
+		PreferredUsername string `json:"preferred_username"`
+		GivenName        string `json:"given_name"`
+		FamilyName       string `json:"family_name"`
+		Picture          string `json:"picture"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		httpjson.WriteError(w, errors.Internal("failed to parse claims", err))
@@ -113,7 +120,14 @@ func (h *oidcHandler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, token, err := h.service.upsertOIDCUser(r.Context(), claims.Email)
+	profile := oidcavatar.Profile{
+		Name:             claims.Name,
+		PreferredUsername: claims.PreferredUsername,
+		GivenName:        claims.GivenName,
+		FamilyName:       claims.FamilyName,
+		Picture:          claims.Picture,
+	}
+	_, token, err := h.service.upsertOIDCUser(r.Context(), claims.Email, profile, oauth2Token)
 	if err != nil {
 		httpjson.WriteError(w, err)
 		return
@@ -124,6 +138,21 @@ func (h *oidcHandler) callback(w http.ResponseWriter, r *http.Request) {
 	q.Set("token", token)
 	dest.RawQuery = q.Encode()
 	http.Redirect(w, r, dest.String(), http.StatusFound)
+}
+
+func (h *oidcHandler) syncProfile(w http.ResponseWriter, r *http.Request) {
+	identity, ok := authcontext.IdentityFromContext(r.Context())
+	if !ok {
+		httpjson.WriteError(w, errors.Unauthorized("missing auth"))
+		return
+	}
+
+	synced, err := h.service.SyncOIDCProfile(r.Context(), identity.UserID, h.provider, h.oauth2Cfg)
+	if err != nil {
+		httpjson.WriteError(w, err)
+		return
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]bool{"synced": synced})
 }
 
 func randomState() (string, error) {

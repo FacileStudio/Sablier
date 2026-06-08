@@ -13,6 +13,7 @@ export type UserProfile = {
 	email: string;
 	name: string;
 	avatar_url: string;
+	avatar_source: string;
 	color: string;
 	rate: number;
 	rate_type: 'daily' | 'hourly';
@@ -32,6 +33,7 @@ export type Project = {
 	id: number;
 	name: string;
 	description: string;
+	icon: string | null;
 	owner_id: number;
 	created_at: string;
 	updated_at: string;
@@ -41,6 +43,8 @@ export type Task = {
 	id: number;
 	project_id: number;
 	name: string;
+	status: string;
+	actor_id: number | null;
 	created_at: string;
 	updated_at: string;
 };
@@ -63,6 +67,24 @@ export type UserSettings = {
 
 export type SettingsResponse = {
 	settings: UserSettings;
+};
+
+export type PoolSettings = {
+	nook_pool_url: string;
+	nook_pool_secret: string;
+	nook_pool_enabled: boolean;
+};
+
+export type PoolSettingsResponse = {
+	pool_settings: PoolSettings;
+	connected: boolean;
+	connect_error?: string;
+	from_env?: boolean;
+};
+
+export type PoolEventToggle = {
+	event: string;
+	enabled: boolean;
 };
 
 export type TimeEntry = {
@@ -205,16 +227,16 @@ export const backend = {
 	getProject(token: string, id: number) {
 		return apiFetch<Project>(`/projects/${id}`, {}, token);
 	},
-	createProject(token: string, name: string, description: string) {
+	createProject(token: string, name: string, description: string, icon?: string) {
 		return apiFetch<Project>('/projects', {
 			method: 'POST',
-			body: JSON.stringify({ name, description })
+			body: JSON.stringify({ name, description, icon })
 		}, token);
 	},
-	updateProject(token: string, id: number, name: string, description: string) {
+	updateProject(token: string, id: number, name: string, description: string, icon?: string) {
 		return apiFetch<Project>(`/projects/${id}`, {
 			method: 'PUT',
-			body: JSON.stringify({ name, description })
+			body: JSON.stringify({ name, description, icon })
 		}, token);
 	},
 	deleteProject(token: string, id: number) {
@@ -229,10 +251,10 @@ export const backend = {
 			body: JSON.stringify({ name })
 		}, token);
 	},
-	updateTask(token: string, projectId: number, taskId: number, name: string) {
+	updateTask(token: string, projectId: number, taskId: number, payload: { name?: string; status?: string }) {
 		return apiFetch<Task>(`/projects/${projectId}/tasks/${taskId}`, {
 			method: 'PUT',
-			body: JSON.stringify({ name })
+			body: JSON.stringify(payload)
 		}, token);
 	},
 	deleteTask(token: string, projectId: number, taskId: number) {
@@ -289,6 +311,19 @@ export const backend = {
 		return apiFetch<{ deleted: boolean }>(`/time-entries/${id}`, { method: 'DELETE' }, token);
 	},
 
+	getApiToken(token: string) {
+		return apiFetch<{ has_token: boolean; name?: string; created_at?: string }>('/users/me/api-token', {}, token);
+	},
+	createApiToken(token: string, name: string) {
+		return apiFetch<{ token: string; name: string; created_at: string }>('/users/me/api-token', {
+			method: 'POST',
+			body: JSON.stringify({ name })
+		}, token);
+	},
+	deleteApiToken(token: string) {
+		return apiFetch<{ deleted: boolean }>('/users/me/api-token', { method: 'DELETE' }, token);
+	},
+
 	getSettings(token: string) {
 		return apiFetch<SettingsResponse>('/settings/', {}, token);
 	},
@@ -300,6 +335,40 @@ export const backend = {
 				webhook_secret_header: webhookSecretHeader,
 				webhook_secret_value: webhookSecretValue
 			})
+		}, token);
+	},
+
+	getPoolSettings(token: string) {
+		return apiFetch<PoolSettingsResponse>('/nook-pool/', {}, token);
+	},
+	triggerSync(token: string) {
+		return apiFetch<{ projects_synced: number; tasks_synced: number }>('/nook-pool/sync', {
+			method: 'POST'
+		}, token);
+	},
+
+	syncProfile(token: string) {
+		return apiFetch<{ synced: boolean }>('/auth/sync-profile', { method: 'POST' }, token);
+	},
+
+	updatePoolSettings(token: string, url: string, secret: string, enabled: boolean) {
+		return apiFetch<PoolSettingsResponse>('/nook-pool/', {
+			method: 'PUT',
+			body: JSON.stringify({
+				nook_pool_url: url,
+				nook_pool_secret: secret,
+				nook_pool_enabled: enabled
+			})
+		}, token);
+	},
+
+	getPoolEvents(token: string) {
+		return apiFetch<{ events: PoolEventToggle[] }>('/nook-pool/events', {}, token);
+	},
+	updatePoolEvents(token: string, events: PoolEventToggle[]) {
+		return apiFetch<{ events: PoolEventToggle[] }>('/nook-pool/events', {
+			method: 'PUT',
+			body: JSON.stringify({ events })
 		}, token);
 	},
 

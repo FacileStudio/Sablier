@@ -20,6 +20,7 @@ import (
 	"api/internal/worker"
 	"api/modules/auth"
 	"api/modules/notifications"
+	"api/modules/nookpool"
 	"api/modules/projects"
 	"api/modules/settings"
 	"api/modules/timeentries"
@@ -35,12 +36,14 @@ type sqlPinger interface {
 	PingContext(ctx context.Context) error
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service) (*http.Server, error) {
-	authService := auth.NewService(db)
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) (*http.Server, error) {
+	authService := auth.NewService(db, appEnv.StorageDir, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
+	projectService.SetPoolService(nookPoolService)
+	timeEntryService.SetPoolService(nookPoolService)
 	docs := documentation.Response{
 		Modules: []documentation.Module{
 			auth.Documentation,
@@ -48,9 +51,11 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 			timeentries.Documentation,
 			users.Documentation,
 			settings.Documentation,
+			nookpool.Documentation,
 			notifications.Documentation,
 		},
 	}
+	openapiSpec := documentation.ToOpenAPI(docs)
 
 	router := chi.NewRouter()
 	router.Use(chimiddleware.RequestID)
@@ -71,8 +76,23 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 		}
 		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
-	router.Get("/docs", func(w http.ResponseWriter, request *http.Request) {
-		httpjson.WriteJSON(w, http.StatusOK, docs)
+	router.Get("/docs", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!doctype html>
+<html>
+<head>
+  <title>Sablier API</title>
+  <meta charset="utf-8" />
+</head>
+<body>
+  <script id="api-reference" data-url="/openapi"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>`))
+	})
+	router.Get("/openapi", func(w http.ResponseWriter, _ *http.Request) {
+		httpjson.WriteJSON(w, http.StatusOK, openapiSpec)
 	})
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
@@ -81,7 +101,10 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 	settings.RegisterRoutes(router, settingsService, authService)
+	nookpool.RegisterRoutes(router, nookPoolService, authService)
 	notifications.RegisterRoutes(router, notificationsService, authService)
+
+	nookPoolService.AutoConnect(context.Background())
 
 	addr := ":" + appEnv.Port
 	server := &http.Server{
@@ -135,8 +158,9 @@ func main() {
 	}()
 
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
+	nookPoolService := nookpool.NewService(db, appLogger)
 
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService)
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, nookPoolService)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return
@@ -165,6 +189,7 @@ func main() {
 		}
 	case <-shutdownSignal.Done():
 		appLogger.Info("server shutting down")
+		nookPoolService.Shutdown()
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownContext); err != nil {

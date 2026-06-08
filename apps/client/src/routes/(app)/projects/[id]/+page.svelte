@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { backend, type Project, type Task, type TimeEntry, type UserProfile } from '$lib/backend';
+	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
@@ -16,7 +17,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
-	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save } from 'lucide-svelte';
+	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save, Search } from 'lucide-svelte';
+	import IconPicker from '$lib/components/IconPicker.svelte';
+	import { toIconify } from '$lib/icons';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -26,9 +29,11 @@
 	let tasks = $state<Task[]>([]);
 	let entries = $state<TimeEntry[]>([]);
 	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
+	let usersById = $state<Map<number, UserProfile>>(new Map());
 	let projectEditDrawerOpen = $state(false);
 	let editName = $state('');
 	let editDescription = $state('');
+	let editIcon = $state('Layout');
 	let projectActionError = $state('');
 	let savingProject = $state(false);
 	let deletingProject = $state(false);
@@ -47,13 +52,16 @@
 	let savingTaskId = $state<number | null>(null);
 	let editingEntry = $state<TimeEntry | null>(null);
 	let editDrawerOpen = $state(false);
+	let taskSearch = $state('');
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
+	let stopTimeEntrySync: (() => void) | undefined;
 
 	type UserTimeSegment = {
 		key: string;
 		label: string;
 		color?: string;
+		avatarUrl?: string;
 		ms: number;
 	};
 
@@ -109,6 +117,7 @@
 				key,
 				label: userLabel(entry),
 				color: userColor(entry),
+				avatarUrl: entry.user_avatar_url,
 				ms
 			});
 		}
@@ -160,6 +169,14 @@
 							: null
 				};
 			})
+	);
+
+	const filteredTasks = $derived(
+		taskSearch.trim() === ''
+			? tasksWithStats
+			: tasksWithStats.filter((t) =>
+					t.name.toLowerCase().includes(taskSearch.toLowerCase())
+				)
 	);
 
 	function openEntryDeleteDialog(entry: TimeEntry) {
@@ -236,7 +253,7 @@
 		savingTaskId = taskId;
 		taskSaveError = '';
 		try {
-			const updated = await backend.updateTask(ctx.token, project.id, taskId, taskDraftName);
+			const updated = await backend.updateTask(ctx.token, project.id, taskId, { name: taskDraftName });
 			tasks = tasks
 				.map((task) => task.id === taskId ? updated : task)
 				.sort((a, b) => a.name.localeCompare(b.name));
@@ -251,6 +268,28 @@
 		}
 	}
 
+	const STATUS_CYCLE = ['to-do', 'in-progress', 'in-review', 'done'] as const;
+
+	function nextTaskStatus(current: string): string {
+		const idx = STATUS_CYCLE.indexOf(current as typeof STATUS_CYCLE[number]);
+		return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+	}
+
+	function statusLabel(status: string): string {
+		const labels: Record<string, string> = { 'to-do': 'Not started', 'in-progress': 'In progress', 'in-review': 'In review', 'done': 'Completed' };
+		return labels[status] ?? 'Not started';
+	}
+
+	async function toggleTaskStatus(taskId: number) {
+		if (!project) return;
+		const task = tasks.find((t) => t.id === taskId);
+		if (!task) return;
+		try {
+			const updated = await backend.updateTask(ctx.token, project.id, taskId, { status: nextTaskStatus(task.status) });
+			tasks = tasks.map((t) => (t.id === taskId ? updated : t));
+		} catch {}
+	}
+
 	function startProjectEdit() {
 		if (!project) {
 			return;
@@ -258,6 +297,7 @@
 		projectActionError = '';
 		editName = project.name;
 		editDescription = project.description;
+		editIcon = project.icon || 'Layout';
 		projectEditDrawerOpen = true;
 	}
 
@@ -266,6 +306,7 @@
 		projectActionError = '';
 		editName = '';
 		editDescription = '';
+		editIcon = 'Layout';
 	}
 
 	async function saveProject() {
@@ -275,7 +316,7 @@
 		savingProject = true;
 		projectActionError = '';
 		try {
-			project = await backend.updateProject(ctx.token, project.id, editName, editDescription);
+			project = await backend.updateProject(ctx.token, project.id, editName, editDescription, editIcon);
 			projectEditDrawerOpen = false;
 			editName = '';
 			editDescription = '';
@@ -323,19 +364,35 @@
 			project = proj;
 			tasks = taskResult.tasks;
 			entries = ents.entries;
-			const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
+			const rateMap = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
+			const userMap = new Map<number, UserProfile>();
 			for (const u of usersResult.users) {
-				map.set(Number(u.id), { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily', workday_hours: u.workday_hours > 0 ? u.workday_hours : 8 });
+				const uid = Number(u.id);
+				rateMap.set(uid, { rate: u.rate ?? 0, rate_type: u.rate_type ?? 'daily', workday_hours: u.workday_hours > 0 ? u.workday_hours : 8 });
+				userMap.set(uid, u);
 			}
-			userRates = map;
+			userRates = rateMap;
+			usersById = userMap;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load project.';
 		} finally {
 			loading = false;
 		}
+		stopTimeEntrySync = onTimeEntriesChanged(async () => {
+			if (!project) return;
+			const [taskResult, ents] = await Promise.all([
+				backend.listTasks(ctx.token, project.id),
+				backend.listEntries(ctx.token, project.id)
+			]);
+			tasks = taskResult.tasks;
+			entries = ents.entries;
+		});
 	});
 
-	onDestroy(() => clearInterval(ticker));
+	onDestroy(() => {
+		clearInterval(ticker);
+		stopTimeEntrySync?.();
+	});
 </script>
 
 <svelte:head>
@@ -356,7 +413,10 @@
 		{:else if project}
 			<div class="flex items-start justify-between gap-4">
 				<div class="flex flex-col gap-1">
-					<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
+					<div class="flex items-center gap-2.5">
+						<iconify-icon icon={toIconify(project.icon)} width="24" height="24" class="text-muted-foreground shrink-0"></iconify-icon>
+						<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
+					</div>
 					<p class="text-sm text-muted-foreground">
 						{project.description || 'No description'}
 					</p>
@@ -449,7 +509,7 @@
 					{#if projectUserSegments.length === 0}
 						<p class="text-sm text-muted-foreground">No tracked time yet.</p>
 					{:else}
-						<UserColorSplitBar segments={projectUserSegments} barClass="h-4" />
+						<UserColorSplitBar segments={projectUserSegments} barClass="h-4" showAvatars showDuration />
 					{/if}
 				</div>
 			</section>
@@ -457,9 +517,16 @@
 			<section class="mt-6">
 				<div class="mb-4 flex items-start justify-between gap-3">
 					<h2 class="text-lg font-semibold">Tasks</h2>
-					<p class="text-right text-xs text-muted-foreground">
-						Time shown is total time spent per task.
-					</p>
+					{#if tasksWithStats.length > 0}
+						<div class="relative w-56">
+							<Search class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								bind:value={taskSearch}
+								placeholder="Filter tasks…"
+								class="h-8 pl-8 text-sm"
+							/>
+						</div>
+					{/if}
 				</div>
 				<div>
 					{#if taskSaveError}
@@ -467,44 +534,67 @@
 					{/if}
 					{#if tasksWithStats.length === 0}
 						<p class="text-sm text-muted-foreground">No tasks yet.</p>
+					{:else if filteredTasks.length === 0}
+						<p class="text-sm text-muted-foreground">No tasks matching "{taskSearch}".</p>
 					{:else}
 						<div class="space-y-3">
-							{#each tasksWithStats as task}
-								<div class="rounded-xl border p-4">
+							{#each filteredTasks as task}
+								<div class="rounded-xl border p-4 {task.status === 'done' ? 'opacity-60' : ''}">
 									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											{#if editingTaskId === task.id}
-												<div class="flex flex-col gap-2">
-													<Input
-														bind:value={taskDraftName}
-														class="h-8"
-														maxlength={200}
-													/>
-													<div class="flex flex-wrap gap-2">
-														<Button
-															size="sm"
-															onclick={() => saveTaskName(task.id)}
-															disabled={savingTaskId === task.id}
-														>
-															<Check class="h-4 w-4" />
-															{savingTaskId === task.id ? 'Saving…' : 'Save'}
-														</Button>
-														<Button
-															variant="outline"
-															size="sm"
-															onclick={cancelTaskEdit}
-															disabled={savingTaskId === task.id}
-														>
-															<X class="h-4 w-4" />
-															Cancel
-														</Button>
+										<div class="flex min-w-0 items-start gap-3">
+											<button
+												type="button"
+												class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {task.status === 'done' ? 'border-green-500 bg-green-500' : task.status === 'in-review' ? 'border-blue-400 bg-blue-400' : task.status === 'in-progress' ? 'border-amber-400 bg-amber-400' : 'border-muted-foreground/40 hover:border-foreground/60'}"
+												title={statusLabel(task.status)}
+												onclick={() => toggleTaskStatus(task.id)}
+											>
+												{#if task.status === 'done'}
+													<Check class="h-2.5 w-2.5 text-white" />
+												{/if}
+											</button>
+											<div class="min-w-0">
+												{#if editingTaskId === task.id}
+													<div class="flex flex-col gap-2">
+														<Input
+															bind:value={taskDraftName}
+															class="h-8"
+															maxlength={200}
+														/>
+														<div class="flex flex-wrap gap-2">
+															<Button
+																size="sm"
+																onclick={() => saveTaskName(task.id)}
+																disabled={savingTaskId === task.id}
+															>
+																<Check class="h-4 w-4" />
+																{savingTaskId === task.id ? 'Saving…' : 'Save'}
+															</Button>
+															<Button
+																variant="outline"
+																size="sm"
+																onclick={cancelTaskEdit}
+																disabled={savingTaskId === task.id}
+															>
+																<X class="h-4 w-4" />
+																Cancel
+															</Button>
+														</div>
 													</div>
-												</div>
-											{:else}
-												<p class="truncate font-medium" title={task.name}>{task.name}</p>
-											{/if}
+												{:else}
+													<p class="truncate font-medium {task.status === 'done' ? 'line-through text-muted-foreground' : ''}" title={task.name}>{task.name}</p>
+												{/if}
+											</div>
 										</div>
 										<div class="flex items-center gap-1">
+											{#if task.actor_id}
+												{@const actor = usersById.get(task.actor_id)}
+												{#if actor}
+													<UserAvatarBadge name={actor.name} avatarUrl={actor.avatar_url} color={actor.color} class="h-6 w-6 text-[10px]" />
+												{/if}
+											{/if}
+											<Badge variant={task.status === 'done' ? 'default' : task.status === 'in-review' ? 'outline' : task.status === 'in-progress' ? 'outline' : 'secondary'} class="tabular-nums text-xs">
+												{statusLabel(task.status)}
+											</Badge>
 											<Badge variant="secondary" class="tabular-nums">
 												{formatDuration(task.totalMs)}
 											</Badge>
@@ -683,6 +773,10 @@
 					{/if}
 
 					<div class="flex flex-col gap-4">
+						<div class="flex flex-col gap-1.5">
+							<Label>Icon</Label>
+							<IconPicker value={editIcon} onSelect={(icon) => (editIcon = icon)} />
+						</div>
 						<div class="flex flex-col gap-1.5">
 							<Label for="project-edit-name">Name</Label>
 							<Input id="project-edit-name" bind:value={editName} />

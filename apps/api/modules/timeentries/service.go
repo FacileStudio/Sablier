@@ -8,20 +8,27 @@ import (
 
 	"api/internal/errors"
 	"api/internal/webhook"
+	"api/modules/nookpool"
 	"api/schemas"
 
+	enveloppe "github.com/FacileStudio/enveloppe/go"
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	orm        *gorm.DB
-	controller *Controller
+	orm         *gorm.DB
+	controller  *Controller
+	poolService *nookpool.Service
 }
 
 func NewService(orm *gorm.DB) *Service {
 	service := &Service{orm: orm}
 	service.controller = newController(service)
 	return service
+}
+
+func (service *Service) SetPoolService(ps *nookpool.Service) {
+	service.poolService = ps
 }
 
 func (service *Service) startTimer(ctx context.Context, userID string, projectID int64, taskID int64) (*schemas.TimeEntry, string, error) {
@@ -55,6 +62,27 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, "", errors.Internal("failed to start timer", err)
 	}
+
+	needsTaskUpdate := false
+	if task.Status != schemas.StatusInProgress {
+		task.Status = schemas.StatusInProgress
+		needsTaskUpdate = true
+	}
+	if task.ActorID == nil || *task.ActorID != uid {
+		task.ActorID = &uid
+		needsTaskUpdate = true
+	}
+	if needsTaskUpdate {
+		if err := service.orm.WithContext(ctx).Save(task).Error; err == nil {
+			if service.poolService != nil {
+				var project schemas.Project
+				if err := service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project).Error; err == nil {
+					go service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
+				}
+			}
+		}
+	}
+
 	service.fireWebhook(ctx, uid, "timer_started", record)
 	return record, task.Name, nil
 }
@@ -280,14 +308,6 @@ type webhookTimeEntry struct {
 }
 
 func (service *Service) fireWebhook(ctx context.Context, userID int64, event string, entry *schemas.TimeEntry) {
-	var setting schemas.AppSetting
-	if err := service.orm.WithContext(ctx).Where("id = 1").First(&setting).Error; err != nil {
-		return
-	}
-	if setting.WebhookURL == "" {
-		return
-	}
-
 	var user schemas.User
 	service.orm.WithContext(ctx).Where("id = ?", userID).First(&user)
 
@@ -309,10 +329,33 @@ func (service *Service) fireWebhook(ctx context.Context, userID int64, event str
 		StoppedAt:   entry.StoppedAt,
 	}
 
-	webhook.Fire(setting.WebhookURL, setting.WebhookSecretHeader, setting.WebhookSecretValue, webhook.Payload{
-		Event: event,
-		Data:  data,
-	})
+	var setting schemas.AppSetting
+	if err := service.orm.WithContext(ctx).Where("id = 1").First(&setting).Error; err == nil && setting.WebhookURL != "" {
+		webhook.Fire(setting.WebhookURL, setting.WebhookSecretHeader, setting.WebhookSecretValue, webhook.Payload{
+			Event: event,
+			Data:  data,
+		})
+	}
+
+	if service.poolService != nil {
+		poolEvent := event
+		if event == "timer_started" {
+			poolEvent = "timer.started"
+		} else if event == "timer_stopped" {
+			poolEvent = "timer.stopped"
+		}
+		go service.poolService.EmitTimerEvent(poolEvent, &nookpool.TimerEventPayload{
+			ID:          data.ID,
+			ProjectID:   data.ProjectID,
+			ProjectName: data.ProjectName,
+			TaskID:      data.TaskID,
+			TaskName:    data.TaskName,
+			UserID:      data.UserID,
+			UserEmail:   data.UserEmail,
+			StartedAt:   data.StartedAt,
+			StoppedAt:   data.StoppedAt,
+		})
+	}
 }
 
 func (service *Service) getRunningTimer(ctx context.Context, userID string) (*schemas.TimeEntry, string, error) {

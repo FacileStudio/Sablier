@@ -7,6 +7,7 @@ import (
 
 	"api/internal/env"
 	"api/internal/httpjson"
+	"api/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -59,6 +60,7 @@ func RegisterRoutes(router chi.Router, service *Service, appEnv env.Config) {
 			} else {
 				router.Get("/oidc", oidc.login)
 				router.Get("/oidc/callback", oidc.callback)
+				router.With(middleware.RequireAuth(service)).Post("/sync-profile", oidc.syncProfile)
 			}
 		}
 	})

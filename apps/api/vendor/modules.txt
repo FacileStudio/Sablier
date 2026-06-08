@@ -1,3 +1,9 @@
+# github.com/FacileStudio/enveloppe/go v0.0.0-20260527224511-f8474e3d7e69
+## explicit; go 1.24.0
+github.com/FacileStudio/enveloppe/go
+# github.com/FacileStudio/pool/go v0.0.0-20260527212554-94142d46e0f5
+## explicit; go 1.24.0
+github.com/FacileStudio/pool/go
 # github.com/SherClockHolmes/webpush-go v1.4.0
 ## explicit; go 1.13
 github.com/SherClockHolmes/webpush-go
@@ -16,6 +22,9 @@ github.com/go-jose/go-jose/v4/json
 # github.com/golang-jwt/jwt/v5 v5.2.1
 ## explicit; go 1.18
 github.com/golang-jwt/jwt/v5
+# github.com/gorilla/websocket v1.5.3
+## explicit; go 1.12
+github.com/gorilla/websocket
 # github.com/jackc/pgpassfile v1.0.0
 ## explicit; go 1.12
 github.com/jackc/pgpassfile
@@ -49,9 +58,13 @@ github.com/jinzhu/now
 # github.com/joho/godotenv v1.5.1
 ## explicit; go 1.12
 github.com/joho/godotenv
+# github.com/kr/text v0.2.0
+## explicit
 # github.com/mattn/go-sqlite3 v1.14.22
 ## explicit; go 1.19
 github.com/mattn/go-sqlite3
+# github.com/rogpeppe/go-internal v1.14.1
+## explicit; go 1.23
 # golang.org/x/crypto v0.42.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/argon2
@@ -83,6 +96,9 @@ golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
 # gorm.io/driver/postgres v1.6.0
 ## explicit; go 1.20
 gorm.io/driver/postgres

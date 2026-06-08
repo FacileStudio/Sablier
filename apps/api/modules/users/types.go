@@ -5,6 +5,7 @@ type User struct {
 	Email        string  `json:"email"`
 	Name         string  `json:"name"`
 	AvatarURL    string  `json:"avatar_url"`
+	AvatarSource string  `json:"avatar_source"`
 	Color        string  `json:"color"`
 	Rate         float64 `json:"rate"`
 	RateType     string  `json:"rate_type"`
@@ -28,4 +29,20 @@ type UpdateRequest struct {
 	Rate         *float64 `json:"rate"`
 	RateType     *string  `json:"rate_type"`
 	WorkdayHours *float64 `json:"workday_hours"`
+}
+
+type ApiTokenResponse struct {
+	Token     string `json:"token"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+}
+
+type ApiTokenStatusResponse struct {
+	HasToken  bool   `json:"has_token"`
+	Name      string `json:"name,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+}
+
+type CreateApiTokenRequest struct {
+	Name string `json:"name"`
 }
