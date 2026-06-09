@@ -25,12 +25,28 @@
 	let stopTimeEntrySync: (() => void) | undefined;
 	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
 
-	function formatDate(iso: string): string {
+	function formatLongDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
 			month: 'short',
 			day: 'numeric',
 			hour: '2-digit',
 			minute: '2-digit'
+		});
+	}
+
+	function formatShortDate(iso: string): string {
+
+		//if the date is today, show only the time
+		if (isToday(iso)) {
+			return new Date(iso).toLocaleTimeString(undefined, {
+				hour: '2-digit',
+				minute: '2-digit'
+			});
+		}
+		// else show the date without the year
+		return new Date(iso).toLocaleString(undefined, {
+			month: 'short',
+			day: 'numeric',
 		});
 	}
 
@@ -242,7 +258,7 @@
 	<title>Dashboard — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col  py-6 p-4 gap-6 md:p-6">
 	<div class="flex items-start justify-between">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -358,7 +374,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root>
+	<Card.Root class="hidden md:flex">
 		<Card.Header class="flex flex-row items-center justify-between">
 			<div>
 				<Card.Title>Activity</Card.Title>
@@ -441,11 +457,12 @@
 											avatarUrl={entry.user_avatar_url}
 											color={userColor(entry)}
 										/>
-										<span>{getEntryUserDisplayName(entry)}</span>
+										<span class="hidden md:block">{getEntryUserDisplayName(entry)}</span>
 									</div>
 								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
-								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
+								<Table.Cell class="text-muted-foreground hidden md:block">{formatLongDate(entry.started_at)}</Table.Cell>
+								<Table.Cell class="text-muted-foreground md:hidden">{formatShortDate(entry.started_at)}</Table.Cell>
 								<Table.Cell class="text-right">
 									{#if entry.stopped_at === null}
 										{@const paused = isTimeEntryPaused(entry)}

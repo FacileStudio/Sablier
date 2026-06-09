@@ -6,7 +6,9 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { Toaster } from 'svelte-sonner';
 	import { NotificationService } from '$lib/notifications';
-    import { TOKEN_KEY } from '$lib/constants';
+	import { TOKEN_KEY } from '$lib/constants';
+	import { Menu } from 'lucide-svelte';
+    import Button from '$lib/components/ui/button/button.svelte';
 
 	let { children } = $props();
 
@@ -14,6 +16,8 @@
 	let user = $state<UserProfile | null>(null);
 	let loaded = $state(false);
 	let projects = $state<Project[]>([]);
+	let sidebarOpen = $state(false);
+	let sidebarCollapsed = $state(true);
 
 	function setUser(nextUser: UserProfile) {
 		user = nextUser;
@@ -54,15 +58,21 @@
 
 {#if loaded}
 	<div class="flex h-screen w-full overflow-hidden">
-		<Sidebar {user} />
+		<Sidebar {user} bind:collapsed={sidebarCollapsed} bind:open={sidebarOpen} />
 		<main class="flex-1 overflow-auto">
+			<header class="sticky top-0 z-30 flex items-center border-b bg-background px-4 h-14 md:hidden">
+				<Button
+					variant="ghost"
+					class="h-9 w-9"
+					onclick={() => (sidebarOpen = true)}
+					aria-label="Open menu"
+				>
+					<Menu class="h-8 w-8" />
+				</Button>
+			</header>
 			{@render children()}
 		</main>
 	</div>
 	<Toaster richColors position="bottom-right" />
-	<div class="fixed top-0 left-1/2 z-50 -translate-x-1/2">
-		<div class="rounded-b-2xl border border-t-0 bg-background px-5 py-3 shadow-lg shadow-black/10">
-			<TimerControl {projects} />
-		</div>
-	</div>
+	<TimerControl {projects} />
 {/if}
