@@ -314,7 +314,7 @@
 			{projects}
 			bind:open={manualDrawerOpen}
 			hideTrigger
-			onchange
+			{onchange}
 		/>
 	</div>
 {/if}
