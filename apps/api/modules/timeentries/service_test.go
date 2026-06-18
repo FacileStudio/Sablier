@@ -2,6 +2,8 @@ package timeentries
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +16,8 @@ import (
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 
-	orm, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
+	orm, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}

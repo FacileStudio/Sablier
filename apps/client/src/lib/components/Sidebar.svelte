@@ -3,12 +3,14 @@
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { LayoutDashboard, FolderOpen, Users, LogOut, ChevronLeft, ChevronRight, X } from 'lucide-svelte';
-	import type { UserProfile } from '$lib/backend';
+	import { LayoutDashboard, FolderOpen, Users, Building2, LogOut, ChevronLeft, ChevronRight, X } from 'lucide-svelte';
+	import type { UserProfile, Space } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
+	import SpaceSwitcher from '$lib/components/SpaceSwitcher.svelte';
 
-	let { user, collapsed = $bindable(true), open = $bindable(false) }: {
+	let { user, spaces = [], collapsed = $bindable(true), open = $bindable(false) }: {
 		user: UserProfile | null;
+		spaces?: Space[];
 		collapsed?: boolean;
 		open?: boolean;
 	} = $props();
@@ -32,7 +34,8 @@
 	const navLinks = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
-		{ href: '/users', label: 'Users', icon: Users }
+		{ href: '/users', label: 'Users', icon: Users },
+		{ href: '/spaces', label: 'Espaces', icon: Building2 }
 	];
 </script>
 
@@ -61,6 +64,10 @@
 			<X class="h-5 w-5" />
 		</button>
 	</div>
+
+	{#if spaces.length > 0}
+		<SpaceSwitcher {spaces} />
+	{/if}
 
 	<nav class="flex flex-1 flex-col gap-1 px-3">
 		{#each navLinks as link (link.href)}

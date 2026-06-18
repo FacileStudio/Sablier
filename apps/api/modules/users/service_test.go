@@ -99,7 +99,7 @@ func TestUpdateUserPersistsChosenColor(t *testing.T) {
 	user := seedUser(t, service.orm, "color@example.com", "AD9EF0")
 	color := "7EEEDB"
 
-	updated, err := service.updateUser(context.Background(), fmt.Sprintf("%d", user.ID), nil, nil, nil, &color)
+	updated, err := service.updateUser(context.Background(), fmt.Sprintf("%d", user.ID), nil, nil, nil, &color, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("update user: %v", err)
 	}
