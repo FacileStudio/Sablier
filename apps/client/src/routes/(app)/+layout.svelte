@@ -5,11 +5,10 @@
 	import { setSpaces } from '$lib/space-context.svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import MobileNav from '$lib/components/MobileNav.svelte';
 	import { Toaster } from 'svelte-sonner';
 	import { NotificationService } from '$lib/notifications';
 	import { TOKEN_KEY } from '$lib/constants';
-	import { Menu } from 'lucide-svelte';
-    import Button from '$lib/components/ui/button/button.svelte';
 
 	let { children } = $props();
 
@@ -17,8 +16,6 @@
 	let user = $state<UserProfile | null>(null);
 	let loaded = $state(false);
 	let projects = $state<Project[]>([]);
-	let sidebarOpen = $state(false);
-	let sidebarCollapsed = $state(true);
 	let userSpaces = $state<Space[]>([]);
 
 	function setUser(nextUser: UserProfile) {
@@ -64,21 +61,12 @@
 </script>
 
 {#if loaded}
-	<div class="flex h-screen w-full overflow-hidden">
-		<Sidebar {user} spaces={userSpaces} bind:collapsed={sidebarCollapsed} bind:open={sidebarOpen} />
-		<main class="flex-1 overflow-auto">
-			<header class="sticky top-0 z-30 flex items-center border-b bg-background px-4 h-14 md:hidden">
-				<Button
-					variant="ghost"
-					class="h-9 w-9"
-					onclick={() => (sidebarOpen = true)}
-					aria-label="Open menu"
-				>
-					<Menu class="h-8 w-8" />
-				</Button>
-			</header>
+	<div class="flex h-[100dvh] w-full overflow-hidden">
+		<Sidebar {user} spaces={userSpaces} />
+		<main class="flex-1 overflow-auto pb-24 md:pb-0">
 			{@render children()}
 		</main>
+		<MobileNav {user} />
 	</div>
 	<Toaster richColors position="bottom-right" />
 	<TimerControl {projects} />
