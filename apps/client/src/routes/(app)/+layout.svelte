@@ -2,7 +2,7 @@
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { backend, type UserProfile, type Project, type Space } from '$lib/backend';
-	import { setSpaces } from '$lib/space-context';
+	import { setSpaces } from '$lib/space-context.svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { Toaster } from 'svelte-sonner';

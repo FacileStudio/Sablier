@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Space } from '$lib/backend';
-	import { getActiveSpaceId, setActiveSpaceId } from '$lib/space-context';
+	import { getActiveSpaceId, setActiveSpaceId } from '$lib/space-context.svelte';
 	import { Users, User, ChevronDown } from 'lucide-svelte';
 
 	let { spaces }: { spaces: Space[] } = $props();
