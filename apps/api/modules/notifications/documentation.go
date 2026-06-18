@@ -8,7 +8,7 @@ var Documentation = documentation.Module{
 	Routes: []documentation.Route{
 		{
 			Method:       "GET",
-			Path:         "/notifications/vapid-public-key",
+			Path:         "/api/notifications/vapid-public-key",
 			Summary:      "Return VAPID public key",
 			Description:  "Returns the server VAPID public key for creating a push subscription.",
 			Auth:         "none",
@@ -16,7 +16,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/notifications/subscriptions",
+			Path:         "/api/notifications/subscriptions",
 			Summary:      "Save push subscription",
 			Description:  "Saves or replaces the push subscription for the authenticated user.",
 			Auth:         "bearer token required",
@@ -30,7 +30,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "DELETE",
-			Path:         "/notifications/subscriptions",
+			Path:         "/api/notifications/subscriptions",
 			Summary:      "Delete push subscription",
 			Description:  "Removes the push subscription for the authenticated user.",
 			Auth:         "bearer token required",

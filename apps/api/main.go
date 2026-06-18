@@ -99,14 +99,16 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	})
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
-	auth.RegisterRoutes(router, authService, *appEnv)
-	projects.RegisterRoutes(router, projectService, authService)
-	timeentries.RegisterRoutes(router, timeEntryService, authService)
-	users.RegisterRoutes(router, userService, authService)
-	settings.RegisterRoutes(router, settingsService, authService)
-	spaces.RegisterRoutes(router, spaceService, authService)
-	nookpool.RegisterRoutes(router, nookPoolService, authService)
-	notifications.RegisterRoutes(router, notificationsService, authService)
+	router.Route("/api", func(api chi.Router) {
+		auth.RegisterRoutes(api, authService, *appEnv)
+		projects.RegisterRoutes(api, projectService, authService)
+		timeentries.RegisterRoutes(api, timeEntryService, authService)
+		users.RegisterRoutes(api, userService, authService)
+		settings.RegisterRoutes(api, settingsService, authService)
+		spaces.RegisterRoutes(api, spaceService, authService)
+		nookpool.RegisterRoutes(api, nookPoolService, authService)
+		notifications.RegisterRoutes(api, notificationsService, authService)
+	})
 
 	nookPoolService.AutoConnect(context.Background())
 

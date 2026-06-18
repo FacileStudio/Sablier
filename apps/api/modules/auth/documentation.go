@@ -8,7 +8,7 @@ var Documentation = documentation.Module{
 	Routes: []documentation.Route{
 		{
 			Method:       "POST",
-			Path:         "/auth/register",
+			Path:         "/api/auth/register",
 			Summary:      "Register a new user",
 			Description:  "Creates a user account and returns an auth token.",
 			Auth:         "public",
@@ -22,7 +22,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/auth/login",
+			Path:         "/api/auth/login",
 			Summary:      "Authenticate a user",
 			Description:  "Authenticates credentials and returns an auth token.",
 			Auth:         "public",

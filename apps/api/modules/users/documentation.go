@@ -8,7 +8,7 @@ var Documentation = documentation.Module{
 	Routes: []documentation.Route{
 		{
 			Method:       "GET",
-			Path:         "/users",
+			Path:         "/api/users",
 			Summary:      "List users",
 			Description:  "Returns all authenticated users with profile metadata.",
 			Auth:         "bearer token required",
@@ -20,7 +20,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "GET",
-			Path:         "/users/me",
+			Path:         "/api/users/me",
 			Summary:      "Return the current user",
 			Description:  "Returns the authenticated user with profile metadata.",
 			Auth:         "bearer token required",
@@ -32,7 +32,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "PATCH",
-			Path:         "/users/me",
+			Path:         "/api/users/me",
 			Summary:      "Update the current user",
 			Description:  "Updates the authenticated user's name, email, password, and/or pastel color.",
 			Auth:         "bearer token required",
@@ -48,7 +48,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/users/me/avatar",
+			Path:         "/api/users/me/avatar",
 			Summary:      "Upload the current user's avatar",
 			Description:  "Stores a new avatar file for the authenticated user and returns the updated profile.",
 			Auth:         "bearer token required",

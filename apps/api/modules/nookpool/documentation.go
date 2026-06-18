@@ -8,7 +8,7 @@ var Documentation = documentation.Module{
 	Routes: []documentation.Route{
 		{
 			Method:       "GET",
-			Path:         "/nook-pool/",
+			Path:         "/api/nook-pool/",
 			Summary:      "Get pool settings",
 			Description:  "Returns the current Nook Pool connection settings and status.",
 			Auth:         "required",
@@ -16,7 +16,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/nook-pool/sync",
+			Path:         "/api/nook-pool/sync",
 			Summary:      "Trigger initial sync",
 			Description:  "Syncs all existing projects and tasks to the Pool. Safe to run multiple times.",
 			Auth:         "required",
@@ -24,7 +24,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "PUT",
-			Path:         "/nook-pool/",
+			Path:         "/api/nook-pool/",
 			Summary:      "Update pool settings",
 			Description:  "Updates Nook Pool connection settings. If enabled with valid URL and secret, connects to the Pool.",
 			Auth:         "required",

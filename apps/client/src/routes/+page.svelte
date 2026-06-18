@@ -26,7 +26,7 @@
 		}
 
 		try {
-			const cfg = await fetch(`${backend.baseUrl}/auth/config`).then((r) => r.json());
+			const cfg = await fetch(`${backend.baseUrl}/api/auth/config`).then((r) => r.json());
 			ssoOnly = cfg.sso_only ?? false;
 		} catch {}
 
