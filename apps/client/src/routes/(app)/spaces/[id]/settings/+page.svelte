@@ -5,10 +5,9 @@
 	import { toast } from 'svelte-sonner';
 	import { backend, type Space } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { ArrowLeft, Save, Trash2 } from 'lucide-svelte';
+	import { ArrowLeft, Trash2 } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string }>('app');
 
@@ -26,23 +25,23 @@
 		try {
 			const updated = await backend.updateSpace(ctx.token, spaceId, name, description);
 			space = updated;
-			toast.success('Space updated');
+			toast.success('Espace mis à jour');
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Failed to update space');
+			toast.error(e instanceof Error ? e.message : 'Impossible de modifier l\'espace');
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function deleteSpace() {
-		if (!confirm('Delete this space? Projects and time entries will be unlinked but not deleted.')) return;
+		if (!confirm('Supprimer cet espace ? Les projets et entrées de temps seront dissociés mais pas supprimés.')) return;
 		deleting = true;
 		try {
 			await backend.deleteSpace(ctx.token, spaceId);
-			toast.success('Space deleted');
+			toast.success('Espace supprimé');
 			goto('/spaces');
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Failed to delete space');
+			toast.error(e instanceof Error ? e.message : 'Impossible de supprimer l\'espace');
 		} finally {
 			deleting = false;
 		}
@@ -57,63 +56,55 @@
 </script>
 
 <svelte:head>
-	<title>Settings — {space?.name ?? 'Space'} — Sablier</title>
+	<title>Paramètres — {space?.name ?? 'Espace'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center gap-3">
-		<Button variant="ghost" size="sm" href="/spaces/{spaceId}" class="gap-1.5">
+<div class="flex flex-1 flex-col">
+	<div class="border-b px-4 py-4 md:px-8 md:py-5">
+		<a href="/spaces/{spaceId}" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
 			<ArrowLeft class="h-4 w-4" />
-			{space?.name ?? 'Space'}
-		</Button>
+			{space?.name ?? 'Espace'}
+		</a>
 	</div>
 
-	<h1 class="text-2xl font-semibold">Space settings</h1>
+	<div class="flex-1 p-4 md:p-8">
+		<div class="max-w-xl space-y-8">
+			<h1 class="text-xl font-semibold">Paramètres de l'espace</h1>
 
-	<Card.Root class="max-w-lg">
-		<Card.Header>
-			<Card.Title>General</Card.Title>
-		</Card.Header>
-		<Card.Content>
 			<form
-				class="flex flex-col gap-4"
+				class="space-y-4"
 				onsubmit={(e) => { e.preventDefault(); save(); }}
 			>
-				<div class="flex flex-col gap-1.5">
-					<Label for="space-name">Name</Label>
-					<Input id="space-name" bind:value={name} required />
+				<div class="space-y-1.5">
+					<Label for="space-name">Nom</Label>
+					<Input id="space-name" class="h-10" bind:value={name} required />
 				</div>
-				<div class="flex flex-col gap-1.5">
+				<div class="space-y-1.5">
 					<Label for="space-description">Description</Label>
-					<Input id="space-description" bind:value={description} placeholder="Optional" />
+					<Input id="space-description" class="h-10" bind:value={description} placeholder="Optionnel" />
 				</div>
-				<Button type="submit" disabled={saving} class="gap-2">
-					<Save class="h-4 w-4" />
-					{saving ? 'Saving...' : 'Save'}
+				<Button type="submit" disabled={saving} class="h-10">
+					{saving ? 'Enregistrement...' : 'Enregistrer'}
 				</Button>
 			</form>
-		</Card.Content>
-	</Card.Root>
 
-	{#if space?.role === 'owner'}
-		<Card.Root class="max-w-lg border-destructive/50">
-			<Card.Header>
-				<Card.Title class="text-destructive">Danger zone</Card.Title>
-				<Card.Description>
-					Deleting a space removes all memberships. Projects and time entries are unlinked, not deleted.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Button
-					variant="destructive"
-					disabled={deleting}
-					class="gap-2"
-					onclick={deleteSpace}
-				>
-					<Trash2 class="h-4 w-4" />
-					{deleting ? 'Deleting...' : 'Delete this space'}
-				</Button>
-			</Card.Content>
-		</Card.Root>
-	{/if}
+			{#if space?.role === 'owner'}
+				<div class="border-t border-border pt-8">
+					<h2 class="text-sm font-medium text-destructive">Zone de danger</h2>
+					<p class="mt-1 text-sm text-muted-foreground">
+						Supprimer un espace retire toutes les appartenances. Les projets et entrées de temps sont dissociés, pas supprimés.
+					</p>
+					<Button
+						variant="destructive"
+						disabled={deleting}
+						class="mt-4 gap-2 h-10"
+						onclick={deleteSpace}
+					>
+						<Trash2 class="h-4 w-4" />
+						{deleting ? 'Suppression...' : 'Supprimer cet espace'}
+					</Button>
+				</div>
+			{/if}
+		</div>
+	</div>
 </div>
