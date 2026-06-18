@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { backend, type UserProfile, type Project } from '$lib/backend';
+	import { backend, type UserProfile, type Project, type Space } from '$lib/backend';
+	import { setSpaces } from '$lib/space-context';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 
@@ -11,6 +12,7 @@
 	let user = $state<UserProfile | null>(null);
 	let loaded = $state(false);
 	let projects = $state<Project[]>([]);
+	let userSpaces = $state<Space[]>([]);
 
 	function setUser(nextUser: UserProfile) {
 		user = nextUser;
@@ -33,8 +35,13 @@
 			token = stored;
 			user = result.user;
 			loaded = true;
-			const p = await backend.listProjects(stored);
+			const [p, s] = await Promise.all([
+				backend.listProjects(stored),
+				backend.listSpaces(stored)
+			]);
 			projects = p.projects;
+			userSpaces = s.spaces;
+			setSpaces(s.spaces);
 			backend.syncProfile(stored).then(async (r) => {
 				if (r.synced) {
 					const fresh = await backend.me(stored);
@@ -49,7 +56,7 @@
 
 {#if loaded}
 	<div class="flex h-screen w-full overflow-hidden">
-		<Sidebar {user} />
+		<Sidebar {user} spaces={userSpaces} />
 		<main class="flex-1 overflow-auto">
 			{@render children()}
 		</main>

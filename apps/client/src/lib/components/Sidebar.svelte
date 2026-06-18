@@ -3,10 +3,11 @@
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { LayoutDashboard, FolderOpen, Users, LogOut } from 'lucide-svelte';
-	import type { UserProfile } from '$lib/backend';
+	import { LayoutDashboard, FolderOpen, Users, Building2, LogOut } from 'lucide-svelte';
+	import type { UserProfile, Space } from '$lib/backend';
+	import SpaceSwitcher from '$lib/components/SpaceSwitcher.svelte';
 
-	let { user }: { user: UserProfile | null } = $props();
+	let { user, spaces = [] }: { user: UserProfile | null; spaces?: Space[] } = $props();
 
 	function getInitials(value: string) {
 		const parts = value.trim().split(/\s+/).filter(Boolean);
@@ -27,7 +28,8 @@
 	const navLinks = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
-		{ href: '/users', label: 'Users', icon: Users }
+		{ href: '/users', label: 'Users', icon: Users },
+		{ href: '/spaces', label: 'Spaces', icon: Building2 }
 	];
 </script>
 
@@ -36,6 +38,10 @@
 		<iconify-icon icon="solar:hourglass-bold-duotone" width="28" class="text-foreground"></iconify-icon>
 		<span class="text-2xl font-bold font-heading tracking-tight">Sablier</span>
 	</div>
+
+	{#if spaces.length > 0}
+		<SpaceSwitcher {spaces} />
+	{/if}
 
 	<nav class="flex flex-1 flex-col gap-1 px-3">
 		{#each navLinks as link}

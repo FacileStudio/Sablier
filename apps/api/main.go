@@ -21,6 +21,7 @@ import (
 	"api/modules/nookpool"
 	"api/modules/projects"
 	"api/modules/settings"
+	"api/modules/spaces"
 	"api/modules/timeentries"
 	"api/modules/users"
 	"api/schemas"
@@ -68,6 +69,7 @@ func main() {
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
+	spaceService := spaces.NewService(db)
 	nookPoolService := nookpool.NewService(db, appLogger)
 	projectService.SetPoolService(nookPoolService)
 	timeEntryService.SetPoolService(nookPoolService)
@@ -78,6 +80,7 @@ func main() {
 			timeentries.Documentation,
 			users.Documentation,
 			settings.Documentation,
+			spaces.Documentation,
 			nookpool.Documentation,
 		},
 	}
@@ -127,6 +130,7 @@ func main() {
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 	settings.RegisterRoutes(router, settingsService, authService)
+	spaces.RegisterRoutes(router, spaceService, authService)
 	nookpool.RegisterRoutes(router, nookPoolService, authService)
 
 	nookPoolService.AutoConnect(context.Background())
