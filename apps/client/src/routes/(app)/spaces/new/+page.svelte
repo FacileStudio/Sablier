@@ -4,10 +4,9 @@
 	import { toast } from 'svelte-sonner';
 	import { backend } from '$lib/backend';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { ArrowLeft, Plus } from 'lucide-svelte';
+	import { ArrowLeft } from 'lucide-svelte';
 
 	const ctx = getContext<{ token: string }>('app');
 
@@ -20,10 +19,10 @@
 		saving = true;
 		try {
 			const space = await backend.createSpace(ctx.token, name, description);
-			toast.success(`Space "${space.name}" created`);
+			toast.success(`Espace "${space.name}" créé`);
 			goto(`/spaces/${space.id}`);
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Failed to create space');
+			toast.error(e instanceof Error ? e.message : 'Impossible de créer l\'espace');
 		} finally {
 			saving = false;
 		}
@@ -31,40 +30,42 @@
 </script>
 
 <svelte:head>
-	<title>New Space — Sablier</title>
+	<title>Nouvel espace — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center gap-3">
-		<Button variant="ghost" size="sm" href="/spaces" class="gap-1.5">
+<div class="flex flex-1 flex-col">
+	<div class="border-b px-4 py-4 md:px-8 md:py-5">
+		<a href="/spaces" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
 			<ArrowLeft class="h-4 w-4" />
-			Spaces
-		</Button>
+			Espaces
+		</a>
 	</div>
 
-	<Card.Root class="max-w-lg">
-		<Card.Header>
-			<Card.Title>New space</Card.Title>
-			<Card.Description>Create a space to group projects, tasks, and time entries for a team or client.</Card.Description>
-		</Card.Header>
-		<Card.Content>
+	<div class="flex-1 p-4 md:p-8">
+		<div class="max-w-xl space-y-6">
+			<div>
+				<h1 class="text-xl font-semibold">Nouvel espace</h1>
+				<p class="mt-1 text-sm text-muted-foreground">
+					Créez un espace pour regrouper projets, tâches et entrées de temps pour une équipe ou un client.
+				</p>
+			</div>
+
 			<form
-				class="flex flex-col gap-4"
+				class="space-y-4"
 				onsubmit={(e) => { e.preventDefault(); create(); }}
 			>
-				<div class="flex flex-col gap-1.5">
-					<Label for="space-name">Name</Label>
-					<Input id="space-name" bind:value={name} placeholder="e.g. Acme Corp" required />
+				<div class="space-y-1.5">
+					<Label for="space-name">Nom</Label>
+					<Input id="space-name" class="h-10" bind:value={name} placeholder="ex. Acme Corp" required />
 				</div>
-				<div class="flex flex-col gap-1.5">
+				<div class="space-y-1.5">
 					<Label for="space-description">Description</Label>
-					<Input id="space-description" bind:value={description} placeholder="Optional" />
+					<Input id="space-description" class="h-10" bind:value={description} placeholder="Optionnel" />
 				</div>
-				<Button type="submit" disabled={saving} class="w-full h-12 text-base">
-					<Plus class="h-4 w-4 mr-2" />
-					{saving ? 'Creating...' : 'Create space'}
+				<Button type="submit" disabled={saving} class="h-10">
+					{saving ? 'Création...' : 'Créer l\'espace'}
 				</Button>
 			</form>
-		</Card.Content>
-	</Card.Root>
+		</div>
+	</div>
 </div>
