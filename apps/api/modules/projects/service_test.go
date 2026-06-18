@@ -119,7 +119,7 @@ func TestUpdateTaskAllowsForeignProject(t *testing.T) {
 	foreignProject := seedProject(t, service.orm, 2, "Not mine")
 	task := seedTask(t, service.orm, foreignProject.ID, "Old name")
 
-	updated, err := service.updateTask(context.Background(), foreignProject.ID, task.ID, "New name")
+	updated, err := service.updateTask(context.Background(), foreignProject.ID, task.ID, "New name", nil)
 	if err != nil {
 		t.Fatalf("update task: %v", err)
 	}

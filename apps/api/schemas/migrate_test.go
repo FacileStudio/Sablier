@@ -11,7 +11,7 @@ import (
 
 func TestMigrateBackfillsMissingUserColors(t *testing.T) {
 	orm := openTestDatabase(t)
-	if err := orm.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &UserSetting{}); err != nil {
+	if err := orm.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}); err != nil {
 		t.Fatalf("prepare schema: %v", err)
 	}
 

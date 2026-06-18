@@ -23,6 +23,7 @@ import (
 	"api/modules/nookpool"
 	"api/modules/projects"
 	"api/modules/settings"
+	"api/modules/spaces"
 	"api/modules/timeentries"
 	"api/modules/users"
 	"api/schemas"
@@ -42,6 +43,7 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
+	spaceService := spaces.NewService(db)
 	projectService.SetPoolService(nookPoolService)
 	timeEntryService.SetPoolService(nookPoolService)
 	docs := documentation.Response{
@@ -51,6 +53,7 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 			timeentries.Documentation,
 			users.Documentation,
 			settings.Documentation,
+			spaces.Documentation,
 			nookpool.Documentation,
 			notifications.Documentation,
 		},
@@ -101,6 +104,7 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	timeentries.RegisterRoutes(router, timeEntryService, authService)
 	users.RegisterRoutes(router, userService, authService)
 	settings.RegisterRoutes(router, settingsService, authService)
+	spaces.RegisterRoutes(router, spaceService, authService)
 	nookpool.RegisterRoutes(router, nookPoolService, authService)
 	notifications.RegisterRoutes(router, notificationsService, authService)
 

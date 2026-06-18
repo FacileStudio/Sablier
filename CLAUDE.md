@@ -18,7 +18,7 @@ Self-hosted time tracker for small teams. Go API + SvelteKit frontend + PostgreS
 apps/
   api/                  Go backend
     main.go             Entrypoint: env, DB, migrations, router, graceful shutdown
-    modules/            Domain modules (auth, projects, timeentries, users, settings)
+    modules/            Domain modules (auth, projects, timeentries, users, settings, spaces)
     internal/           Shared infra (database, middleware, logger, env, errors, etc.)
     schemas/            GORM models and migrations (auto-run on startup)
     vendor/             Vendored Go dependencies
@@ -26,7 +26,7 @@ apps/
   client/               SvelteKit frontend
     src/
       routes/           SvelteKit file-based routing
-        (app)/          Authenticated layout group (dashboard, projects, users, settings, profile)
+        (app)/          Authenticated layout group (dashboard, projects, users, settings, profile, spaces)
         login/          Login page
       lib/
         backend.ts      API client (fetch wrapper)
@@ -85,6 +85,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `GET /files/*` -- Static file serving (avatars)
 - Auth: `/auth/register`, `/auth/login`, `/auth/config`, `/auth/oidc/*`
 - Resources: `/projects`, `/time-entries`, `/users`, `/settings`
+- Spaces: `/spaces`, `/spaces/{id}`, `/spaces/{id}/members`, `/spaces/{id}/leave`
 
 ## Conventions
 
