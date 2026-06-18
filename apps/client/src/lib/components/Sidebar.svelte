@@ -29,7 +29,7 @@
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		{ href: '/users', label: 'Users', icon: Users },
-		{ href: '/spaces', label: 'Spaces', icon: Building2 }
+		{ href: '/spaces', label: 'Espaces', icon: Building2 }
 	];
 </script>
 

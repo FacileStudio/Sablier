@@ -53,14 +53,14 @@
 </script>
 
 <svelte:head>
-	<title>{space?.name ?? 'Space'} — Sablier</title>
+	<title>{space?.name ?? 'Espace'} — Sablier</title>
 </svelte:head>
 
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-center gap-3">
 		<Button variant="ghost" size="sm" href="/spaces" class="gap-1.5">
 			<ArrowLeft class="h-4 w-4" />
-			Spaces
+			Espaces
 		</Button>
 	</div>
 
@@ -74,7 +74,7 @@
 						<p class="mt-1 text-sm text-muted-foreground">{space.description}</p>
 					{/if}
 					<p class="mt-1 text-xs text-muted-foreground">
-						Your role: <span class="font-medium">{roleLabel(space.role)}</span>
+						Rôle : <span class="font-medium">{roleLabel(space.role)}</span>
 					</p>
 				</div>
 			</div>
@@ -94,7 +94,7 @@
 						onclick={leave}
 					>
 						<LogOut class="h-4 w-4" />
-						{leaving ? 'Leaving...' : 'Leave'}
+						{leaving ? 'Départ...' : 'Quitter'}
 					</Button>
 				{/if}
 			</div>
@@ -104,17 +104,17 @@
 			<Card.Header class="flex flex-row items-center justify-between">
 				<Card.Title class="flex items-center gap-2">
 					<Users class="h-4 w-4" />
-					Members ({members.length})
+					Membres ({members.length})
 				</Card.Title>
 				{#if space.role === 'owner' || space.role === 'admin'}
 					<Button variant="outline" size="sm" href="/spaces/{spaceId}/members" class="gap-1.5">
-						Manage
+						Gérer
 					</Button>
 				{/if}
 			</Card.Header>
 			<Card.Content>
 				{#if members.length === 0}
-					<p class="text-sm text-muted-foreground">No members yet.</p>
+					<p class="text-sm text-muted-foreground">Aucun membre.</p>
 				{:else}
 					<div class="flex flex-col gap-2">
 						{#each members as member}
@@ -128,7 +128,7 @@
 										{roleLabel(member.role)}
 									</span>
 									<span class="text-xs text-muted-foreground">
-										Joined {formatDate(member.joined_at)}
+										Rejoint le {formatDate(member.joined_at)}
 									</span>
 								</div>
 							</div>

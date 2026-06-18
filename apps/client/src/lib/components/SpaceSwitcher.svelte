@@ -27,7 +27,7 @@
 	>
 		<Building2 class="h-4 w-4 shrink-0 text-muted-foreground" />
 		<span class="flex-1 truncate text-left font-medium">
-			{activeSpace?.name ?? 'All spaces'}
+			{activeSpace?.name ?? 'Tous les espaces'}
 		</span>
 		<ChevronDown class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform {open ? 'rotate-180' : ''}" />
 	</button>
@@ -40,7 +40,7 @@
 				onclick={() => select(null)}
 			>
 				{#if !activeId}<Check class="h-3.5 w-3.5" />{:else}<span class="w-3.5"></span>{/if}
-				All spaces
+				Tous les espaces
 			</button>
 			<Separator />
 			{#each spaces as space}
@@ -60,7 +60,7 @@
 				onclick={() => { open = false; goto('/spaces'); }}
 			>
 				<Settings class="h-3.5 w-3.5" />
-				Manage spaces
+				Gérer les espaces
 			</button>
 			<button
 				type="button"
@@ -68,7 +68,7 @@
 				onclick={() => { open = false; goto('/spaces/new'); }}
 			>
 				<Plus class="h-3.5 w-3.5" />
-				New space
+				Nouvel espace
 			</button>
 		</div>
 	{/if}
