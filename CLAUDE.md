@@ -83,9 +83,9 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `GET /health`, `GET /ready` -- Health and readiness probes
 - `GET /docs` -- Auto-generated JSON API documentation
 - `GET /files/*` -- Static file serving (avatars)
-- Auth: `/auth/register`, `/auth/login`, `/auth/config`, `/auth/oidc/*`
-- Resources: `/projects`, `/time-entries`, `/users`, `/settings`
-- Spaces: `/spaces`, `/spaces/{id}`, `/spaces/{id}/members`, `/spaces/{id}/leave`
+- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/config`, `/api/auth/oidc/*`
+- Resources: `/api/projects`, `/api/time-entries`, `/api/users`, `/api/settings`
+- Spaces: `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`, `/api/spaces/{id}/leave`
 
 ## Conventions
 
