@@ -42,7 +42,7 @@
 			class="shrink-0 text-muted-foreground"
 		></iconify-icon>
 		<span class="min-w-0 flex-1 truncate font-medium">
-			{activeSpace?.name ?? 'Tous les espaces'}
+			{activeSpace?.name ?? 'Personnel'}
 		</span>
 		<iconify-icon
 			icon="solar:alt-arrow-down-linear"
@@ -60,7 +60,7 @@
 					onclick={() => select(null)}
 				>
 					<iconify-icon icon="solar:user-circle-bold-duotone" width="16" class="shrink-0"></iconify-icon>
-					Tous les espaces
+					Personnel
 				</button>
 
 				{#each spaces as space}
