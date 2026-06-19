@@ -29,7 +29,6 @@
 	const navLinks: { href: string; label: string; icon: string }[] = [
 		{ href: '/dashboard', label: 'Dashboard', icon: 'solar:chart-2-linear' },
 		{ href: '/projects', label: 'Projects', icon: 'solar:folder-linear' },
-		{ href: '/entries', label: 'Entries', icon: 'solar:clock-circle-linear' },
 		{ href: '/spaces', label: 'Spaces', icon: 'solar:users-group-rounded-linear' },
 		{ href: '/settings', label: 'Settings', icon: 'solar:settings-linear' }
 	];
