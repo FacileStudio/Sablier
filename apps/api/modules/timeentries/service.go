@@ -189,7 +189,7 @@ type timeEntryRow struct {
 	TaskName      string
 }
 
-func (service *Service) listEntries(ctx context.Context, projectID int64, userID int64) ([]timeEntryRow, error) {
+func (service *Service) listEntries(ctx context.Context, projectID int64, userID int64, spaceID *string) ([]timeEntryRow, error) {
 	query := service.orm.WithContext(ctx).
 		Model(&schemas.TimeEntry{}).
 		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.avatar_url as user_avatar_url, tasks.name as task_name").
@@ -201,6 +201,11 @@ func (service *Service) listEntries(ctx context.Context, projectID int64, userID
 	if userID > 0 {
 		query = query.Where("time_entries.user_id = ?", userID)
 	}
+	if spaceID != nil {
+		query = query.Where("time_entries.space_id = ?", *spaceID)
+	} else {
+		query = query.Where("time_entries.space_id IS NULL")
+	}
 	var records []timeEntryRow
 	if err := query.Order("time_entries.started_at desc").Limit(100).Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list entries", err)
@@ -208,17 +213,20 @@ func (service *Service) listEntries(ctx context.Context, projectID int64, userID
 	return records, nil
 }
 
-func (service *Service) listRunningEntries(ctx context.Context) ([]timeEntryRow, error) {
-	var records []timeEntryRow
-	err := service.orm.WithContext(ctx).
+func (service *Service) listRunningEntries(ctx context.Context, spaceID *string) ([]timeEntryRow, error) {
+	query := service.orm.WithContext(ctx).
 		Model(&schemas.TimeEntry{}).
 		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.avatar_url as user_avatar_url, tasks.name as task_name").
 		Joins("JOIN users ON users.id = time_entries.user_id").
 		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id").
-		Where("time_entries.stopped_at IS NULL").
-		Order("time_entries.started_at asc").
-		Find(&records).Error
-	if err != nil {
+		Where("time_entries.stopped_at IS NULL")
+	if spaceID != nil {
+		query = query.Where("time_entries.space_id = ?", *spaceID)
+	} else {
+		query = query.Where("time_entries.space_id IS NULL")
+	}
+	var records []timeEntryRow
+	if err := query.Order("time_entries.started_at asc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list running entries", err)
 	}
 	return records, nil

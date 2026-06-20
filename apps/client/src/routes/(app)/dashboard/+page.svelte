@@ -3,6 +3,7 @@
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
+	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
@@ -80,16 +81,18 @@
 	}
 
 	async function loadEntries() {
+		const spaceId = getActiveSpaceId();
 		const [e, r] = await Promise.all([
-			backend.listEntries(ctx.token),
-			backend.listRunningEntries(ctx.token)
+			backend.listEntries(ctx.token, undefined, undefined, spaceId),
+			backend.listRunningEntries(ctx.token, spaceId)
 		]);
 		entries = e.entries;
 		runningEntries = r.entries;
 	}
 
 	async function loadRunning() {
-		const r = await backend.listRunningEntries(ctx.token);
+		const spaceId = getActiveSpaceId();
+		const r = await backend.listRunningEntries(ctx.token, spaceId);
 		runningEntries = r.entries;
 	}
 
@@ -105,16 +108,25 @@
 	};
 	
 
-	onMount(async () => {
-		const [p, e, r, u] = await Promise.all([
-			backend.listProjects(ctx.token),
-			backend.listEntries(ctx.token),
-			backend.listRunningEntries(ctx.token),
-			backend.listUsers(ctx.token)
+	let mounted = $state(false);
+
+	async function loadAll() {
+		const spaceId = getActiveSpaceId();
+		const [p, e, r] = await Promise.all([
+			backend.listProjects(ctx.token, spaceId),
+			backend.listEntries(ctx.token, undefined, undefined, spaceId),
+			backend.listRunningEntries(ctx.token, spaceId)
 		]);
 		projects = p.projects;
 		entries = e.entries;
 		runningEntries = r.entries;
+	}
+
+	onMount(async () => {
+		const [_all, u] = await Promise.all([
+			loadAll(),
+			backend.listUsers(ctx.token)
+		]);
 		const map = new Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>();
 		for (const user of u.users) {
 			map.set(Number(user.id), { rate: user.rate ?? 0, rate_type: user.rate_type ?? 'daily', workday_hours: user.workday_hours > 0 ? user.workday_hours : 8 });
@@ -126,6 +138,14 @@
 		stopTimeEntrySync = onTimeEntriesChanged(() => {
 			void loadEntries();
 		});
+		mounted = true;
+	});
+
+	$effect(() => {
+		getActiveSpaceId();
+		if (mounted) {
+			void loadAll();
+		}
 	});
 
 	onDestroy(() => {

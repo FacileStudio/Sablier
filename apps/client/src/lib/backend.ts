@@ -240,8 +240,11 @@ export const backend = {
 		return { user: normalizeUser(result.user) };
 	},
 
-	listProjects(token: string) {
-		return apiFetch<{ projects: Project[] }>('/api/projects', {}, token);
+	listProjects(token: string, spaceId?: string | null) {
+		const params = new URLSearchParams();
+		if (spaceId) params.set('space_id', spaceId);
+		const qs = params.size ? `?${params}` : '';
+		return apiFetch<{ projects: Project[] }>(`/api/projects${qs}`, {}, token);
 	},
 	getProject(token: string, id: number) {
 		return apiFetch<Project>(`/api/projects/${id}`, {}, token);
@@ -280,17 +283,21 @@ export const backend = {
 		return apiFetch<{ deleted: boolean; sessions_unlinked: number }>(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' }, token);
 	},
 
-	listEntries(token: string, projectId?: number, userId?: string) {
+	listEntries(token: string, projectId?: number, userId?: string, spaceId?: string | null) {
 		const params = new URLSearchParams();
 		if (projectId) params.set('project_id', String(projectId));
 		if (userId) params.set('user_id', userId);
+		if (spaceId) params.set('space_id', spaceId);
 		const qs = params.size ? `?${params}` : '';
 		return apiFetch<{ entries: TimeEntry[] }>(`/api/time-entries${qs}`, {}, token).then((r) => ({
 			entries: r.entries.map(normalizeEntry)
 		}));
 	},
-	listRunningEntries(token: string) {
-		return apiFetch<{ entries: TimeEntry[] }>('/api/time-entries?running=true', {}, token).then((r) => ({
+	listRunningEntries(token: string, spaceId?: string | null) {
+		const params = new URLSearchParams();
+		params.set('running', 'true');
+		if (spaceId) params.set('space_id', spaceId);
+		return apiFetch<{ entries: TimeEntry[] }>(`/api/time-entries?${params}`, {}, token).then((r) => ({
 			entries: r.entries.map(normalizeEntry)
 		}));
 	},
