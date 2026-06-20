@@ -3,13 +3,15 @@ package timeentries
 import "time"
 
 type StartTimerRequest struct {
-	ProjectID int64 `json:"project_id"`
-	TaskID    int64 `json:"task_id"`
+	ProjectID int64   `json:"project_id"`
+	TaskID    int64   `json:"task_id"`
+	SpaceID   *string `json:"space_id"`
 }
 
 type CreateEntryRequest struct {
 	ProjectID int64     `json:"project_id"`
 	TaskID    int64     `json:"task_id"`
+	SpaceID   *string   `json:"space_id"`
 	StartedAt time.Time `json:"started_at"`
 	StoppedAt time.Time `json:"stopped_at"`
 }

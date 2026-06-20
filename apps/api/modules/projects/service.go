@@ -29,7 +29,7 @@ func (service *Service) SetPoolService(ps *nookpool.Service) {
 	service.poolService = ps
 }
 
-func (service *Service) createProject(ctx context.Context, userID string, name, description string, icon *string) (*schemas.Project, error) {
+func (service *Service) createProject(ctx context.Context, userID string, name, description string, icon *string, spaceID *string) (*schemas.Project, error) {
 	ownerID, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Invalid("invalid user id")
@@ -39,11 +39,16 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	if icon == nil || *icon == "" {
 		icon = &defaultIcon
 	}
+	var resolvedSpaceID *string
+	if spaceID != nil && *spaceID != "" {
+		resolvedSpaceID = spaceID
+	}
 	record := &schemas.Project{
 		Name:        name,
 		Description: description,
 		Icon:        icon,
 		OwnerID:     ownerID,
+		SpaceID:     resolvedSpaceID,
 		FacileID:    &facileID,
 	}
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {

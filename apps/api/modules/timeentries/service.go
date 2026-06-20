@@ -31,7 +31,7 @@ func (service *Service) SetPoolService(ps *nookpool.Service) {
 	service.poolService = ps
 }
 
-func (service *Service) startTimer(ctx context.Context, userID string, projectID int64, taskID int64) (*schemas.TimeEntry, string, error) {
+func (service *Service) startTimer(ctx context.Context, userID string, projectID int64, taskID int64, spaceID *string) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, "", errors.Invalid("invalid user id")
@@ -51,10 +51,16 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 		return nil, "", errors.Internal("failed to check running timer", err)
 	}
 
+	var resolvedSpaceID *string
+	if spaceID != nil && *spaceID != "" {
+		resolvedSpaceID = spaceID
+	}
+
 	record := &schemas.TimeEntry{
 		ProjectID:          projectID,
 		TaskID:             task.ID,
 		UserID:             uid,
+		SpaceID:            resolvedSpaceID,
 		StartedAt:          time.Now().UTC(),
 		LastNotificationAt: nil,
 	}
@@ -232,7 +238,7 @@ func (service *Service) listRunningEntries(ctx context.Context, spaceID *string)
 	return records, nil
 }
 
-func (service *Service) createEntry(ctx context.Context, userID string, projectID int64, taskID int64, startedAt, stoppedAt time.Time) (*schemas.TimeEntry, string, error) {
+func (service *Service) createEntry(ctx context.Context, userID string, projectID int64, taskID int64, startedAt, stoppedAt time.Time, spaceID *string) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, "", errors.Invalid("invalid user id")
@@ -241,11 +247,16 @@ func (service *Service) createEntry(ctx context.Context, userID string, projectI
 	if err != nil {
 		return nil, "", err
 	}
+	var resolvedSpaceID *string
+	if spaceID != nil && *spaceID != "" {
+		resolvedSpaceID = spaceID
+	}
 	stopped := stoppedAt
 	record := &schemas.TimeEntry{
 		ProjectID: projectID,
 		TaskID:    task.ID,
 		UserID:    uid,
+		SpaceID:   resolvedSpaceID,
 		StartedAt: startedAt.UTC(),
 		StoppedAt: &stopped,
 	}

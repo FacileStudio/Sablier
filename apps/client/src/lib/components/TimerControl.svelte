@@ -3,6 +3,7 @@
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
+	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
@@ -136,7 +137,7 @@
 		try {
 			const projectId = Number(selectedProjectId);
 			const taskId = await resolveTaskId(projectId);
-			running = await backend.startTimer(ctx.token, projectId, taskId);
+			running = await backend.startTimer(ctx.token, projectId, taskId, getActiveSpaceId());
 			selectedProjectId = '';
 			taskName = '';
 			drawerOpen = false;

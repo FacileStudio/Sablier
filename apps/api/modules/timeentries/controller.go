@@ -37,7 +37,7 @@ func (c *Controller) start(ctx context.Context, userID string, req *StartTimerRe
 	if req.TaskID <= 0 {
 		return nil, errors.Invalid("task_id is required")
 	}
-	record, taskName, err := c.service.startTimer(ctx, userID, req.ProjectID, req.TaskID)
+	record, taskName, err := c.service.startTimer(ctx, userID, req.ProjectID, req.TaskID, req.SpaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateEntry
 	if req.StoppedAt.IsZero() || req.StoppedAt.Before(req.StartedAt) {
 		return nil, errors.Invalid("stopped_at must be after started_at")
 	}
-	record, taskName, err := c.service.createEntry(ctx, userID, req.ProjectID, req.TaskID, req.StartedAt, req.StoppedAt)
+	record, taskName, err := c.service.createEntry(ctx, userID, req.ProjectID, req.TaskID, req.StartedAt, req.StoppedAt, req.SpaceID)
 	if err != nil {
 		return nil, err
 	}

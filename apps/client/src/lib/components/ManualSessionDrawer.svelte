@@ -5,6 +5,7 @@
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
+	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -222,7 +223,7 @@
 				if (!stopIso) {
 					throw new Error('End date and time are required.');
 				}
-				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso);
+				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso, getActiveSpaceId());
 			}
 			reset();
 			drawerOpen = false;

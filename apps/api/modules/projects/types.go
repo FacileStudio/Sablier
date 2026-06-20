@@ -6,6 +6,7 @@ type CreateProjectRequest struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Icon        *string `json:"icon"`
+	SpaceID     *string `json:"space_id"`
 }
 
 type UpdateProjectRequest struct {
