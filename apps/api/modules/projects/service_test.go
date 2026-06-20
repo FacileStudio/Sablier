@@ -58,7 +58,7 @@ func TestListProjectsReturnsOnlyOwnedProjects(t *testing.T) {
 	seedProject(t, service.orm, 1, "Mine")
 	seedProject(t, service.orm, 2, "Not mine")
 
-	projects, err := service.listProjects(context.Background())
+	projects, err := service.listProjects(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("list projects: %v", err)
 	}

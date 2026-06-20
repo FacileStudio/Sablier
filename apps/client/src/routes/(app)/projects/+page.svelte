@@ -2,6 +2,7 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
+	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -96,15 +97,17 @@
 	);
 
 	async function loadRunning() {
-		const r = await backend.listRunningEntries(ctx.token);
+		const spaceId = getActiveSpaceId();
+		const r = await backend.listRunningEntries(ctx.token, spaceId);
 		runningEntries = r.entries;
 	}
 
 	async function load() {
+		const spaceId = getActiveSpaceId();
 		const [projRes, entriesRes, runningRes] = await Promise.all([
-			backend.listProjects(ctx.token),
-			backend.listEntries(ctx.token),
-			backend.listRunningEntries(ctx.token)
+			backend.listProjects(ctx.token, spaceId),
+			backend.listEntries(ctx.token, undefined, undefined, spaceId),
+			backend.listRunningEntries(ctx.token, spaceId)
 		]);
 		projects = projRes.projects;
 		allEntries = entriesRes.entries;
@@ -120,17 +123,27 @@
 		await load();
 	}
 
+	let mounted = $state(false);
+
 	onMount(() => {
 		load();
 		runningPoller = setInterval(loadRunning, 30_000);
 		stopTimeEntrySync = onTimeEntriesChanged(() => {
 			void loadRunning();
 		});
+		mounted = true;
 	});
 
 	onDestroy(() => {
 		clearInterval(runningPoller);
 		stopTimeEntrySync?.();
+	});
+
+	$effect(() => {
+		getActiveSpaceId();
+		if (mounted) {
+			void load();
+		}
 	});
 </script>
 

@@ -18,8 +18,12 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		router.Use(middleware.RequireAuth(authService))
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
+			var spaceID *string
+			if raw := request.URL.Query().Get("space_id"); raw != "" {
+				spaceID = &raw
+			}
 			if request.URL.Query().Get("running") == "true" {
-				resp, err := service.controller.listRunning(request.Context())
+				resp, err := service.controller.listRunning(request.Context(), spaceID)
 				if err != nil {
 					httpjson.WriteError(w, err)
 					return
@@ -45,7 +49,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 				}
 				userID = id
 			}
-			resp, err := service.controller.list(request.Context(), projectID, userID)
+			resp, err := service.controller.list(request.Context(), projectID, userID, spaceID)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return

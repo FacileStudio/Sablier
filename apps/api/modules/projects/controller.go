@@ -57,8 +57,8 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateProje
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context) (*ListProjectsResponse, error) {
-	records, err := c.service.listProjects(ctx)
+func (c *Controller) list(ctx context.Context, spaceID *string) (*ListProjectsResponse, error) {
+	records, err := c.service.listProjects(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}

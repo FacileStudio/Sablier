@@ -76,16 +76,16 @@ func (c *Controller) resume(ctx context.Context, userID string) (*TimeEntryRespo
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context, projectID int64, userID int64) (*ListEntriesResponse, error) {
-	records, err := c.service.listEntries(ctx, projectID, userID)
+func (c *Controller) list(ctx context.Context, projectID int64, userID int64, spaceID *string) (*ListEntriesResponse, error) {
+	records, err := c.service.listEntries(ctx, projectID, userID, spaceID)
 	if err != nil {
 		return nil, err
 	}
 	return rowsToResponse(records), nil
 }
 
-func (c *Controller) listRunning(ctx context.Context) (*ListEntriesResponse, error) {
-	records, err := c.service.listRunningEntries(ctx)
+func (c *Controller) listRunning(ctx context.Context, spaceID *string) (*ListEntriesResponse, error) {
+	records, err := c.service.listRunningEntries(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}

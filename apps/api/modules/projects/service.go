@@ -55,9 +55,15 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	return record, nil
 }
 
-func (service *Service) listProjects(ctx context.Context) ([]schemas.Project, error) {
+func (service *Service) listProjects(ctx context.Context, spaceID *string) ([]schemas.Project, error) {
 	var records []schemas.Project
-	if err := service.orm.WithContext(ctx).Order("created_at desc").Find(&records).Error; err != nil {
+	query := service.orm.WithContext(ctx)
+	if spaceID != nil {
+		query = query.Where("space_id = ?", *spaceID)
+	} else {
+		query = query.Where("space_id IS NULL")
+	}
+	if err := query.Order("created_at desc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list projects", err)
 	}
 	return records, nil

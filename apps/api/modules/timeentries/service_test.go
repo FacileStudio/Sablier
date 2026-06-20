@@ -126,7 +126,7 @@ func TestListEntriesIncludesUserColor(t *testing.T) {
 	task := seedTask(t, service.orm, project.ID)
 	seedEntry(t, service.orm, project.ID, task.ID, user.ID)
 
-	records, err := service.listEntries(context.Background(), project.ID, 0)
+	records, err := service.listEntries(context.Background(), project.ID, 0, nil)
 	if err != nil {
 		t.Fatalf("list entries: %v", err)
 	}
