@@ -115,7 +115,7 @@
 	}
 
 	async function create() {
-		await backend.createProject(ctx.token, name, description, newProjectIcon);
+		await backend.createProject(ctx.token, name, description, newProjectIcon, getActiveSpaceId());
 		name = '';
 		description = '';
 		newProjectIcon = 'Layout';

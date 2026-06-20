@@ -200,7 +200,7 @@ func TestPauseAndResumeTimerAdjustPausedDuration(t *testing.T) {
 	service := newTestService(t)
 	project := seedProject(t, service.orm, 1)
 	task := seedTask(t, service.orm, project.ID)
-	record, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID)
+	record, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID, nil)
 	if err != nil {
 		t.Fatalf("start timer: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestStopTimerWhilePausedFinalizesPausedDuration(t *testing.T) {
 	service := newTestService(t)
 	project := seedProject(t, service.orm, 1)
 	task := seedTask(t, service.orm, project.ID)
-	if _, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID); err != nil {
+	if _, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID, nil); err != nil {
 		t.Fatalf("start timer: %v", err)
 	}
 	if _, _, err := service.pauseTimer(context.Background(), "1"); err != nil {

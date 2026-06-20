@@ -49,7 +49,7 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateProje
 	if name == "" {
 		return nil, errors.Invalid("project name is required")
 	}
-	record, err := c.service.createProject(ctx, userID, name, strings.TrimSpace(req.Description), req.Icon)
+	record, err := c.service.createProject(ctx, userID, name, strings.TrimSpace(req.Description), req.Icon, req.SpaceID)
 	if err != nil {
 		return nil, err
 	}

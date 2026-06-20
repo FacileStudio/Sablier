@@ -249,10 +249,10 @@ export const backend = {
 	getProject(token: string, id: number) {
 		return apiFetch<Project>(`/api/projects/${id}`, {}, token);
 	},
-	createProject(token: string, name: string, description: string, icon?: string) {
+	createProject(token: string, name: string, description: string, icon?: string, spaceId?: string | null) {
 		return apiFetch<Project>('/api/projects', {
 			method: 'POST',
-			body: JSON.stringify({ name, description, icon })
+			body: JSON.stringify({ name, description, icon, space_id: spaceId || undefined })
 		}, token);
 	},
 	updateProject(token: string, id: number, name: string, description: string, icon?: string) {
@@ -306,10 +306,10 @@ export const backend = {
 			entry: result.entry ? normalizeEntry(result.entry) : null
 		}));
 	},
-	startTimer(token: string, projectId: number, taskId: number) {
+	startTimer(token: string, projectId: number, taskId: number, spaceId?: string | null) {
 		return apiFetch<TimeEntry>('/api/time-entries/start', {
 			method: 'POST',
-			body: JSON.stringify({ project_id: projectId, task_id: taskId })
+			body: JSON.stringify({ project_id: projectId, task_id: taskId, space_id: spaceId || undefined })
 		}, token).then(normalizeEntry);
 	},
 	stopTimer(token: string) {
@@ -321,10 +321,10 @@ export const backend = {
 	resumeTimer(token: string) {
 		return apiFetch<TimeEntry>('/api/time-entries/resume', { method: 'POST' }, token).then(normalizeEntry);
 	},
-	createEntry(token: string, projectId: number, taskId: number, startedAt: string, stoppedAt: string) {
+	createEntry(token: string, projectId: number, taskId: number, startedAt: string, stoppedAt: string, spaceId?: string | null) {
 		return apiFetch<TimeEntry>('/api/time-entries', {
 			method: 'POST',
-			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
+			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt, space_id: spaceId || undefined })
 		}, token).then(normalizeEntry);
 	},
 	updateEntry(token: string, id: number, projectId: number, taskId: number, startedAt: string, stoppedAt: string | null) {
