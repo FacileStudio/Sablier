@@ -1,3 +1,5 @@
+# Documents the pool events Sablier uses. The API builds its pool config
+# inline (modules/nookpool/service.go) — keep this file in sync with it.
 app: Sablier
 events:
   emit:
@@ -7,6 +9,8 @@ events:
     - task.created
     - task.updated
     - task.deleted
+    - timer.started
+    - timer.stopped
   listen:
     - project.created
     - project.updated

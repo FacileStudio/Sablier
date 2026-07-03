@@ -19,6 +19,10 @@ func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventM
 		return
 	}
 
+	s.createSyncedProject(&evt)
+}
+
+func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) {
 	var existing schemas.Project
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&existing).Error; err == nil {
 		return
@@ -54,7 +58,8 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 	var record schemas.Project
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&record).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			s.logger.Warn("pool: project not found for update", slog.String("facile_id", evt.Payload.FacileID))
+			s.logger.Info("pool: project not found for update, creating it", slog.String("facile_id", evt.Payload.FacileID))
+			s.createSyncedProject(&evt)
 			return
 		}
 		s.logger.Error("pool: failed to find project for update", slog.Any("error", err))
@@ -97,6 +102,17 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 		return
 	}
 
+	s.upsertSyncedTask(&evt, 0)
+}
+
+const maxTaskParentRetries = 5
+
+// upsertSyncedTask creates or updates a task from a pool event. When the
+// parent project has not been synced yet, it reschedules itself with
+// time.AfterFunc instead of sleeping: handlers run on the pool client's read
+// loop, so a blocking wait here would also block the project.created event
+// it is waiting for.
+func (s *Service) upsertSyncedTask(evt *enveloppe.Event[enveloppe.Task], attempt int) {
 	var existing schemas.Task
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&existing).Error; err == nil {
 		updates := map[string]interface{}{}
@@ -109,26 +125,29 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 				updates["status"] = normalized
 			}
 		}
+		if actorID := s.resolveActorByEmail(evt.Payload.ActorEmail); actorID != nil {
+			if existing.ActorID == nil || *existing.ActorID != *actorID {
+				updates["actor_id"] = *actorID
+			}
+		}
 		if len(updates) > 0 {
 			if err := s.orm.Model(&existing).Updates(updates).Error; err != nil {
-				s.logger.Error("pool: failed to upsert task on created event", slog.Any("error", err))
+				s.logger.Error("pool: failed to upsert synced task", slog.Any("error", err))
 			} else {
-				s.logger.Info("pool: synced task updated via created event", slog.String("facile_id", evt.Payload.FacileID))
+				s.logger.Info("pool: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
 			}
 		}
 		return
 	}
 
 	var project schemas.Project
-	var found bool
-	for attempt := 0; attempt < 5; attempt++ {
-		if err := s.orm.Where("facile_id = ?", evt.Payload.ProjectFacileID).First(&project).Error; err == nil {
-			found = true
-			break
+	if err := s.orm.Where("facile_id = ?", evt.Payload.ProjectFacileID).First(&project).Error; err != nil {
+		if attempt < maxTaskParentRetries {
+			time.AfterFunc(1*time.Second, func() {
+				s.upsertSyncedTask(evt, attempt+1)
+			})
+			return
 		}
-		time.Sleep(1 * time.Second)
-	}
-	if !found {
 		s.logger.Warn("pool: parent project not found for task sync after retries",
 			slog.String("project_facile_id", evt.Payload.ProjectFacileID),
 			slog.String("task_facile_id", evt.Payload.FacileID))
@@ -142,12 +161,24 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 		Name:      evt.Payload.Name,
 		Status:    status,
 		FacileID:  &facileID,
+		ActorID:   s.resolveActorByEmail(evt.Payload.ActorEmail),
 	}
 	if err := s.orm.Create(&record).Error; err != nil {
 		s.logger.Error("pool: failed to create synced task", slog.Any("error", err))
 		return
 	}
 	s.logger.Info("pool: synced task created", slog.String("facile_id", facileID))
+}
+
+func (s *Service) resolveActorByEmail(email string) *int64 {
+	if email == "" {
+		return nil
+	}
+	var user schemas.User
+	if err := s.orm.Select("id").Where("email = ?", email).First(&user).Error; err != nil {
+		return nil
+	}
+	return &user.ID
 }
 
 func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta) {
@@ -160,7 +191,8 @@ func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta
 	var record schemas.Task
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&record).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			s.logger.Warn("pool: task not found for update", slog.String("facile_id", evt.Payload.FacileID))
+			s.logger.Info("pool: task not found for update, creating it", slog.String("facile_id", evt.Payload.FacileID))
+			s.upsertSyncedTask(&evt, 0)
 			return
 		}
 		s.logger.Error("pool: failed to find task for update", slog.Any("error", err))

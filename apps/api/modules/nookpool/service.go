@@ -253,7 +253,7 @@ func (s *Service) EmitTimerEvent(event string, payload *TimerEventPayload) {
 	}
 
 	evt := TimerEvent{
-		App:            "sablier",
+		App:            "Sablier",
 		Event:          event,
 		Payload:        *payload,
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
