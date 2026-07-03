@@ -98,8 +98,8 @@
 	}
 
 	const eventLabels: Record<string, string> = {
-		'timer.started': 'Timer started',
-		'timer.stopped': 'Timer stopped',
+		'time_entry.created': 'Time entry created',
+		'time_entry.updated': 'Time entry updated',
 		'project.created': 'Project created',
 		'project.updated': 'Project updated',
 		'project.deleted': 'Project deleted',

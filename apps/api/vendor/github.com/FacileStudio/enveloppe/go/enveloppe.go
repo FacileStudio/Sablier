@@ -30,7 +30,10 @@ const (
 	ObjectDocument  ObjectType = "document"
 )
 
+const EventVersion = 1
+
 type Event[T any] struct {
+	Version        int        `json:"version"`
 	App            App        `json:"app"`
 	Object         ObjectType `json:"object"`
 	Action         Action     `json:"action"`
@@ -65,6 +68,7 @@ type TimeEntry struct {
 	FacileID     string  `json:"facile_id"`
 	TaskFacileID string  `json:"task_facile_id"`
 	UserFacileID string  `json:"user_facile_id"`
+	UserEmail    string  `json:"user_email,omitempty"`
 	StartedAt    string  `json:"started_at"`
 	StoppedAt    *string `json:"stopped_at"`
 }

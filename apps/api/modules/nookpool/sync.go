@@ -10,7 +10,24 @@ import (
 	"api/schemas"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+func (s *Service) alreadyProcessed(key string) bool {
+	if key == "" {
+		return false
+	}
+	var count int64
+	s.orm.Model(&schemas.PoolProcessedEvent{}).Where("idempotency_key = ?", key).Count(&count)
+	return count > 0
+}
+
+func (s *Service) markProcessed(key string) {
+	if key == "" {
+		return
+	}
+	s.orm.Clauses(clause.OnConflict{DoNothing: true}).Create(&schemas.PoolProcessedEvent{IdempotencyKey: key})
+}
 
 func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Project]
@@ -18,8 +35,12 @@ func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventM
 		s.logger.Error("pool: failed to decode project.created", slog.Any("error", err))
 		return
 	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
+		return
+	}
 
 	s.createSyncedProject(&evt)
+	s.markProcessed(evt.IdempotencyKey)
 }
 
 func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) {
@@ -54,12 +75,16 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 		s.logger.Error("pool: failed to decode project.updated", slog.Any("error", err))
 		return
 	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
+		return
+	}
 
 	var record schemas.Project
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&record).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			s.logger.Info("pool: project not found for update, creating it", slog.String("facile_id", evt.Payload.FacileID))
 			s.createSyncedProject(&evt)
+			s.markProcessed(evt.IdempotencyKey)
 			return
 		}
 		s.logger.Error("pool: failed to find project for update", slog.Any("error", err))
@@ -77,6 +102,7 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 		s.logger.Error("pool: failed to update synced project", slog.Any("error", err))
 		return
 	}
+	s.markProcessed(evt.IdempotencyKey)
 	s.logger.Info("pool: synced project updated", slog.String("facile_id", evt.Payload.FacileID))
 }
 
@@ -86,12 +112,16 @@ func (s *Service) handleProjectDeleted(payload json.RawMessage, meta pool.EventM
 		s.logger.Error("pool: failed to decode project.deleted", slog.Any("error", err))
 		return
 	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
+		return
+	}
 
 	result := s.orm.Where("facile_id = ?", evt.Payload.FacileID).Delete(&schemas.Project{})
 	if result.Error != nil {
 		s.logger.Error("pool: failed to delete synced project", slog.Any("error", result.Error))
 		return
 	}
+	s.markProcessed(evt.IdempotencyKey)
 	s.logger.Info("pool: synced project deleted", slog.String("facile_id", evt.Payload.FacileID))
 }
 
@@ -99,6 +129,9 @@ func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta
 	var evt enveloppe.Event[enveloppe.Task]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode task.created", slog.Any("error", err))
+		return
+	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
 		return
 	}
 
@@ -133,10 +166,11 @@ func (s *Service) upsertSyncedTask(evt *enveloppe.Event[enveloppe.Task], attempt
 		if len(updates) > 0 {
 			if err := s.orm.Model(&existing).Updates(updates).Error; err != nil {
 				s.logger.Error("pool: failed to upsert synced task", slog.Any("error", err))
-			} else {
-				s.logger.Info("pool: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
+				return
 			}
+			s.logger.Info("pool: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
 		}
+		s.markProcessed(evt.IdempotencyKey)
 		return
 	}
 
@@ -167,6 +201,7 @@ func (s *Service) upsertSyncedTask(evt *enveloppe.Event[enveloppe.Task], attempt
 		s.logger.Error("pool: failed to create synced task", slog.Any("error", err))
 		return
 	}
+	s.markProcessed(evt.IdempotencyKey)
 	s.logger.Info("pool: synced task created", slog.String("facile_id", facileID))
 }
 
@@ -185,6 +220,9 @@ func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta
 	var evt enveloppe.Event[enveloppe.Task]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode task.updated", slog.Any("error", err))
+		return
+	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
 		return
 	}
 
@@ -209,6 +247,7 @@ func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta
 		s.logger.Error("pool: failed to update synced task", slog.Any("error", err))
 		return
 	}
+	s.markProcessed(evt.IdempotencyKey)
 	s.logger.Info("pool: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
 }
 
@@ -218,11 +257,15 @@ func (s *Service) handleTaskDeleted(payload json.RawMessage, meta pool.EventMeta
 		s.logger.Error("pool: failed to decode task.deleted", slog.Any("error", err))
 		return
 	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
+		return
+	}
 
 	result := s.orm.Where("facile_id = ?", evt.Payload.FacileID).Delete(&schemas.Task{})
 	if result.Error != nil {
 		s.logger.Error("pool: failed to delete synced task", slog.Any("error", result.Error))
 		return
 	}
+	s.markProcessed(evt.IdempotencyKey)
 	s.logger.Info("pool: synced task deleted", slog.String("facile_id", evt.Payload.FacileID))
 }

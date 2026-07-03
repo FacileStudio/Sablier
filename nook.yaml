@@ -9,8 +9,8 @@ events:
     - task.created
     - task.updated
     - task.deleted
-    - timer.started
-    - timer.stopped
+    - time_entry.created
+    - time_entry.updated
   listen:
     - project.created
     - project.updated
