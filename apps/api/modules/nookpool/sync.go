@@ -39,14 +39,15 @@ func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventM
 		return
 	}
 
-	s.createSyncedProject(&evt)
-	s.markProcessed(evt.IdempotencyKey)
+	if s.createSyncedProject(&evt) {
+		s.markProcessed(evt.IdempotencyKey)
+	}
 }
 
-func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) {
+func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) bool {
 	var existing schemas.Project
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&existing).Error; err == nil {
-		return
+		return true
 	}
 
 	desc := ""
@@ -64,9 +65,10 @@ func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) {
 	}
 	if err := s.orm.Create(&record).Error; err != nil {
 		s.logger.Error("pool: failed to create synced project", slog.Any("error", err))
-		return
+		return false
 	}
 	s.logger.Info("pool: synced project created", slog.String("facile_id", facileID))
+	return true
 }
 
 func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventMeta) {
@@ -83,8 +85,9 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&record).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			s.logger.Info("pool: project not found for update, creating it", slog.String("facile_id", evt.Payload.FacileID))
-			s.createSyncedProject(&evt)
-			s.markProcessed(evt.IdempotencyKey)
+			if s.createSyncedProject(&evt) {
+				s.markProcessed(evt.IdempotencyKey)
+			}
 			return
 		}
 		s.logger.Error("pool: failed to find project for update", slog.Any("error", err))
