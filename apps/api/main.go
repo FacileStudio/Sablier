@@ -188,6 +188,10 @@ func main() {
 
 	appLogger.Info("notification worker started")
 
+	go nookPoolService.RunOutboxWorker(shutdownSignal)
+
+	appLogger.Info("pool outbox worker started")
+
 	select {
 	case err := <-serverErrCh:
 		if !errors.Is(err, http.ErrServerClosed) {

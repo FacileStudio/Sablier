@@ -8,6 +8,7 @@ type TimeEntry struct {
 	TaskID             int64      `gorm:"column:task_id;index"`
 	UserID             int64      `gorm:"column:user_id;index"`
 	SpaceID            *string    `gorm:"column:space_id;type:uuid;index" json:"space_id,omitempty"`
+	FacileID           *string    `gorm:"column:facile_id;uniqueIndex" json:"facile_id,omitempty"`
 	LegacyDescription  string     `gorm:"column:description"`
 	StartedAt          time.Time  `gorm:"column:started_at"`
 	StoppedAt          *time.Time `gorm:"column:stopped_at"`

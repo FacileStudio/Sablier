@@ -357,23 +357,11 @@ func (service *Service) fireWebhook(ctx context.Context, userID int64, event str
 	}
 
 	if service.poolService != nil {
-		poolEvent := event
-		if event == "timer_started" {
-			poolEvent = "timer.started"
-		} else if event == "timer_stopped" {
-			poolEvent = "timer.stopped"
+		action := enveloppe.ActionCreated
+		if event == "timer_stopped" {
+			action = enveloppe.ActionUpdated
 		}
-		go service.poolService.EmitTimerEvent(poolEvent, &nookpool.TimerEventPayload{
-			ID:          data.ID,
-			ProjectID:   data.ProjectID,
-			ProjectName: data.ProjectName,
-			TaskID:      data.TaskID,
-			TaskName:    data.TaskName,
-			UserID:      data.UserID,
-			UserEmail:   data.UserEmail,
-			StartedAt:   data.StartedAt,
-			StoppedAt:   data.StoppedAt,
-		})
+		go service.poolService.EmitTimeEntryEvent(action, entry)
 	}
 }
 

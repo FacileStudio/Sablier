@@ -1,7 +1,7 @@
-# github.com/FacileStudio/enveloppe/go v0.0.0-20260527224511-f8474e3d7e69
+# github.com/FacileStudio/enveloppe/go v0.0.0-20260703170222-fec3d5e5aac7
 ## explicit; go 1.24.0
 github.com/FacileStudio/enveloppe/go
-# github.com/FacileStudio/pool/go v0.0.0-20260527212554-94142d46e0f5
+# github.com/FacileStudio/pool/go v0.0.0-20260703170324-6099876db9a6
 ## explicit; go 1.24.0
 github.com/FacileStudio/pool/go
 # github.com/SherClockHolmes/webpush-go v1.4.0

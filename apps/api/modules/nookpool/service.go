@@ -128,7 +128,7 @@ func (s *Service) connect(instanceURL, secret string) error {
 		Instance: instanceURL,
 		Secret:   secret,
 		Events: pool.EventConfig{
-			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "timer.started", "timer.stopped"},
+			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated"},
 			Listen: []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted"},
 		},
 	}
@@ -239,38 +239,146 @@ func (s *Service) updatePoolEvents(ctx context.Context, req *UpdatePoolEventsReq
 	return s.getPoolEvents(ctx)
 }
 
-func (s *Service) EmitTimerEvent(event string, payload *TimerEventPayload) {
-	s.mu.RLock()
-	client := s.client
-	s.mu.RUnlock()
+// shouldEmit reports whether events should be produced at all: either the
+// pool is enabled in settings, or a connection exists (env-var configs run
+// with Enabled=false). Events are queued in the outbox, not sent directly,
+// so a temporarily disconnected pool must not drop them.
+func (s *Service) shouldEmit() bool {
+	if s.isConnected() {
+		return true
+	}
+	var record schemas.AppSetting
+	if err := s.orm.Where("id = ?", appSettingID).First(&record).Error; err != nil {
+		return false
+	}
+	return record.NookPoolEnabled
+}
 
-	if client == nil || !client.IsConnected() {
+func (s *Service) enqueueOutbox(channel string, evt any) {
+	payload, err := json.Marshal(evt)
+	if err != nil {
+		s.logger.Error("pool: failed to serialize outbox event", slog.Any("error", err), slog.String("channel", channel))
 		return
 	}
-
-	if !s.IsPoolEventEnabled(event) {
-		return
-	}
-
-	evt := TimerEvent{
-		App:            "Sablier",
-		Event:          event,
-		Payload:        *payload,
-		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_%s_%d_%d", event, payload.ID, time.Now().UnixMilli()),
-	}
-
-	if err := client.Emit(event, evt); err != nil {
-		s.logger.Error("pool: failed to emit timer event", slog.Any("error", err), slog.String("event", event))
+	row := schemas.PoolOutbox{Channel: channel, Payload: string(payload)}
+	if err := s.orm.Create(&row).Error; err != nil {
+		s.logger.Error("pool: failed to enqueue outbox event", slog.Any("error", err), slog.String("channel", channel))
 	}
 }
 
-func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Project) {
+const outboxBatchSize = 100
+
+// RunOutboxWorker drains the outbox to the pool while connected. Failures
+// stop the batch (never skip: skipping would reorder the log) and retry on
+// the next tick. It also prunes the idempotency ledger daily.
+func (s *Service) RunOutboxWorker(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	lastPrune := time.Time{}
+
+	for {
+		select {
+		case <-ticker.C:
+			s.drainOutbox()
+			if time.Since(lastPrune) > 24*time.Hour {
+				s.orm.Where("processed_at < ?", time.Now().Add(-35*24*time.Hour)).Delete(&schemas.PoolProcessedEvent{})
+				lastPrune = time.Now()
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Service) drainOutbox() {
 	s.mu.RLock()
 	client := s.client
 	s.mu.RUnlock()
 
 	if client == nil || !client.IsConnected() {
+		return
+	}
+
+	var rows []schemas.PoolOutbox
+	if err := s.orm.Order("id ASC").Limit(outboxBatchSize).Find(&rows).Error; err != nil {
+		s.logger.Error("pool: failed to read outbox", slog.Any("error", err))
+		return
+	}
+
+	for i := range rows {
+		if err := client.Emit(rows[i].Channel, json.RawMessage(rows[i].Payload)); err != nil {
+			s.logger.Error("pool: outbox emit failed", slog.Any("error", err), slog.String("channel", rows[i].Channel))
+			s.orm.Model(&rows[i]).Updates(map[string]interface{}{
+				"attempts":   rows[i].Attempts + 1,
+				"last_error": err.Error(),
+			})
+			return
+		}
+		s.orm.Delete(&rows[i])
+	}
+}
+
+func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.TimeEntry) {
+	if !s.shouldEmit() {
+		return
+	}
+
+	channel := fmt.Sprintf("time_entry.%s", action)
+	if !s.IsPoolEventEnabled(channel) {
+		return
+	}
+
+	if entry.FacileID == nil {
+		fid := GenerateFacileID()
+		entry.FacileID = &fid
+		s.orm.Model(entry).Update("facile_id", fid)
+	}
+
+	var taskFacileID string
+	var task schemas.Task
+	if err := s.orm.Where("id = ?", entry.TaskID).First(&task).Error; err == nil {
+		if task.FacileID == nil {
+			fid := GenerateFacileID()
+			task.FacileID = &fid
+			s.orm.Model(&task).Update("facile_id", fid)
+		}
+		taskFacileID = *task.FacileID
+	}
+
+	var userEmail string
+	var user schemas.User
+	if err := s.orm.Select("email").Where("id = ?", entry.UserID).First(&user).Error; err == nil {
+		userEmail = user.Email
+	}
+
+	var stoppedAt *string
+	if entry.StoppedAt != nil {
+		formatted := entry.StoppedAt.UTC().Format(time.RFC3339)
+		stoppedAt = &formatted
+	}
+
+	evt := enveloppe.Event[enveloppe.TimeEntry]{
+		Version:  enveloppe.EventVersion,
+		App:      enveloppe.AppSablier,
+		Object:   enveloppe.ObjectTimeEntry,
+		Action:   action,
+		FacileID: *entry.FacileID,
+		Payload: enveloppe.TimeEntry{
+			FacileID:     *entry.FacileID,
+			TaskFacileID: taskFacileID,
+			UserEmail:    userEmail,
+			StartedAt:    entry.StartedAt.UTC().Format(time.RFC3339),
+			StoppedAt:    stoppedAt,
+		},
+		Timestamp:      time.Now().UTC().Format(time.RFC3339),
+		IdempotencyKey: fmt.Sprintf("sablier_time_entry_%s_%s_%d", action, *entry.FacileID, time.Now().UnixMilli()),
+	}
+
+	s.enqueueOutbox(channel, evt)
+}
+
+func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Project) {
+	if !s.shouldEmit() {
 		return
 	}
 
@@ -291,6 +399,7 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 	}
 
 	evt := enveloppe.Event[enveloppe.Project]{
+		Version:  enveloppe.EventVersion,
 		App:      enveloppe.AppSablier,
 		Object:   enveloppe.ObjectProject,
 		Action:   action,
@@ -305,17 +414,11 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *project.FacileID, time.Now().UnixMilli()),
 	}
 
-	if err := client.Emit(channel, evt); err != nil {
-		s.logger.Error("pool: failed to emit project event", slog.Any("error", err), slog.String("action", string(action)))
-	}
+	s.enqueueOutbox(channel, evt)
 }
 
 func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, project *schemas.Project) {
-	s.mu.RLock()
-	client := s.client
-	s.mu.RUnlock()
-
-	if client == nil || !client.IsConnected() {
+	if !s.shouldEmit() {
 		return
 	}
 
@@ -350,6 +453,7 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 	}
 
 	evt := enveloppe.Event[enveloppe.Task]{
+		Version:  enveloppe.EventVersion,
 		App:      enveloppe.AppSablier,
 		Object:   enveloppe.ObjectTask,
 		Action:   action,
@@ -365,10 +469,7 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 		IdempotencyKey: fmt.Sprintf("sablier_task_%s_%s_%d", action, *task.FacileID, time.Now().UnixMilli()),
 	}
 
-	channel := fmt.Sprintf("task.%s", action)
-	if err := client.Emit(channel, evt); err != nil {
-		s.logger.Error("pool: failed to emit task event", slog.Any("error", err), slog.String("action", string(action)))
-	}
+	s.enqueueOutbox(fmt.Sprintf("task.%s", action), evt)
 }
 
 func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
