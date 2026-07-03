@@ -239,12 +239,16 @@ func (s *Service) updatePoolEvents(ctx context.Context, req *UpdatePoolEventsReq
 	return s.getPoolEvents(ctx)
 }
 
-// shouldEmit reports whether events should be produced at all: either the
-// pool is enabled in settings, or a connection exists (env-var configs run
-// with Enabled=false). Events are queued in the outbox, not sent directly,
-// so a temporarily disconnected pool must not drop them.
+// shouldEmit reports whether events should be produced at all: the pool is
+// enabled in settings, or a client exists (env-var configs run with
+// Enabled=false and no settings row, so a client — even one mid-reconnect —
+// is the signal). Events are queued in the outbox, not sent directly, so a
+// temporarily disconnected pool must not drop them.
 func (s *Service) shouldEmit() bool {
-	if s.isConnected() {
+	s.mu.RLock()
+	hasClient := s.client != nil
+	s.mu.RUnlock()
+	if hasClient {
 		return true
 	}
 	var record schemas.AppSetting
@@ -306,7 +310,7 @@ func (s *Service) drainOutbox() {
 	}
 
 	for i := range rows {
-		if err := client.Emit(rows[i].Channel, json.RawMessage(rows[i].Payload)); err != nil {
+		if err := client.EmitNow(rows[i].Channel, json.RawMessage(rows[i].Payload)); err != nil {
 			s.logger.Error("pool: outbox emit failed", slog.Any("error", err), slog.String("channel", rows[i].Channel))
 			s.orm.Model(&rows[i]).Updates(map[string]interface{}{
 				"attempts":   rows[i].Attempts + 1,
@@ -328,15 +332,16 @@ func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.Tim
 		return
 	}
 
-	if entry.FacileID == nil {
+	e := *entry
+	if e.FacileID == nil {
 		fid := GenerateFacileID()
-		entry.FacileID = &fid
-		s.orm.Model(entry).Update("facile_id", fid)
+		e.FacileID = &fid
+		s.orm.Model(&schemas.TimeEntry{}).Where("id = ?", e.ID).Update("facile_id", fid)
 	}
 
 	var taskFacileID string
 	var task schemas.Task
-	if err := s.orm.Where("id = ?", entry.TaskID).First(&task).Error; err == nil {
+	if err := s.orm.Where("id = ?", e.TaskID).First(&task).Error; err == nil {
 		if task.FacileID == nil {
 			fid := GenerateFacileID()
 			task.FacileID = &fid
@@ -347,13 +352,13 @@ func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.Tim
 
 	var userEmail string
 	var user schemas.User
-	if err := s.orm.Select("email").Where("id = ?", entry.UserID).First(&user).Error; err == nil {
+	if err := s.orm.Select("email").Where("id = ?", e.UserID).First(&user).Error; err == nil {
 		userEmail = user.Email
 	}
 
 	var stoppedAt *string
-	if entry.StoppedAt != nil {
-		formatted := entry.StoppedAt.UTC().Format(time.RFC3339)
+	if e.StoppedAt != nil {
+		formatted := e.StoppedAt.UTC().Format(time.RFC3339)
 		stoppedAt = &formatted
 	}
 
@@ -362,16 +367,16 @@ func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.Tim
 		App:      enveloppe.AppSablier,
 		Object:   enveloppe.ObjectTimeEntry,
 		Action:   action,
-		FacileID: *entry.FacileID,
+		FacileID: *e.FacileID,
 		Payload: enveloppe.TimeEntry{
-			FacileID:     *entry.FacileID,
+			FacileID:     *e.FacileID,
 			TaskFacileID: taskFacileID,
 			UserEmail:    userEmail,
-			StartedAt:    entry.StartedAt.UTC().Format(time.RFC3339),
+			StartedAt:    e.StartedAt.UTC().Format(time.RFC3339),
 			StoppedAt:    stoppedAt,
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_time_entry_%s_%s_%d", action, *entry.FacileID, time.Now().UnixMilli()),
+		IdempotencyKey: fmt.Sprintf("sablier_time_entry_%s_%s_%d", action, *e.FacileID, time.Now().UnixMilli()),
 	}
 
 	s.enqueueOutbox(channel, evt)
@@ -387,15 +392,16 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 		return
 	}
 
-	if project.FacileID == nil {
+	p := *project
+	if p.FacileID == nil {
 		fid := GenerateFacileID()
-		project.FacileID = &fid
-		s.orm.Model(project).Update("facile_id", fid)
+		p.FacileID = &fid
+		s.orm.Model(&schemas.Project{}).Where("id = ?", p.ID).Update("facile_id", fid)
 	}
 
 	var desc *string
-	if project.Description != "" {
-		desc = &project.Description
+	if p.Description != "" {
+		desc = &p.Description
 	}
 
 	evt := enveloppe.Event[enveloppe.Project]{
@@ -403,15 +409,15 @@ func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Pro
 		App:      enveloppe.AppSablier,
 		Object:   enveloppe.ObjectProject,
 		Action:   action,
-		FacileID: *project.FacileID,
+		FacileID: *p.FacileID,
 		Payload: enveloppe.Project{
-			FacileID:    *project.FacileID,
-			Name:        project.Name,
+			FacileID:    *p.FacileID,
+			Name:        p.Name,
 			Description: desc,
-			Icon:        normalizeIcon(project.Icon),
+			Icon:        normalizeIcon(p.Icon),
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *project.FacileID, time.Now().UnixMilli()),
+		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *p.FacileID, time.Now().UnixMilli()),
 	}
 
 	s.enqueueOutbox(channel, evt)
@@ -426,28 +432,29 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 		return
 	}
 
-	if task.FacileID == nil {
+	t := *task
+	if t.FacileID == nil {
 		fid := GenerateFacileID()
-		task.FacileID = &fid
-		s.orm.Model(task).Update("facile_id", fid)
-	}
-
-	if project != nil && project.FacileID == nil {
-		fid := GenerateFacileID()
-		project.FacileID = &fid
-		s.orm.Model(project).Update("facile_id", fid)
-		s.EmitProjectEvent(enveloppe.ActionCreated, project)
+		t.FacileID = &fid
+		s.orm.Model(&schemas.Task{}).Where("id = ?", t.ID).Update("facile_id", fid)
 	}
 
 	projectFacileID := ""
-	if project != nil && project.FacileID != nil {
-		projectFacileID = *project.FacileID
+	if project != nil {
+		p := *project
+		if p.FacileID == nil {
+			fid := GenerateFacileID()
+			p.FacileID = &fid
+			s.orm.Model(&schemas.Project{}).Where("id = ?", p.ID).Update("facile_id", fid)
+			s.EmitProjectEvent(enveloppe.ActionCreated, &p)
+		}
+		projectFacileID = *p.FacileID
 	}
 
 	var actorEmail string
-	if task.ActorID != nil {
+	if t.ActorID != nil {
 		var user schemas.User
-		if err := s.orm.Select("email").Where("id = ?", *task.ActorID).First(&user).Error; err == nil {
+		if err := s.orm.Select("email").Where("id = ?", *t.ActorID).First(&user).Error; err == nil {
 			actorEmail = user.Email
 		}
 	}
@@ -457,16 +464,16 @@ func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, pro
 		App:      enveloppe.AppSablier,
 		Object:   enveloppe.ObjectTask,
 		Action:   action,
-		FacileID: *task.FacileID,
+		FacileID: *t.FacileID,
 		Payload: enveloppe.Task{
-			FacileID:        *task.FacileID,
+			FacileID:        *t.FacileID,
 			ProjectFacileID: projectFacileID,
-			Name:            task.Name,
-			Status:          schemas.NormalizeStatus(task.Status),
+			Name:            t.Name,
+			Status:          schemas.NormalizeStatus(t.Status),
 			ActorEmail:      actorEmail,
 		},
 		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_task_%s_%s_%d", action, *task.FacileID, time.Now().UnixMilli()),
+		IdempotencyKey: fmt.Sprintf("sablier_task_%s_%s_%d", action, *t.FacileID, time.Now().UnixMilli()),
 	}
 
 	s.enqueueOutbox(fmt.Sprintf("task.%s", action), evt)
