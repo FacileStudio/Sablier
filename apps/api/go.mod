@@ -3,6 +3,7 @@ module api
 go 1.24.0
 
 require (
+	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba
 	github.com/FacileStudio/enveloppe/go v0.0.0-20260703170222-fec3d5e5aac7
 	github.com/FacileStudio/pool/go v0.0.0-20260703193105-683b8b5581af
 	github.com/SherClockHolmes/webpush-go v1.4.0
