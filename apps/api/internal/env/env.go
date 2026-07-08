@@ -28,6 +28,8 @@ type Config struct {
 	VAPIDPublicKey     string
 	VAPIDPrivateKey    string
 	VAPIDSubject       string
+	JournalURL         string
+	JournalToken       string
 }
 
 func Load() (Config, error) {
@@ -63,6 +65,8 @@ func Load() (Config, error) {
 	env.VAPIDPublicKey = os.Getenv("VAPID_PUBLIC_KEY")
 	env.VAPIDPrivateKey = os.Getenv("VAPID_PRIVATE_KEY")
 	env.VAPIDSubject = valueOrDefault("VAPID_SUBJECT", "mailto:admin@example.com")
+	env.JournalURL = os.Getenv("JOURNAL_URL")
+	env.JournalToken = os.Getenv("JOURNAL_TOKEN")
 
 	if issuer := os.Getenv("OIDC_ISSUER"); issuer != "" {
 		clientID := os.Getenv("OIDC_CLIENT_ID")
