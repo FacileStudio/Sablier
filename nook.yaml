@@ -18,3 +18,5 @@ events:
     - task.created
     - task.updated
     - task.deleted
+    - agent_session.created
+    - agent_session.updated
