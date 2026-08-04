@@ -9,6 +9,7 @@ const (
 	AppPlume    App = "Plume"
 	AppGlouton  App = "Glouton"
 	AppVision   App = "Vision"
+	AppMycelium   App = "Mycelium"
 )
 
 type Action string
@@ -22,12 +23,13 @@ const (
 type ObjectType string
 
 const (
-	ObjectProject   ObjectType = "project"
-	ObjectTask      ObjectType = "task"
-	ObjectUser      ObjectType = "user"
-	ObjectTimeEntry ObjectType = "time_entry"
-	ObjectInvoice   ObjectType = "invoice"
-	ObjectDocument  ObjectType = "document"
+	ObjectProject      ObjectType = "project"
+	ObjectTask         ObjectType = "task"
+	ObjectUser         ObjectType = "user"
+	ObjectTimeEntry    ObjectType = "time_entry"
+	ObjectInvoice      ObjectType = "invoice"
+	ObjectDocument     ObjectType = "document"
+	ObjectAgentSession ObjectType = "agent_session"
 )
 
 const EventVersion = 1
@@ -71,6 +73,19 @@ type TimeEntry struct {
 	UserEmail    string  `json:"user_email,omitempty"`
 	StartedAt    string  `json:"started_at"`
 	StoppedAt    *string `json:"stopped_at"`
+}
+
+type AgentSession struct {
+	FacileID  string `json:"facile_id"`
+	Project   string `json:"project"`
+	Machine   string `json:"machine"`
+	Agent     string `json:"agent"`
+	Branch    string `json:"branch,omitempty"`
+	UserEmail string `json:"user_email"`
+	StartedAt string `json:"started_at"`
+	StoppedAt string `json:"stopped_at"`
+	TokensIn  int64  `json:"tokens_in"`
+	TokensOut int64  `json:"tokens_out"`
 }
 
 type Invoice struct {

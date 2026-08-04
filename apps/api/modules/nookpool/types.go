@@ -27,6 +27,8 @@ type SyncResult struct {
 var AllPoolEvents = []string{
 	"time_entry.created",
 	"time_entry.updated",
+	"agent_session.created",
+	"agent_session.updated",
 	"project.created",
 	"project.updated",
 	"project.deleted",

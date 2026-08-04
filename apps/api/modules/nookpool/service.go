@@ -129,7 +129,7 @@ func (s *Service) connect(instanceURL, secret string) error {
 		Secret:   secret,
 		Events: pool.EventConfig{
 			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated"},
-			Listen: []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted"},
+			Listen: []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "agent_session.created", "agent_session.updated"},
 		},
 	}
 
@@ -617,5 +617,11 @@ func (s *Service) setupListeners() {
 	})
 	client.Listen("task.deleted", func(payload json.RawMessage, meta pool.EventMeta) {
 		s.handleTaskDeleted(payload, meta)
+	})
+	client.Listen("agent_session.created", func(payload json.RawMessage, meta pool.EventMeta) {
+		s.handleAgentSession(payload, meta)
+	})
+	client.Listen("agent_session.updated", func(payload json.RawMessage, meta pool.EventMeta) {
+		s.handleAgentSession(payload, meta)
 	})
 }

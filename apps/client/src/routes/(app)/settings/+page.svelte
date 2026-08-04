@@ -100,6 +100,8 @@
 	const eventLabels: Record<string, string> = {
 		'time_entry.created': 'Time entry created',
 		'time_entry.updated': 'Time entry updated',
+		'agent_session.created': 'Agent session recorded (Mycelium)',
+		'agent_session.updated': 'Agent session updated (Mycelium)',
 		'project.created': 'Project created',
 		'project.updated': 'Project updated',
 		'project.deleted': 'Project deleted',
