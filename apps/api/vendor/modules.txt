@@ -7,7 +7,7 @@ github.com/FacileStudio/enveloppe/go
 # github.com/FacileStudio/pool/go v0.0.0-20260703193105-683b8b5581af
 ## explicit; go 1.24.0
 github.com/FacileStudio/pool/go
-# github.com/FacileStudio/tronc v0.3.0
+# github.com/FacileStudio/tronc v0.4.0
 ## explicit; go 1.24.0
 github.com/FacileStudio/tronc/errors
 github.com/FacileStudio/tronc/health
@@ -16,6 +16,7 @@ github.com/FacileStudio/tronc/httpjson
 github.com/FacileStudio/tronc/httpx
 github.com/FacileStudio/tronc/logger
 github.com/FacileStudio/tronc/middleware
+github.com/FacileStudio/tronc/spa
 # github.com/SherClockHolmes/webpush-go v1.4.0
 ## explicit; go 1.13
 github.com/SherClockHolmes/webpush-go

@@ -77,7 +77,6 @@ Main environment variables:
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`: enable OIDC login
 - `OIDC_SUCCESS_URL`: post-login redirect, defaults to the first `DOMAINS` entry
 - `SSO_ONLY=true`: hide password login and registration
-- `VITE_API_BASE_URL`: client-side API base URL for production builds
 
 See [`.env.example`](.env.example) and [`apps/api/.env.example`](apps/api/.env.example) for examples.
 

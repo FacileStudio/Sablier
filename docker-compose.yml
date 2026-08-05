@@ -20,24 +20,30 @@ services:
     restart: unless-stopped
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: Dockerfile
     expose:
       - "4000"
+    healthcheck:
+      test: ["CMD", "/api", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - default
       - dokploy-network
     labels:
       traefik.enable: "true"
       traefik.docker.network: dokploy-network
-      traefik.http.routers.sablier-api-web.rule: "Host(`sablier.facile.studio`) && PathPrefix(`/api`)"
-      traefik.http.routers.sablier-api-web.entrypoints: web
-      traefik.http.routers.sablier-api-web.middlewares: redirect-to-https@file
-      traefik.http.routers.sablier-api-web.service: sablier-api-svc
-      traefik.http.routers.sablier-api-secure.rule: "Host(`sablier.facile.studio`) && PathPrefix(`/api`)"
-      traefik.http.routers.sablier-api-secure.entrypoints: websecure
-      traefik.http.routers.sablier-api-secure.tls.certresolver: letsencrypt
-      traefik.http.routers.sablier-api-secure.service: sablier-api-svc
-      traefik.http.services.sablier-api-svc.loadbalancer.server.port: "4000"
+      traefik.http.routers.sablier-web.rule: "Host(`sablier.facile.studio`)"
+      traefik.http.routers.sablier-web.entrypoints: web
+      traefik.http.routers.sablier-web.middlewares: redirect-to-https@file
+      traefik.http.routers.sablier-web.service: sablier-svc
+      traefik.http.routers.sablier-secure.rule: "Host(`sablier.facile.studio`)"
+      traefik.http.routers.sablier-secure.entrypoints: websecure
+      traefik.http.routers.sablier-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.sablier-secure.service: sablier-svc
+      traefik.http.services.sablier-svc.loadbalancer.server.port: "4000"
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
       PORT: ${PORT:-4000}
@@ -60,25 +66,6 @@ services:
         condition: service_healthy
     volumes:
       - api_data:/data
-
-  client:
-    restart: unless-stopped
-    build:
-      context: apps/client
-      dockerfile: Dockerfile
-    expose:
-      - "80"
-    networks:
-      - default
-      - dokploy-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    depends_on:
-      - api
 
 networks:
   dokploy-network:
