@@ -3,8 +3,8 @@ package timeentries
 import (
 	"context"
 
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/tronc/errors"
 )
 
 type Controller struct {

@@ -8,8 +8,8 @@ import (
 	"strconv"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/tronc/errors"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"gorm.io/gorm"

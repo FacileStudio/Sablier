@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
+	"github.com/FacileStudio/tronc/errors"
 )
 
 type Controller struct {
