@@ -23,6 +23,21 @@ services:
       dockerfile: apps/api/Dockerfile
     expose:
       - "4000"
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: dokploy-network
+      traefik.http.routers.sablier-api-web.rule: "Host(`sablier.facile.studio`) && PathPrefix(`/api`)"
+      traefik.http.routers.sablier-api-web.entrypoints: web
+      traefik.http.routers.sablier-api-web.middlewares: redirect-to-https@file
+      traefik.http.routers.sablier-api-web.service: sablier-api-svc
+      traefik.http.routers.sablier-api-secure.rule: "Host(`sablier.facile.studio`) && PathPrefix(`/api`)"
+      traefik.http.routers.sablier-api-secure.entrypoints: websecure
+      traefik.http.routers.sablier-api-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.sablier-api-secure.service: sablier-api-svc
+      traefik.http.services.sablier-api-svc.loadbalancer.server.port: "4000"
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
       PORT: ${PORT:-4000}
@@ -52,9 +67,12 @@ services:
       context: apps/client
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:4000}
+        - VITE_API_BASE_URL=/api
     expose:
       - "80"
+    networks:
+      - default
+      - dokploy-network
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ >/dev/null || exit 1"]
       interval: 30s
@@ -63,6 +81,10 @@ services:
       start_period: 30s
     depends_on:
       - api
+
+networks:
+  dokploy-network:
+    external: true
 
 volumes:
   db_data:
