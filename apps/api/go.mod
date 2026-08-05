@@ -1,4 +1,4 @@
-module api
+module github.com/FacileStudio/Sablier/apps/api
 
 go 1.24.0
 

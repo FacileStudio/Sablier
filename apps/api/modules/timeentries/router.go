@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"api/internal/authcontext"
-	"api/internal/errors"
-	"api/internal/httpjson"
-	"api/internal/middleware"
-	"api/modules/auth"
+	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/internal/httpjson"
+	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
+	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 
 	"github.com/go-chi/chi/v5"
 )

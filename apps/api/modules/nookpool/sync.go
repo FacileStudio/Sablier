@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 	pool "github.com/FacileStudio/pool/go"
-	"api/schemas"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

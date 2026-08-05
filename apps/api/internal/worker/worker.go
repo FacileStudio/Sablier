@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"api/modules/notifications"
+	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 )
 
 func RunNotificationWorker(ctx context.Context, notifService *notifications.Service, appLogger *slog.Logger) {

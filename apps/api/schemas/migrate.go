@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"api/internal/usercolor"
+	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
 
 	"gorm.io/gorm"
 )

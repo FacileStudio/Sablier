@@ -5,8 +5,8 @@ import (
 	stderrors "errors"
 	"strings"
 
-	"api/internal/errors"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

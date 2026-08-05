@@ -1,6 +1,6 @@
 package spaces
 
-import documentation "api/internal/documentation"
+import documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 
 var Documentation = documentation.Module{
 	Name:        "spaces",

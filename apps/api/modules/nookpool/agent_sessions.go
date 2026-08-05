@@ -10,15 +10,15 @@ import (
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 	pool "github.com/FacileStudio/pool/go"
 
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/gorm"
 )
 
 const (
-	agentSessionsTaskName  = "Agent sessions"
-	agentCatchAllProject   = "Agent work"
-	agentCatchAllOwnerID   = 1
+	agentSessionsTaskName    = "Agent sessions"
+	agentCatchAllProject     = "Agent work"
+	agentCatchAllOwnerID     = 1
 	agentCatchAllProjectDesc = "Agent sessions from Mycelium without a matching Sablier project"
 )
 
