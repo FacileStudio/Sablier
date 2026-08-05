@@ -5,9 +5,9 @@ import (
 	stderrors "errors"
 	"strconv"
 
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
 	"github.com/FacileStudio/Sablier/apps/api/modules/nookpool"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/tronc/errors"
 
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 	"gorm.io/gorm"

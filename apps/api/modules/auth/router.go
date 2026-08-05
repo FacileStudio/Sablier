@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
-	"github.com/FacileStudio/Sablier/apps/api/internal/httpjson"
 	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
+	"github.com/FacileStudio/tronc/httpjson"
 
 	"github.com/go-chi/chi/v5"
 )

@@ -1,3 +1,6 @@
+// Package errors carries the suite's error envelope: a stable machine-readable
+// code, a human-readable message, and the wrapped cause. Every Facile API
+// answers failures as {"error":{"code":...,"message":...}}.
 package errors
 
 import (
@@ -30,9 +33,22 @@ func NotFound(message string) *Error     { return New("not_found", message, nil)
 func Conflict(message string) *Error     { return New("already_exists", message, nil) }
 func Failed(message string) *Error       { return New("failed_precondition", message, nil) }
 func TooLarge(message string) *Error     { return New("resource_exhausted", message, nil) }
+func RateLimited(message string) *Error  { return New("rate_limited", message, nil) }
 
 func Internal(message string, cause error) *Error {
 	return New("internal", message, cause)
+}
+
+var statusByCode = map[string]int{
+	"invalid_argument":    http.StatusBadRequest,
+	"unauthenticated":     http.StatusUnauthorized,
+	"permission_denied":   http.StatusForbidden,
+	"not_found":           http.StatusNotFound,
+	"already_exists":      http.StatusConflict,
+	"failed_precondition": http.StatusPreconditionFailed,
+	"resource_exhausted":  http.StatusRequestEntityTooLarge,
+	"rate_limited":        http.StatusTooManyRequests,
+	"internal":            http.StatusInternalServerError,
 }
 
 func Status(err error) int {
@@ -40,23 +56,8 @@ func Status(err error) int {
 	if !stderrors.As(err, &appErr) {
 		return http.StatusInternalServerError
 	}
-
-	switch appErr.Code {
-	case "invalid_argument":
-		return http.StatusBadRequest
-	case "unauthenticated":
-		return http.StatusUnauthorized
-	case "permission_denied":
-		return http.StatusForbidden
-	case "not_found":
-		return http.StatusNotFound
-	case "already_exists":
-		return http.StatusConflict
-	case "failed_precondition":
-		return http.StatusPreconditionFailed
-	case "resource_exhausted":
-		return http.StatusRequestEntityTooLarge
-	default:
-		return http.StatusInternalServerError
+	if status, ok := statusByCode[appErr.Code]; ok {
+		return status
 	}
+	return http.StatusInternalServerError
 }

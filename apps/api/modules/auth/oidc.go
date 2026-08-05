@@ -10,9 +10,9 @@ import (
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
-	"github.com/FacileStudio/Sablier/apps/api/internal/httpjson"
 	"github.com/FacileStudio/Sablier/apps/api/internal/oidcavatar"
+	"github.com/FacileStudio/tronc/errors"
+	"github.com/FacileStudio/tronc/httpjson"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"

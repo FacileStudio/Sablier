@@ -1,11 +1,11 @@
 github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba h1:/DSby1r2Ix9vsPKfDky0rRY/skp8p2Nq+I/B3cc9M9g=
 github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba/go.mod h1:mb3rZqpSwA4CMrP9LQe2eWdM/4np3xzkRy6l/WWSaUg=
-github.com/FacileStudio/enveloppe/go v0.0.0-20260703170222-fec3d5e5aac7 h1:HmANmNmTedDfDP2twi6TdO09uyVcaIyI/l+Kbx6cIQM=
-github.com/FacileStudio/enveloppe/go v0.0.0-20260703170222-fec3d5e5aac7/go.mod h1:OxizkzJhMaBPcuHVba9z1wem5oROgwaEPikYowDQbmo=
 github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f h1:UW21McK1brLJO2G0/F5d5JENFuWFBzNQATrlSYFyK5o=
 github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f/go.mod h1:OxizkzJhMaBPcuHVba9z1wem5oROgwaEPikYowDQbmo=
 github.com/FacileStudio/pool/go v0.0.0-20260703193105-683b8b5581af h1:qxCzoM+pfs4m1znjHdnuNjgoqXX4kCmoVp12zCeQP2s=
 github.com/FacileStudio/pool/go v0.0.0-20260703193105-683b8b5581af/go.mod h1:Z8RkyyIO/3jWrG7mfoCTfnUrOCJG25LdTLjEO3/jJsY=
+github.com/FacileStudio/tronc v0.3.0 h1:et9gxrbLfrT3H4wly6MPNIMOeR8NnwCZHmbHiR5Uq8g=
+github.com/FacileStudio/tronc v0.3.0/go.mod h1:n+msHH6RQLvhcIQfFzeWaAgwqL8UkNuLPTqbu+C02so=
 github.com/SherClockHolmes/webpush-go v1.4.0 h1:ocnzNKWN23T9nvHi6IfyrQjkIc0oJWv1B1pULsf9i3s=
 github.com/SherClockHolmes/webpush-go v1.4.0/go.mod h1:XSq8pKX11vNV8MJEMwjrlTkxhAj1zKfxmyhdV7Pd6UA=
 github.com/coreos/go-oidc/v3 v3.11.0 h1:Ia3MxdwpSw702YW0xgfmP1GVCMA9aEFWu12XUZ3/OtI=

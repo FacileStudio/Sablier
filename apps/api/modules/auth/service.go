@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcrypto"
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
 	"github.com/FacileStudio/Sablier/apps/api/internal/oidcavatar"
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/tronc/errors"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"

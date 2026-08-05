@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/tronc/errors"
 
 	pool "github.com/FacileStudio/pool/go"
 	"gorm.io/gorm"

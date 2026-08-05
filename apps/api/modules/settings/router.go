@@ -3,9 +3,9 @@ package settings
 import (
 	"net/http"
 
-	"github.com/FacileStudio/Sablier/apps/api/internal/httpjson"
 	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
+	"github.com/FacileStudio/tronc/httpjson"
 
 	"github.com/go-chi/chi/v5"
 )
