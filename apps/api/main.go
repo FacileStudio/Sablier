@@ -27,9 +27,9 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"github.com/FacileStudio/Journal/sdk/journal"
+	"github.com/FacileStudio/tronc/apiref"
 	"github.com/FacileStudio/tronc/health"
 	"github.com/FacileStudio/tronc/healthcheck"
-	"github.com/FacileStudio/tronc/httpjson"
 	"github.com/FacileStudio/tronc/httpx"
 	"github.com/FacileStudio/tronc/logger"
 	troncmiddleware "github.com/FacileStudio/tronc/middleware"
@@ -42,7 +42,27 @@ type sqlPinger interface {
 	PingContext(ctx context.Context) error
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) (*http.Server, error) {
+func referenceConfig() apiref.Config {
+	return apiref.Config{
+		Title:       "Sablier API",
+		Description: "Self-hosted time tracker for small teams.",
+		Servers:     []string{"/api"},
+		Registry: documentation.Response{
+			Modules: []documentation.Module{
+				auth.Documentation,
+				projects.Documentation,
+				timeentries.Documentation,
+				users.Documentation,
+				settings.Documentation,
+				spaces.Documentation,
+				nookpool.Documentation,
+				notifications.Documentation,
+			},
+		},
+	}
+}
+
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) chi.Router {
 	authService := auth.NewService(db, appEnv.StorageDir, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
@@ -51,19 +71,6 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	spaceService := spaces.NewService(db)
 	projectService.SetPoolService(nookPoolService)
 	timeEntryService.SetPoolService(nookPoolService)
-	docs := documentation.Response{
-		Modules: []documentation.Module{
-			auth.Documentation,
-			projects.Documentation,
-			timeentries.Documentation,
-			users.Documentation,
-			settings.Documentation,
-			spaces.Documentation,
-			nookpool.Documentation,
-			notifications.Documentation,
-		},
-	}
-	openapiSpec := documentation.ToOpenAPI(docs)
 
 	router := httpx.NewRouter(httpx.Config{
 		Logger: appLogger,
@@ -73,24 +80,7 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	})
 
 	health.Mount(router, sqlDB.PingContext)
-	router.Get("/docs", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`<!doctype html>
-<html>
-<head>
-  <title>Sablier API</title>
-  <meta charset="utf-8" />
-</head>
-<body>
-  <script id="api-reference" data-url="/openapi"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
-</body>
-</html>`))
-	})
-	router.Get("/openapi", func(w http.ResponseWriter, _ *http.Request) {
-		httpjson.WriteJSON(w, http.StatusOK, openapiSpec)
-	})
+	apiref.Mount(router, referenceConfig())
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
 	router.Route("/api", func(api chi.Router) {
@@ -109,6 +99,12 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 		router.Handle("/*", spa.Handler(spa.Config{Dir: clientDir}))
 		appLogger.Info("serving client", slog.String("dir", clientDir))
 	}
+
+	return router
+}
+
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) (*http.Server, error) {
+	router := buildRouter(db, sqlDB, appEnv, appLogger, notificationsService, nookPoolService)
 
 	nookPoolService.AutoConnect(context.Background())
 
