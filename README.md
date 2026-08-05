@@ -69,14 +69,17 @@ The client defaults to `http://localhost:5173` and talks to `http://localhost:40
 
 Main environment variables:
 
-- `DATABASE_URL`: PostgreSQL connection string
-- `DOMAINS`: allowed frontend origins for CORS
-- `PORT`: API port, default `4000`
+- `DATABASE_URL`: PostgreSQL connection string. Required — the API refuses to start without it
+- `CORS_ALLOWED_ORIGINS`: allowed frontend origins for CORS. `DOMAINS` is still read as a fallback
+- `APP_ENV`: `development`, `staging`, or `production`
+- `PORT`: API port, `8080` by default; compose and both `.env.example` pin `4000`
 - `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
 - `STORAGE_DIR`: local file storage for avatars, default `./data`
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`: enable OIDC login
-- `OIDC_SUCCESS_URL`: post-login redirect, defaults to the first `DOMAINS` entry
+- `OIDC_SUCCESS_URL`: post-login redirect, defaults to the first allowed origin
 - `SSO_ONLY=true`: hide password login and registration
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`: web push, optional
+- `JOURNAL_URL`, `JOURNAL_TOKEN`: ship logs to Journal, optional (both required to ship)
 
 See [`.env.example`](.env.example) and [`apps/api/.env.example`](apps/api/.env.example) for examples.
 

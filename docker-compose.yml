@@ -45,10 +45,12 @@ services:
       traefik.http.routers.sablier-secure.service: sablier-svc
       traefik.http.services.sablier-svc.loadbalancer.server.port: "4000"
     environment:
+      APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
       PORT: ${PORT:-4000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       STORAGE_DIR: ${STORAGE_DIR:-/data}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       DOMAINS: ${DOMAINS:-http://localhost:3000,http://127.0.0.1:3000}
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
