@@ -29,6 +29,10 @@ COPY --from=dirs /data /data
 COPY --from=api-build /repo/apps/api/bin/api /api
 COPY --from=client-build /client/build /client
 
+# A distroless base can carry its own WorkingDir, which would make the relative
+# ./client resolve where the SPA is not. Be explicit.
+ENV CLIENT_DIR=/client
+
 EXPOSE 4000
 VOLUME ["/data"]
 

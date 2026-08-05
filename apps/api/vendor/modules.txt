@@ -7,7 +7,7 @@ github.com/FacileStudio/enveloppe/go
 # github.com/FacileStudio/pool/go v0.0.0-20260703193105-683b8b5581af
 ## explicit; go 1.24.0
 github.com/FacileStudio/pool/go
-# github.com/FacileStudio/tronc v0.4.0
+# github.com/FacileStudio/tronc v0.6.0
 ## explicit; go 1.24.0
 github.com/FacileStudio/tronc/errors
 github.com/FacileStudio/tronc/health
