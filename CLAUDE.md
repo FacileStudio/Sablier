@@ -9,7 +9,7 @@ Self-hosted time tracker for small teams. Go API + SvelteKit frontend + PostgreS
 | API      | Go 1.24, Chi router, GORM, PostgreSQL 16                    |
 | Client   | SvelteKit 5 (Svelte 5 runes), Tailwind CSS 4, shadcn-svelte |
 | Build    | `go build` (vendored deps), Bun                             |
-| Deploy   | Docker Compose (API via distroless, client via Nginx)        |
+| Deploy   | Docker Compose, one distroless container serving API + client |
 | Auth     | JWT + optional OIDC SSO, `SSO_ONLY` mode                    |
 
 ## Project Structure
@@ -22,7 +22,6 @@ apps/
     internal/           Shared infra (database, middleware, logger, env, errors, etc.)
     schemas/            GORM models and migrations (auto-run on startup)
     vendor/             Vendored Go dependencies
-    Dockerfile          Multi-stage: golang:1.24-alpine -> distroless
   client/               SvelteKit frontend
     src/
       routes/           SvelteKit file-based routing
@@ -31,8 +30,8 @@ apps/
       lib/
         backend.ts      API client (fetch wrapper)
         components/     App components + shadcn-svelte ui/ primitives
-    Dockerfile          Multi-stage: oven/bun -> nginx:alpine (static adapter)
-docker-compose.yml      Full stack: db + api + client
+Dockerfile              Multi-stage: bun (client) + golang:1.24-alpine (api) -> distroless
+docker-compose.yml      Full stack: db + api (serves the client too)
 .env.example            Root-level env template (production)
 ```
 
@@ -76,7 +75,6 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `STORAGE_DIR` -- Avatar file storage (default `./data`)
 - `OIDC_*` -- OpenID Connect config (optional)
 - `SSO_ONLY` -- Hide password auth when `true`
-- `VITE_API_BASE_URL` -- Client-side API URL (build-time, default `http://localhost:4000`)
 
 ## Key Endpoints
 
@@ -91,7 +89,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 
 - **Go modules are vendored** -- run `go mod vendor` after changing dependencies.
 - **Migrations run on startup** via `schemas.Migrate(db)`. No separate migration tool.
-- **Client uses static adapter** -- output is plain HTML/CSS/JS served by Nginx in production.
+- **Client uses static adapter** -- output is plain HTML/CSS/JS served by the Go binary through tronc's `spa` package, mounted as the catch-all after `/api`.
 - **shadcn-svelte** provides the UI component primitives in `src/lib/components/ui/`. The Nova style is configured.
 - **Svelte 5 runes** are enforced (`$state`, `$props`, `$derived`, `$effect`). No legacy Svelte 4 syntax.
 - **No linter or formatter configured** in the repo currently.

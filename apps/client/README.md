@@ -29,6 +29,6 @@ bun run check
 
 ## Configuration
 
-- `VITE_API_BASE_URL`: API base URL used by the frontend, default `http://localhost:4000`
-
-The production Docker build injects `VITE_API_BASE_URL` at build time and serves the static output with Nginx.
+The client calls the API on its own origin under `/api`, so it needs no build-time
+configuration. `bun run dev` proxies `/api` and `/files` to `http://localhost:4000`; in
+production the Go binary serves this build directly.

@@ -32,6 +32,7 @@ import (
 	"github.com/FacileStudio/tronc/httpx"
 	"github.com/FacileStudio/tronc/logger"
 	troncmiddleware "github.com/FacileStudio/tronc/middleware"
+	"github.com/FacileStudio/tronc/spa"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 )
@@ -101,6 +102,12 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 		nookpool.RegisterRoutes(api, nookPoolService, authService)
 		notifications.RegisterRoutes(api, notificationsService, authService)
 	})
+
+	clientDir := spa.DirFromEnv()
+	if spa.Available(clientDir) {
+		router.Handle("/*", spa.Handler(spa.Config{Dir: clientDir}))
+		appLogger.Info("serving client", slog.String("dir", clientDir))
+	}
 
 	nookPoolService.AutoConnect(context.Background())
 
