@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"strconv"
 
-	"api/internal/authcontext"
-	"api/internal/errors"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"gorm.io/gorm"

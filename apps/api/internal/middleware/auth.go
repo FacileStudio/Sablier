@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"api/internal/authcontext"
-	"api/internal/errors"
-	"api/internal/httpjson"
+	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/internal/httpjson"
 )
 
 type Authenticator interface {

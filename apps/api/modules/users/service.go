@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"api/internal/authcrypto"
-	"api/internal/errors"
-	"api/internal/usercolor"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/authcrypto"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/gorm"
 )

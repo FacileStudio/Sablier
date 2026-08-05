@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"api/internal/env"
-	"api/internal/httpjson"
-	"api/internal/middleware"
+	"github.com/FacileStudio/Sablier/apps/api/internal/env"
+	"github.com/FacileStudio/Sablier/apps/api/internal/httpjson"
+	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
 )

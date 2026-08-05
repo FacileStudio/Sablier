@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"api/internal/errors"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	pool "github.com/FacileStudio/pool/go"
 	"gorm.io/gorm"
@@ -545,7 +545,6 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 		TasksSynced:    taskCount,
 	}, nil
 }
-
 
 func GenerateFacileID() string {
 	b := make([]byte, 10)

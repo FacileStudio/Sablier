@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"api/internal/authcontext"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

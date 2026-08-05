@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"api/internal/usercolor"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

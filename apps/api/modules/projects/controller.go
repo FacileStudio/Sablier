@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"api/internal/errors"
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/internal/errors"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 )
 
 type Controller struct {

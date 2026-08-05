@@ -11,7 +11,7 @@ import (
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 	pool "github.com/FacileStudio/pool/go"
 
-	"api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
