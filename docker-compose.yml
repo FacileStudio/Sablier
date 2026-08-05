@@ -66,8 +66,6 @@ services:
     build:
       context: apps/client
       dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=/api
     expose:
       - "80"
     networks:
