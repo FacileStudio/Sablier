@@ -44,6 +44,20 @@ services:
       traefik.http.routers.sablier-secure.tls.certresolver: letsencrypt
       traefik.http.routers.sablier-secure.service: sablier-svc
       traefik.http.services.sablier-svc.loadbalancer.server.port: "4000"
+      # Deprecated alias, deliberately kept. OIDC_REDIRECT_URL still points at
+      # https://api-sablier.facile.studio/api/auth/oidc/callback and Authentik has
+      # that hostname registered for this application, so dropping the router locks
+      # everyone out: SSO_ONLY is on and there is no password fallback.
+      # Retire it only once the redirect URI has changed in BOTH the app
+      # environment and the Authentik provider.
+      traefik.http.routers.sablier-alias-web.rule: "Host(`api-sablier.facile.studio`)"
+      traefik.http.routers.sablier-alias-web.entrypoints: web
+      traefik.http.routers.sablier-alias-web.middlewares: redirect-to-https@file
+      traefik.http.routers.sablier-alias-web.service: sablier-svc
+      traefik.http.routers.sablier-alias-secure.rule: "Host(`api-sablier.facile.studio`)"
+      traefik.http.routers.sablier-alias-secure.entrypoints: websecure
+      traefik.http.routers.sablier-alias-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.sablier-alias-secure.service: sablier-svc
     environment:
       APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
