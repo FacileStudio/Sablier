@@ -84,7 +84,7 @@
 		</a>
 		<button
 			onclick={logout}
-			class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-destructive hover:bg-destructive/10"
+			class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
 		>
 			<iconify-icon icon="solar:logout-2-linear" width="16"></iconify-icon>
 			Logout

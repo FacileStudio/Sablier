@@ -13,10 +13,16 @@
 	let redirecting = $state(true);
 	let ssoOnly = $state(false);
 
+	function readSsoToken(): string | null {
+		const fragment = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+		return new URLSearchParams(fragment).get('token');
+	}
+
 	onMount(async () => {
-		const token = $page.url.searchParams.get('token');
+		const token = readSsoToken();
 		if (token) {
 			localStorage.setItem(TOKEN_KEY, token);
+			history.replaceState(null, '', $page.url.pathname);
 			goto('/dashboard');
 			return;
 		}
