@@ -1,53 +1,50 @@
 # Sablier
 
-Sablier is a self-hosted time tracker for small teams. It pairs a Go API with a SvelteKit frontend and keeps the setup boring on purpose.
+Self-hosted time tracker for small teams. Go API, SvelteKit frontend, boring on purpose.
+
+One Go binary serves both the JSON API and the built client, so a deployment is a single
+container behind a single Traefik router.
+
+Live at [sablier.facile.studio](https://sablier.facile.studio).
 
 ## What it does
 
-- Email/password auth with optional OIDC SSO and `SSO_ONLY` mode
-- Shared projects and tasks for the whole workspace
-- Live timers, manual sessions, and per-user session editing
-- Dashboard, user directory, and user activity views
-- Profile names, colors, and avatar uploads
-- Outbound timer webhooks on start and stop
+- Email/password auth with optional OIDC SSO and an `SSO_ONLY` mode
+- Spaces that scope projects, tasks, and time entries to a group of members
+- Live timers with pause and resume, plus manually entered sessions
+- Per-project task boards with `to-do`, `in-progress`, `in-review`, and `done` statuses
+- Profiles with names, colors, avatar uploads, billing rate, and workday length
+- Long-lived API tokens for scripting, alongside browser session tokens
+- Web push reminders for timers that are still running
+- Two-way project and task sync over the Nook Pool, plus outbound webhooks
 
 ## Stack
 
-- `apps/api`: Go, Chi, GORM, PostgreSQL
-- `apps/client`: SvelteKit 5, Tailwind CSS 4, Bun
-- `docker-compose.yml`: PostgreSQL plus production-style API and client services
+| Layer | Tech |
+|---|---|
+| API | Go 1.24, Chi v5, GORM, PostgreSQL 16, [tronc](https://github.com/FacileStudio/tronc) v0.6.0 |
+| Client | SvelteKit 5 (runes), Tailwind CSS 4, shadcn-svelte, bits-ui |
+| Deploy | Docker Compose, one distroless container behind Traefik |
 
 ## Quick start
 
-### Docker
-
-1. Copy the root env file and adjust values if needed:
+`docker-compose.yml` is deployment-shaped: it publishes no host port and expects the
+external `dokploy-network` with Traefik in front of it. Use it to deploy, not to browse
+locally.
 
 ```sh
 cp .env.example .env
+docker compose up -d --build
 ```
-
-2. Start the full stack:
-
-```sh
-docker compose up --build
-```
-
-3. Open the app:
-
-- Client: `http://localhost`
-- API: `http://localhost:4000`
-- API docs payload: `http://localhost:4000/docs`
 
 ### Local development
 
-1. Start PostgreSQL:
+Start Postgres, then the API and the client in separate terminals.
 
 ```sh
+mise run install
 docker compose up db -d
 ```
-
-2. Start the API:
 
 ```sh
 cd apps/api
@@ -55,35 +52,49 @@ cp .env.example .env
 go run .
 ```
 
-3. Start the client in another terminal:
-
 ```sh
 cd apps/client
-bun install
 bun run dev
 ```
 
-The client defaults to `http://localhost:5173` and talks to `http://localhost:4000`.
+The client runs on <http://localhost:5173> and proxies `/api` and `/files` to the API on
+`:4000`. Migrations run on API startup, so there is no separate migration step.
 
 ## Configuration
 
-Main environment variables:
+| Variable | What it does |
+|---|---|
+| `DATABASE_URL` | Postgres connection string. Required — the API exits 1 without it |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API |
+| `PORT` | HTTP listen port. `tronc` defaults to `8080`; this repo pins `4000` everywhere |
+| `STORAGE_DIR` | Root for uploaded avatars, served back under `/files/` |
+| `APP_ENV` | `development`, `staging`, or `production` |
+| `LOG_LEVEL` | `debug`, `info`, `warn`, or `error` |
 
-- `DATABASE_URL`: PostgreSQL connection string. Required — the API refuses to start without it
-- `CORS_ALLOWED_ORIGINS`: allowed frontend origins for CORS. `DOMAINS` is still read as a fallback
-- `APP_ENV`: `development`, `staging`, or `production`
-- `PORT`: API port, `8080` by default; compose and both `.env.example` pin `4000`
-- `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
-- `STORAGE_DIR`: local file storage for avatars, default `./data`
-- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`: enable OIDC login
-- `OIDC_SUCCESS_URL`: post-login redirect, defaults to the first allowed origin
-- `SSO_ONLY=true`: hide password login and registration
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`: web push, optional
-- `JOURNAL_URL`, `JOURNAL_TOKEN`: ship logs to Journal, optional (both required to ship)
+Full reference: [docs/configuration.md](docs/configuration.md).
 
-See [`.env.example`](.env.example) and [`apps/api/.env.example`](apps/api/.env.example) for examples.
+## Structure
 
-## Repo map
+```
+apps/
+  api/       Go backend — modules/ (auth, projects, timeentries, users, settings,
+             spaces, nookpool, notifications), schemas/ (GORM models + migrations)
+  client/    SvelteKit 5 SPA, built into the API image and served by it
+scripts/     check.sh, the quality gate the pre-push hook runs
+docs/        Architecture, configuration, development, deployment, API
+```
 
-- [`apps/api/README.md`](apps/api/README.md): backend setup and API overview
-- [`apps/client/README.md`](apps/client/README.md): frontend setup and build notes
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| [Architecture](docs/architecture.md) | Request flow, data model, how the pieces fit |
+| [Configuration](docs/configuration.md) | Every environment variable and default |
+| [Development](docs/development.md) | Local setup, tests, the quality gate |
+| [Deployment](docs/deployment.md) | Docker Compose, Dokploy, Traefik routing |
+| [API](docs/api.md) | HTTP endpoints and payloads |
+
+---
+
+Part of the [Facile Suite](https://facile.studio) — self-hosted tools for creative studios
+and freelancers. One login, zero cloud dependency.
