@@ -1,7 +1,6 @@
 import { normalizeUserColor } from '$lib/user-colors';
 
-const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ||
-	'http://localhost:4000';
+const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? '/api';
 
 export type AuthResponse = {
 	user_id: string;
