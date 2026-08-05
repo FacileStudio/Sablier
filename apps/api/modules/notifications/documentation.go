@@ -8,7 +8,7 @@ var Documentation = documentation.Module{
 	Routes: []documentation.Route{
 		{
 			Method:       "GET",
-			Path:         "/api/notifications/vapid-public-key",
+			Path:         "/notifications/vapid-public-key",
 			Summary:      "Return VAPID public key",
 			Description:  "Returns the server VAPID public key for creating a push subscription.",
 			Auth:         "none",
@@ -16,7 +16,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/api/notifications/subscriptions",
+			Path:         "/notifications/subscriptions",
 			Summary:      "Save push subscription",
 			Description:  "Saves or replaces the push subscription for the authenticated user.",
 			Auth:         "bearer token required",
@@ -30,7 +30,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "DELETE",
-			Path:         "/api/notifications/subscriptions",
+			Path:         "/notifications/subscriptions",
 			Summary:      "Delete push subscription",
 			Description:  "Removes the push subscription for the authenticated user.",
 			Auth:         "bearer token required",
@@ -38,6 +38,18 @@ var Documentation = documentation.Module{
 			Errors: []documentation.Error{
 				{Status: 401, Code: "unauthenticated", Description: "Authorization header missing or invalid."},
 				{Status: 500, Code: "internal", Description: "Unexpected server error."},
+			},
+		},
+		{
+			Method:       "POST",
+			Path:         "/notifications/test-broadcast",
+			Summary:      "Broadcast a test notification",
+			Description:  "Sends a notification to every saved subscription. Development aid, not part of the product surface.",
+			Auth:         "none",
+			RequestBody:  "BroadcastRequest",
+			ResponseBody: "BroadcastResponse",
+			Errors: []documentation.Error{
+				{Status: 400, Code: "invalid_argument", Description: "Invalid JSON body."},
 			},
 		},
 	},

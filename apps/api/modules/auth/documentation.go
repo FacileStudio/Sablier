@@ -7,8 +7,15 @@ var Documentation = documentation.Module{
 	Description: "Authentication routes.",
 	Routes: []documentation.Route{
 		{
+			Method:      "GET",
+			Path:        "/auth/config",
+			Summary:     "Describe the auth methods on offer",
+			Description: "Returns sso_only and oidc_enabled, so the client knows whether to show the password form.",
+			Auth:        "public",
+		},
+		{
 			Method:       "POST",
-			Path:         "/api/auth/register",
+			Path:         "/auth/register",
 			Summary:      "Register a new user",
 			Description:  "Creates a user account and returns an auth token.",
 			Auth:         "public",
@@ -22,7 +29,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/api/auth/login",
+			Path:         "/auth/login",
 			Summary:      "Authenticate a user",
 			Description:  "Authenticates credentials and returns an auth token.",
 			Auth:         "public",
