@@ -68,13 +68,16 @@ docker compose up db -d             # Just PostgreSQL for local dev
 
 Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 
-- `DATABASE_URL` -- PostgreSQL connection string (default: local postgres)
-- `DOMAINS` -- Comma-separated allowed CORS origins
-- `PORT` -- API port (default `4000`)
+- `DATABASE_URL` -- **required**, PostgreSQL connection string. No default since the tronc/env adoption
+- `CORS_ALLOWED_ORIGINS` -- Comma-separated allowed CORS origins. `DOMAINS` is still read as a fallback, so deployments need no rename
+- `APP_ENV` -- `development`, `staging`, `production`. Never gates security behaviour
+- `PORT` -- API port (tronc default `8080`; compose and both `.env.example` pin `4000`)
 - `LOG_LEVEL` -- `debug`, `info`, `warn`, `error`
 - `STORAGE_DIR` -- Avatar file storage (default `./data`)
 - `OIDC_*` -- OpenID Connect config (optional)
 - `SSO_ONLY` -- Hide password auth when `true`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` -- Web push (optional; push stays off while the keys are unset)
+- `JOURNAL_URL`, `JOURNAL_TOKEN` -- Log shipping to Journal (optional; both must be set)
 
 ## Key Endpoints
 

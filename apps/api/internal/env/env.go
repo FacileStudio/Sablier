@@ -3,9 +3,9 @@ package env
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
+	troncenv "github.com/FacileStudio/tronc/env"
 	"github.com/joho/godotenv"
 )
 
@@ -18,18 +18,13 @@ type OIDCConfig struct {
 }
 
 type Config struct {
-	DatabaseURL        string
-	Port               string
-	CORSAllowedOrigins []string
-	LogLevel           string
-	StorageDir         string
-	OIDC               *OIDCConfig
-	SSOOnly            bool
-	VAPIDPublicKey     string
-	VAPIDPrivateKey    string
-	VAPIDSubject       string
-	JournalURL         string
-	JournalToken       string
+	troncenv.Core
+	StorageDir      string
+	OIDC            *OIDCConfig
+	SSOOnly         bool
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+	VAPIDSubject    string
 }
 
 func Load() (Config, error) {
@@ -37,45 +32,39 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("failed to parse .env file: %w", err)
 	}
 
-	env := Config{
-		DatabaseURL: valueOrDefault("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/sablier?sslmode=disable"),
-		Port:        valueOrDefault("PORT", "4000"),
-		LogLevel:    valueOrDefault("LOG_LEVEL", "info"),
-		StorageDir:  valueOrDefault("STORAGE_DIR", "./data"),
-		CORSAllowedOrigins: csvOrDefault("DOMAINS", []string{
-			"http://localhost:3000",
-			"http://127.0.0.1:3000",
-			"http://localhost:5173",
-			"http://127.0.0.1:5173",
-		}),
+	core, err := troncenv.LoadCore()
+	if err != nil {
+		return Config{}, err
 	}
-
-	port, err := strconv.Atoi(env.Port)
-	if err != nil || port < 1 || port > 65535 {
+	if core.Port < 1 || core.Port > 65535 {
 		return Config{}, fmt.Errorf("PORT must be a valid TCP port")
 	}
-	if err := validateOrigins(env.CORSAllowedOrigins); err != nil {
-		return Config{}, err
-	}
-	if err := validateLogLevel(env.LogLevel); err != nil {
+	if err := validateLogLevel(core.LogLevel); err != nil {
 		return Config{}, err
 	}
 
-	env.SSOOnly = strings.ToLower(os.Getenv("SSO_ONLY")) == "true"
-	env.VAPIDPublicKey = os.Getenv("VAPID_PUBLIC_KEY")
-	env.VAPIDPrivateKey = os.Getenv("VAPID_PRIVATE_KEY")
-	env.VAPIDSubject = valueOrDefault("VAPID_SUBJECT", "mailto:admin@example.com")
-	env.JournalURL = os.Getenv("JOURNAL_URL")
-	env.JournalToken = os.Getenv("JOURNAL_TOKEN")
+	ssoOnly, err := troncenv.Bool("SSO_ONLY", false)
+	if err != nil {
+		return Config{}, err
+	}
 
-	if issuer := os.Getenv("OIDC_ISSUER"); issuer != "" {
-		clientID := os.Getenv("OIDC_CLIENT_ID")
-		clientSecret := os.Getenv("OIDC_CLIENT_SECRET")
-		redirectURL := os.Getenv("OIDC_REDIRECT_URL")
+	env := Config{
+		Core:            core,
+		StorageDir:      troncenv.String("STORAGE_DIR", "./data"),
+		SSOOnly:         ssoOnly,
+		VAPIDPublicKey:  troncenv.String("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey: troncenv.String("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
+	}
+
+	if issuer := troncenv.String("OIDC_ISSUER", ""); issuer != "" {
+		clientID := troncenv.String("OIDC_CLIENT_ID", "")
+		clientSecret := troncenv.String("OIDC_CLIENT_SECRET", "")
+		redirectURL := troncenv.String("OIDC_REDIRECT_URL", "")
 		if clientID == "" || clientSecret == "" || redirectURL == "" {
 			return Config{}, fmt.Errorf("OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, and OIDC_REDIRECT_URL are required when OIDC_ISSUER is set")
 		}
-		successURL := os.Getenv("OIDC_SUCCESS_URL")
+		successURL := troncenv.String("OIDC_SUCCESS_URL", "")
 		if successURL == "" && len(env.CORSAllowedOrigins) > 0 {
 			successURL = env.CORSAllowedOrigins[0]
 		}
@@ -89,51 +78,6 @@ func Load() (Config, error) {
 	}
 
 	return env, nil
-}
-
-func valueOrDefault(key string, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
-}
-
-func csvOrDefault(key string, fallback []string) []string {
-	value := os.Getenv(key)
-	if value == "" {
-		return fallback
-	}
-
-	parts := strings.Split(value, ",")
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
-		}
-	}
-	if len(out) == 0 {
-		return []string{}
-	}
-	return out
-}
-
-func validateOrigins(origins []string) error {
-	if len(origins) == 0 {
-		return fmt.Errorf("DOMAINS must contain at least one origin")
-	}
-
-	for _, origin := range origins {
-		if origin == "*" {
-			continue
-		}
-		if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
-			continue
-		}
-		return fmt.Errorf("DOMAINS contains invalid origin %q", origin)
-	}
-
-	return nil
 }
 
 func validateLogLevel(level string) error {
