@@ -134,9 +134,7 @@ func (h *oidcHandler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dest, _ := url.Parse(h.successURL)
-	q := dest.Query()
-	q.Set("token", token)
-	dest.RawQuery = q.Encode()
+	dest.Fragment = "token=" + token
 	http.Redirect(w, r, dest.String(), http.StatusFound)
 }
 
