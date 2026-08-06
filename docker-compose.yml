@@ -63,6 +63,11 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
+      # Nook Pool. These only seed the connection on a database with no
+      # app_settings row yet — once the row exists, the value stored there wins
+      # and is edited from Sablier's own settings page.
+      NOOK_POOL_URL: ${NOOK_POOL_URL:-}
+      NOOK_POOL_SECRET: ${NOOK_POOL_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
