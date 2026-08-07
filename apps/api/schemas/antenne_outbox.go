@@ -2,7 +2,7 @@ package schemas
 
 import "time"
 
-type PoolOutbox struct {
+type AntenneOutbox struct {
 	ID        int64     `gorm:"column:id;primaryKey"`
 	Channel   string    `gorm:"column:channel"`
 	Payload   string    `gorm:"column:payload"`
@@ -11,11 +11,11 @@ type PoolOutbox struct {
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 }
 
-func (PoolOutbox) TableName() string { return "pool_outbox" }
+func (AntenneOutbox) TableName() string { return "antenne_outbox" }
 
-type PoolProcessedEvent struct {
+type AntenneProcessedEvent struct {
 	IdempotencyKey string    `gorm:"column:idempotency_key;primaryKey"`
 	ProcessedAt    time.Time `gorm:"column:processed_at;autoCreateTime"`
 }
 
-func (PoolProcessedEvent) TableName() string { return "pool_processed_events" }
+func (AntenneProcessedEvent) TableName() string { return "antenne_processed_events" }
