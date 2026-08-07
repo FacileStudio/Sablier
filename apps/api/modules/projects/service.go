@@ -5,7 +5,7 @@ import (
 	stderrors "errors"
 	"strconv"
 
-	"github.com/FacileStudio/Sablier/apps/api/modules/nookpool"
+	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
@@ -16,7 +16,7 @@ import (
 type Service struct {
 	orm         *gorm.DB
 	controller  *Controller
-	poolService *nookpool.Service
+	poolService *antenne.Service
 }
 
 func NewService(orm *gorm.DB) *Service {
@@ -25,7 +25,7 @@ func NewService(orm *gorm.DB) *Service {
 	return service
 }
 
-func (service *Service) SetPoolService(ps *nookpool.Service) {
+func (service *Service) SetPoolService(ps *antenne.Service) {
 	service.poolService = ps
 }
 
@@ -34,7 +34,7 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	if err != nil {
 		return nil, errors.Invalid("invalid user id")
 	}
-	facileID := nookpool.GenerateFacileID()
+	facileID := antenne.GenerateFacileID()
 	defaultIcon := "Layout"
 	if icon == nil || *icon == "" {
 		icon = &defaultIcon
@@ -222,7 +222,7 @@ func (service *Service) createTask(ctx context.Context, projectID int64, name st
 	if !stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.Internal("failed to check task", err)
 	}
-	facileID := nookpool.GenerateFacileID()
+	facileID := antenne.GenerateFacileID()
 	record := &schemas.Task{
 		ProjectID: projectID,
 		Name:      name,

@@ -94,7 +94,7 @@ go test ./...
 
 Tests live next to the code they cover: `schemas/migrate_test.go` (color backfill),
 `modules/projects/service_test.go`, `modules/timeentries/service_test.go`,
-`modules/users/service_test.go`, and `modules/nookpool/agent_sessions_test.go`. They open
+`modules/users/service_test.go`, and `modules/antenne/agent_sessions_test.go`. They open
 an in-memory SQLite database through `gorm.io/driver/sqlite`, so no Postgres is needed to
 run them. There is no client-side test setup.
 

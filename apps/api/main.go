@@ -16,8 +16,8 @@ import (
 	documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/internal/worker"
+	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
-	"github.com/FacileStudio/Sablier/apps/api/modules/nookpool"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/Sablier/apps/api/modules/projects"
 	"github.com/FacileStudio/Sablier/apps/api/modules/settings"
@@ -55,22 +55,22 @@ func referenceConfig() apiref.Config {
 				users.Documentation,
 				settings.Documentation,
 				spaces.Documentation,
-				nookpool.Documentation,
+				antenne.Documentation,
 				notifications.Documentation,
 			},
 		},
 	}
 }
 
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) chi.Router {
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service) chi.Router {
 	authService := auth.NewService(db, appEnv.StorageDir, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, appEnv.StorageDir)
 	settingsService := settings.NewService(db)
 	spaceService := spaces.NewService(db)
-	projectService.SetPoolService(nookPoolService)
-	timeEntryService.SetPoolService(nookPoolService)
+	projectService.SetPoolService(antenneService)
+	timeEntryService.SetPoolService(antenneService)
 
 	router := httpx.NewRouter(httpx.Config{
 		Logger: appLogger,
@@ -90,7 +90,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		users.RegisterRoutes(api, userService, authService)
 		settings.RegisterRoutes(api, settingsService, authService)
 		spaces.RegisterRoutes(api, spaceService, authService)
-		nookpool.RegisterRoutes(api, nookPoolService, authService)
+		antenne.RegisterRoutes(api, antenneService, authService)
 		notifications.RegisterRoutes(api, notificationsService, authService)
 	})
 
@@ -103,10 +103,10 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	return router
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, nookPoolService *nookpool.Service) (*http.Server, error) {
-	router := buildRouter(db, sqlDB, appEnv, appLogger, notificationsService, nookPoolService)
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service) (*http.Server, error) {
+	router := buildRouter(db, sqlDB, appEnv, appLogger, notificationsService, antenneService)
 
-	nookPoolService.AutoConnect(context.Background())
+	antenneService.AutoConnect(context.Background())
 
 	addr := ":" + strconv.Itoa(appEnv.Port)
 	server := &http.Server{
@@ -182,9 +182,9 @@ func run() error {
 	}()
 
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
-	nookPoolService := nookpool.NewService(db, appLogger)
+	antenneService := antenne.NewService(db, appLogger)
 
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, nookPoolService)
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err
@@ -206,7 +206,7 @@ func run() error {
 
 	appLogger.Info("notification worker started")
 
-	go nookPoolService.RunOutboxWorker(shutdownSignal)
+	go antenneService.RunOutboxWorker(shutdownSignal)
 
 	appLogger.Info("pool outbox worker started")
 
@@ -218,7 +218,7 @@ func run() error {
 		}
 	case <-shutdownSignal.Done():
 		appLogger.Info("server shutting down")
-		nookPoolService.Shutdown()
+		antenneService.Shutdown()
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownContext); err != nil {
