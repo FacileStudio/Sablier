@@ -91,7 +91,7 @@ func (s *Service) getSettings(ctx context.Context) (*PoolSettings, bool, error) 
 
 func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettings, string, error) {
 	record := schemas.AppSetting{
-		ID:              appSettingID,
+		ID:             appSettingID,
 		AntenneURL:     strings.TrimSpace(req.URL),
 		AntenneSecret:  strings.TrimSpace(req.Secret),
 		AntenneEnabled: req.Enabled,
