@@ -14,7 +14,7 @@ Internet ──▶ Traefik ──▶ Go binary (:4000) ──┬──▶ /healt
                                                               │
                                                         Postgres 16
                                                               │
-                        Nook Pool (WebSocket) ◀── outbox worker ──▶ pool_outbox
+                        Antenne (WebSocket) ◀── outbox worker ──▶ pool_outbox
                         Journal (HTTP)        ◀── slog handler
 ```
 
@@ -36,7 +36,7 @@ that reason.
 | Client | `apps/client` | SvelteKit 5 with `adapter-static` and `fallback: index.html` |
 
 The eight modules are `auth`, `projects`, `timeentries`, `users`, `settings`, `spaces`,
-`nookpool`, and `notifications`. All of them are registered inside a single
+`antenne`, and `notifications`. All of them are registered inside a single
 `router.Route("/api", ...)` block, so every application route lives under `/api`.
 
 ## Request lifecycle
@@ -104,7 +104,7 @@ router entirely — they 404 rather than 403.
 | `projects` | `id`, `name`, `owner_id`, `space_id`, `facile_id` unique | `facile_id` is the cross-app identity used by pool sync |
 | `tasks` | `id`, unique `(project_id, name)`, `status`, `actor_id`, `space_id`, `facile_id` | Status is one of `to-do`, `in-progress`, `in-review`, `done` |
 | `time_entries` | `id`, `project_id`, `task_id`, `user_id`, `started_at`, `stopped_at`, `paused_at`, `paused_duration_ms` | A running entry has a null `stopped_at`; `last_notification_at` throttles push reminders |
-| `app_settings` | single row `id = 1` | Webhook URL and secret header/value, plus the Nook Pool URL, secret, enabled flag, and per-event toggles |
+| `app_settings` | single row `id = 1` | Webhook URL and secret header/value, plus the Antenne URL, secret, enabled flag, and per-event toggles |
 | `push_subscriptions` | `user_id` unique, `endpoint`, `p256dh`, `auth` | One Web Push subscription per user |
 | `pool_outbox` | `id`, `channel`, `payload`, `attempts`, `last_error` | Outbound events waiting for the pool |
 | `pool_processed_events` | `idempotency_key` PK, `processed_at` | Inbound de-duplication ledger |
@@ -119,14 +119,14 @@ rows so every entry points at a task.
 - **Notification worker** (`internal/worker`) ticks every minute and calls
   `notifications.SendActiveTimerReminders`, pushing a reminder to users whose timer is
   still running. It is a no-op when the VAPID keys are unset.
-- **Pool outbox worker** (`modules/nookpool`) ticks every two seconds, drains
+- **Pool outbox worker** (`modules/antenne`) ticks every two seconds, drains
   `pool_outbox` onto the WebSocket connection, and prunes `pool_processed_events` older
   than 35 days once a day.
 
 ## Cross-app integration
 
-Sablier is one of the apps genuinely wired into the Nook event bus. It uses
-`github.com/FacileStudio/pool/go` as the client and `github.com/FacileStudio/enveloppe/go`
+Sablier is one of the apps genuinely wired into the Antenne event bus. It uses
+`github.com/FacileStudio/antenne-client/go` as the client and `github.com/FacileStudio/enveloppe/go`
 as the event contract.
 
 - **Emits** `project.created`, `project.updated`, `project.deleted`, `task.created`,
@@ -141,9 +141,9 @@ entries: a project whose name matches the session's project receives the entry u
 so no session is dropped.
 
 Connection settings live in `app_settings` and are editable through
-`/api/nook-pool`. If no row exists, `NOOK_POOL_URL` and `NOOK_POOL_SECRET` are read from
-the environment as a fallback. `nook.yaml` at the repo root documents the same event
-lists; it is a description, not the source of truth — `modules/nookpool/service.go`
+`/api/antenne`. If no row exists, `ANTENNE_URL` and `ANTENNE_SECRET` are read from
+the environment as a fallback. `antenne.yaml` at the repo root documents the same event
+lists; it is a description, not the source of truth — `modules/antenne/service.go`
 builds the config inline.
 
 Logs ship to Journal when both `JOURNAL_URL` and `JOURNAL_TOKEN` are set; the Journal SDK
