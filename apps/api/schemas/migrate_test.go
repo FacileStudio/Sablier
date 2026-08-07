@@ -86,3 +86,36 @@ func TestMigrateRenamesNookPoolColumnsKeepingValues(t *testing.T) {
 		t.Fatal("legacy column still present")
 	}
 }
+
+func TestMigrateRenamesPoolTablesKeepingRows(t *testing.T) {
+	orm := openTestDatabase(t)
+	if err := orm.Exec(`CREATE TABLE pool_outbox (
+		id integer PRIMARY KEY AUTOINCREMENT,
+		channel text,
+		payload text,
+		attempts integer NOT NULL DEFAULT 0,
+		last_error text,
+		created_at datetime
+	)`).Error; err != nil {
+		t.Fatalf("create legacy outbox: %v", err)
+	}
+	if err := orm.Exec(`INSERT INTO pool_outbox (channel, payload) VALUES (?, ?)`,
+		"project.updated", `{"id":1}`).Error; err != nil {
+		t.Fatalf("seed outbox row: %v", err)
+	}
+
+	if err := Migrate(orm); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	var pending []AntenneOutbox
+	if err := orm.Find(&pending).Error; err != nil {
+		t.Fatalf("read migrated outbox: %v", err)
+	}
+	if len(pending) != 1 || pending[0].Channel != "project.updated" {
+		t.Fatalf("in-flight events lost in table rename: %+v", pending)
+	}
+	if orm.Migrator().HasTable("pool_outbox") {
+		t.Fatal("legacy table still present")
+	}
+}

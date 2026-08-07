@@ -18,7 +18,7 @@ func (s *Service) alreadyProcessed(key string) bool {
 		return false
 	}
 	var count int64
-	s.orm.Model(&schemas.PoolProcessedEvent{}).Where("idempotency_key = ?", key).Count(&count)
+	s.orm.Model(&schemas.AntenneProcessedEvent{}).Where("idempotency_key = ?", key).Count(&count)
 	return count > 0
 }
 
@@ -26,7 +26,7 @@ func (s *Service) markProcessed(key string) {
 	if key == "" {
 		return
 	}
-	s.orm.Clauses(clause.OnConflict{DoNothing: true}).Create(&schemas.PoolProcessedEvent{IdempotencyKey: key})
+	s.orm.Clauses(clause.OnConflict{DoNothing: true}).Create(&schemas.AntenneProcessedEvent{IdempotencyKey: key})
 }
 
 func (s *Service) handleProjectCreated(payload json.RawMessage, meta antenneclient.EventMeta) {

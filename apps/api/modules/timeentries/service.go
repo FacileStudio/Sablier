@@ -198,7 +198,7 @@ type timeEntryRow struct {
 func (service *Service) listEntries(ctx context.Context, projectID int64, userID int64, spaceID *string) ([]timeEntryRow, error) {
 	query := service.orm.WithContext(ctx).
 		Model(&schemas.TimeEntry{}).
-		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.avatar_url as user_avatar_url, tasks.name as task_name").
+		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, " + schemas.AvatarSelectExpr + " as user_avatar_url, tasks.name as task_name").
 		Joins("JOIN users ON users.id = time_entries.user_id").
 		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id")
 	if projectID > 0 {
@@ -222,7 +222,7 @@ func (service *Service) listEntries(ctx context.Context, projectID int64, userID
 func (service *Service) listRunningEntries(ctx context.Context, spaceID *string) ([]timeEntryRow, error) {
 	query := service.orm.WithContext(ctx).
 		Model(&schemas.TimeEntry{}).
-		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.avatar_url as user_avatar_url, tasks.name as task_name").
+		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, " + schemas.AvatarSelectExpr + " as user_avatar_url, tasks.name as task_name").
 		Joins("JOIN users ON users.id = time_entries.user_id").
 		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id").
 		Where("time_entries.stopped_at IS NULL")
