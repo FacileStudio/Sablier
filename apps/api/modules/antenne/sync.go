@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
-	enveloppe "github.com/FacileStudio/enveloppe/go"
 	antenneclient "github.com/FacileStudio/antenne-client/go"
+	enveloppe "github.com/FacileStudio/enveloppe/go"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
