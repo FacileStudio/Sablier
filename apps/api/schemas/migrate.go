@@ -13,13 +13,72 @@ func Migrate(db *gorm.DB) error {
 	if err := renameNookPoolColumns(db); err != nil {
 		return err
 	}
-	if err := db.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &ApiToken{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &PoolOutbox{}, &PoolProcessedEvent{}); err != nil {
+	if err := renamePoolTables(db); err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &ApiToken{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}); err != nil {
+		return err
+	}
+	if err := backfillAvatarUploadPath(db); err != nil {
 		return err
 	}
 	if err := usercolor.BackfillMissing(context.Background(), db); err != nil {
 		return err
 	}
 	return backfillTimeEntryTasks(db)
+}
+
+// backfillAvatarUploadPath moves the uploaded avatars onto the column that now owns them.
+//
+// The filename decides, not avatar_source. That column was added after the upload feature,
+// so the oldest uploaded avatars have it empty — on the production database two of the four
+// rows were exactly that, and keying on avatar_source = 'upload' would have quietly dropped
+// their picture. persistAvatarFile has always named uploads "user-<id>-<nanos>" and the old
+// OIDC download named its copies "oidc-<id>-<nanos>", so anything that is not an oidc- copy
+// is somebody's upload and is kept.
+//
+// The oidc- copies are the ones with nothing to preserve: oidc_picture_url already holds
+// the URL that replaces them. They are left on the volume rather than deleted here — a
+// migration that removes files has to be right the first time, and they are a few hundred
+// kilobytes that a later sweep can take once this has proven itself.
+//
+// avatar_url and avatar_source stay in the table, unread, until the next release drops
+// them. Expanding first means a rollback is redeploying the old binary, not restoring a
+// backup.
+func backfillAvatarUploadPath(db *gorm.DB) error {
+	if !db.Migrator().HasColumn(&User{}, "avatar_url") {
+		return nil
+	}
+	if err := db.Exec(
+		`UPDATE users SET avatar_upload_path = replace(avatar_url, '/files/', '')
+		 WHERE coalesce(avatar_url, '') <> ''
+		   AND avatar_url NOT LIKE '/files/avatars/oidc-%'
+		   AND coalesce(avatar_upload_path, '') = ''`).Error; err != nil {
+		return err
+	}
+	// A NULL here would fail to scan into the plain string the model declares.
+	return db.Exec(`UPDATE users SET avatar_upload_path = '' WHERE avatar_upload_path IS NULL`).Error
+}
+
+func renamePoolTables(db *gorm.DB) error {
+	migrator := db.Migrator()
+
+	renames := [][2]string{
+		{"pool_outbox", "antenne_outbox"},
+		{"pool_processed_events", "antenne_processed_events"},
+	}
+
+	for _, rename := range renames {
+		from, to := rename[0], rename[1]
+		if !migrator.HasTable(from) || migrator.HasTable(to) {
+			continue
+		}
+		if err := migrator.RenameTable(from, to); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func renameNookPoolColumns(db *gorm.DB) error {

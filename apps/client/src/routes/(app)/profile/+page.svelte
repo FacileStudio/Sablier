@@ -336,31 +336,39 @@
 					</div>
 				{/if}
 
+				<!-- Uploading is the fallback, not a second option: when SSO supplies a photo it
+				     is the one shown everywhere, so offering a file picker here would take an
+				     upload the user would never see. Say where the photo lives instead. -->
 				<div class="space-y-2">
 					{#if ctx.user?.avatar_source === 'oidc'}
-						<p class="text-xs text-muted-foreground">Synced from SSO</p>
-					{/if}
-					<Label for="avatar">Avatar image</Label>
-					<Input
-						id="avatar"
-						type="file"
-						accept="image/png,image/jpeg,image/gif,image/webp"
-						onchange={onAvatarChange}
-						disabled={uploading || removingAvatar}
-						class="cursor-pointer hover:border-foreground/30 hover:bg-muted/30 file:cursor-pointer"
-					/>
-					<p class="text-xs text-muted-foreground">PNG, JPG, GIF, or WebP. Max 5 MB.</p>
-					{#if ctx.user?.avatar_url}
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							class="text-destructive opacity-70 hover:opacity-100 hover:text-destructive px-0"
-							onclick={removeAvatar}
-							disabled={removingAvatar}
-						>
-							{removingAvatar ? 'Removing…' : 'Remove picture'}
-						</Button>
+						<Label>Avatar image</Label>
+						<p class="text-xs text-muted-foreground">
+							Your photo comes from single sign-on. Change it there and it updates here
+							within a few minutes.
+						</p>
+					{:else}
+						<Label for="avatar">Avatar image</Label>
+						<Input
+							id="avatar"
+							type="file"
+							accept="image/png,image/jpeg,image/gif,image/webp"
+							onchange={onAvatarChange}
+							disabled={uploading || removingAvatar}
+							class="cursor-pointer hover:border-foreground/30 hover:bg-muted/30 file:cursor-pointer"
+						/>
+						<p class="text-xs text-muted-foreground">PNG, JPG, GIF, or WebP. Max 5 MB.</p>
+						{#if ctx.user?.avatar_url}
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								class="text-destructive opacity-70 hover:opacity-100 hover:text-destructive px-0"
+								onclick={removeAvatar}
+								disabled={removingAvatar}
+							>
+								{removingAvatar ? 'Removing…' : 'Remove picture'}
+							</Button>
+						{/if}
 					{/if}
 				</div>
 			</div>
