@@ -264,7 +264,7 @@ func (s *Service) enqueueOutbox(channel string, evt any) {
 		s.logger.Error("pool: failed to serialize outbox event", slog.Any("error", err), slog.String("channel", channel))
 		return
 	}
-	row := schemas.PoolOutbox{Channel: channel, Payload: string(payload)}
+	row := schemas.AntenneOutbox{Channel: channel, Payload: string(payload)}
 	if err := s.orm.Create(&row).Error; err != nil {
 		s.logger.Error("pool: failed to enqueue outbox event", slog.Any("error", err), slog.String("channel", channel))
 	}
@@ -285,7 +285,7 @@ func (s *Service) RunOutboxWorker(ctx context.Context) {
 		case <-ticker.C:
 			s.drainOutbox()
 			if time.Since(lastPrune) > 24*time.Hour {
-				s.orm.Where("processed_at < ?", time.Now().Add(-35*24*time.Hour)).Delete(&schemas.PoolProcessedEvent{})
+				s.orm.Where("processed_at < ?", time.Now().Add(-35*24*time.Hour)).Delete(&schemas.AntenneProcessedEvent{})
 				lastPrune = time.Now()
 			}
 		case <-ctx.Done():
@@ -303,7 +303,7 @@ func (s *Service) drainOutbox() {
 		return
 	}
 
-	var rows []schemas.PoolOutbox
+	var rows []schemas.AntenneOutbox
 	if err := s.orm.Order("id ASC").Limit(outboxBatchSize).Find(&rows).Error; err != nil {
 		s.logger.Error("pool: failed to read outbox", slog.Any("error", err))
 		return
