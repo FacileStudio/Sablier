@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/webhook"
-	"github.com/FacileStudio/Sablier/apps/api/modules/nookpool"
+	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
@@ -18,7 +18,7 @@ import (
 type Service struct {
 	orm         *gorm.DB
 	controller  *Controller
-	poolService *nookpool.Service
+	poolService *antenne.Service
 }
 
 func NewService(orm *gorm.DB) *Service {
@@ -27,7 +27,7 @@ func NewService(orm *gorm.DB) *Service {
 	return service
 }
 
-func (service *Service) SetPoolService(ps *nookpool.Service) {
+func (service *Service) SetPoolService(ps *antenne.Service) {
 	service.poolService = ps
 }
 

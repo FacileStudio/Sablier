@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
-	"github.com/FacileStudio/Sablier/apps/api/modules/nookpool"
+	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/tronc/apiref"
 	"github.com/go-chi/chi/v5"
@@ -25,8 +25,8 @@ func testRouter(t *testing.T) chi.Router {
 	appEnv := &env.Config{StorageDir: t.TempDir()}
 	appLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	notificationsService := notifications.NewService(nil, "", "", "", appLogger)
-	nookPoolService := nookpool.NewService(nil, appLogger)
-	return buildRouter(nil, noopPinger{}, appEnv, appLogger, notificationsService, nookPoolService)
+	antenneService := antenne.NewService(nil, appLogger)
+	return buildRouter(nil, noopPinger{}, appEnv, appLogger, notificationsService, antenneService)
 }
 
 // The registry is hand-written, so it rots the moment someone registers a route

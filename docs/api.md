@@ -150,22 +150,22 @@ Workspace-wide webhook configuration, stored on the single `app_settings` row.
 | GET | `/api/settings` | yes | — | `{"settings":{"webhook_url","webhook_secret_header","webhook_secret_value"}}` |
 | PUT | `/api/settings` | yes | Same three fields | `{"settings":{...}}` |
 
-## Nook Pool
+## Antenne
 
 Event-bus connection settings and per-event toggles. All routes require authentication.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| GET | `/api/nook-pool` | — | `{"pool_settings":{...}, "connected", "connect_error"?, "from_env"?}` |
-| PUT | `/api/nook-pool` | `{"nook_pool_url","nook_pool_secret","nook_pool_enabled"}` | Same shape; reconnects or disconnects immediately |
-| POST | `/api/nook-pool/sync` | — | `{"projects_synced","tasks_synced"}` |
-| GET | `/api/nook-pool/events` | — | `{"events":[{"event","enabled"}]}` |
-| PUT | `/api/nook-pool/events` | `{"events":[{"event","enabled"}]}` | `{"events":[...]}` |
+| GET | `/api/antenne` | — | `{"pool_settings":{...}, "connected", "connect_error"?, "from_env"?}` |
+| PUT | `/api/antenne` | `{"antenne_url","antenne_secret","antenne_enabled"}` | Same shape; reconnects or disconnects immediately |
+| POST | `/api/antenne/sync` | — | `{"projects_synced","tasks_synced"}` |
+| GET | `/api/antenne/events` | — | `{"events":[{"event","enabled"}]}` |
+| PUT | `/api/antenne/events` | `{"events":[{"event","enabled"}]}` | `{"events":[...]}` |
 
 The toggleable events are `time_entry.created`, `time_entry.updated`,
 `agent_session.created`, `agent_session.updated`, `project.created`, `project.updated`,
 `project.deleted`, `task.created`, `task.updated`, and `task.deleted`. `from_env` is true
-when the returned URL and secret came from `NOOK_POOL_URL` / `NOOK_POOL_SECRET` because
+when the returned URL and secret came from `ANTENNE_URL` / `ANTENNE_SECRET` because
 no settings row exists yet.
 
 ## Notifications

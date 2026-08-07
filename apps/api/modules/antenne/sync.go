@@ -1,4 +1,4 @@
-package nookpool
+package antenne
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	antenneclient "github.com/FacileStudio/antenne-client/go"
 	enveloppe "github.com/FacileStudio/enveloppe/go"
-	pool "github.com/FacileStudio/pool/go"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -29,7 +29,7 @@ func (s *Service) markProcessed(key string) {
 	s.orm.Clauses(clause.OnConflict{DoNothing: true}).Create(&schemas.PoolProcessedEvent{IdempotencyKey: key})
 }
 
-func (s *Service) handleProjectCreated(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleProjectCreated(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Project]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode project.created", slog.Any("error", err))
@@ -71,7 +71,7 @@ func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) b
 	return true
 }
 
-func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleProjectUpdated(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Project]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode project.updated", slog.Any("error", err))
@@ -109,7 +109,7 @@ func (s *Service) handleProjectUpdated(payload json.RawMessage, meta pool.EventM
 	s.logger.Info("pool: synced project updated", slog.String("facile_id", evt.Payload.FacileID))
 }
 
-func (s *Service) handleProjectDeleted(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleProjectDeleted(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Project]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode project.deleted", slog.Any("error", err))
@@ -128,7 +128,7 @@ func (s *Service) handleProjectDeleted(payload json.RawMessage, meta pool.EventM
 	s.logger.Info("pool: synced project deleted", slog.String("facile_id", evt.Payload.FacileID))
 }
 
-func (s *Service) handleTaskCreated(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleTaskCreated(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Task]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode task.created", slog.Any("error", err))
@@ -219,7 +219,7 @@ func (s *Service) resolveActorByEmail(email string) *int64 {
 	return &user.ID
 }
 
-func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleTaskUpdated(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Task]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode task.updated", slog.Any("error", err))
@@ -254,7 +254,7 @@ func (s *Service) handleTaskUpdated(payload json.RawMessage, meta pool.EventMeta
 	s.logger.Info("pool: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
 }
 
-func (s *Service) handleTaskDeleted(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleTaskDeleted(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.Task]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode task.deleted", slog.Any("error", err))

@@ -1,4 +1,4 @@
-package nookpool
+package antenne
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	antenneclient "github.com/FacileStudio/antenne-client/go"
 	enveloppe "github.com/FacileStudio/enveloppe/go"
-	pool "github.com/FacileStudio/pool/go"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
@@ -81,7 +81,7 @@ func sessionEvent(t *testing.T, facileID, project, email, key string) json.RawMe
 	return data
 }
 
-var testMeta = pool.EventMeta{Channel: "agent_session.created", Sender: "Mycelium"}
+var testMeta = antenneclient.EventMeta{Channel: "agent_session.created", Sender: "Mycelium"}
 
 func TestAgentSessionCreatesEntryInMatchingProject(t *testing.T) {
 	s := newTestService(t)

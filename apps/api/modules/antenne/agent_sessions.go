@@ -1,4 +1,4 @@
-package nookpool
+package antenne
 
 import (
 	"encoding/json"
@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"time"
 
+	antenneclient "github.com/FacileStudio/antenne-client/go"
 	enveloppe "github.com/FacileStudio/enveloppe/go"
-	pool "github.com/FacileStudio/pool/go"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
@@ -28,7 +28,7 @@ const (
 // "Agent work" project under a task named after the source project, so no
 // session is ever dropped. Entries upsert by facile_id, making re-emitted
 // history idempotent even without the processed-events ledger.
-func (s *Service) handleAgentSession(payload json.RawMessage, meta pool.EventMeta) {
+func (s *Service) handleAgentSession(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.AgentSession]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("pool: failed to decode agent session", slog.Any("error", err))
