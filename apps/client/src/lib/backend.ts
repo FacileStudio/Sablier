@@ -69,9 +69,9 @@ export type SettingsResponse = {
 };
 
 export type PoolSettings = {
-	nook_pool_url: string;
-	nook_pool_secret: string;
-	nook_pool_enabled: boolean;
+	antenne_url: string;
+	antenne_secret: string;
+	antenne_enabled: boolean;
 };
 
 export type PoolSettingsResponse = {
@@ -364,10 +364,10 @@ export const backend = {
 	},
 
 	getPoolSettings(token: string) {
-		return apiFetch<PoolSettingsResponse>('/api/nook-pool/', {}, token);
+		return apiFetch<PoolSettingsResponse>('/api/antenne/', {}, token);
 	},
 	triggerSync(token: string) {
-		return apiFetch<{ projects_synced: number; tasks_synced: number }>('/api/nook-pool/sync', {
+		return apiFetch<{ projects_synced: number; tasks_synced: number }>('/api/antenne/sync', {
 			method: 'POST'
 		}, token);
 	},
@@ -377,21 +377,21 @@ export const backend = {
 	},
 
 	updatePoolSettings(token: string, url: string, secret: string, enabled: boolean) {
-		return apiFetch<PoolSettingsResponse>('/api/nook-pool/', {
+		return apiFetch<PoolSettingsResponse>('/api/antenne/', {
 			method: 'PUT',
 			body: JSON.stringify({
-				nook_pool_url: url,
-				nook_pool_secret: secret,
-				nook_pool_enabled: enabled
+				antenne_url: url,
+				antenne_secret: secret,
+				antenne_enabled: enabled
 			})
 		}, token);
 	},
 
 	getPoolEvents(token: string) {
-		return apiFetch<{ events: PoolEventToggle[] }>('/api/nook-pool/events', {}, token);
+		return apiFetch<{ events: PoolEventToggle[] }>('/api/antenne/events', {}, token);
 	},
 	updatePoolEvents(token: string, events: PoolEventToggle[]) {
-		return apiFetch<{ events: PoolEventToggle[] }>('/api/nook-pool/events', {
+		return apiFetch<{ events: PoolEventToggle[] }>('/api/antenne/events', {
 			method: 'PUT',
 			body: JSON.stringify({ events })
 		}, token);

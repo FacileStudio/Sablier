@@ -7,7 +7,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Save, Webhook } from 'lucide-svelte';
-	import NookIcon from '$lib/components/icons/NookIcon.svelte';
+	import AntenneIcon from '$lib/components/icons/AntenneIcon.svelte';
 	import { Switch } from '$lib/components/ui/switch';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
@@ -48,9 +48,9 @@
 
 		try {
 			const poolResult = await backend.getPoolSettings(ctx.token);
-			poolUrl = poolResult.pool_settings.nook_pool_url;
-			poolSecret = poolResult.pool_settings.nook_pool_secret;
-			poolEnabled = poolResult.pool_settings.nook_pool_enabled;
+			poolUrl = poolResult.pool_settings.antenne_url;
+			poolSecret = poolResult.pool_settings.antenne_secret;
+			poolEnabled = poolResult.pool_settings.antenne_enabled;
 			poolConnected = poolResult.connected;
 			poolFromEnv = poolResult.from_env ?? false;
 		} catch (e) {
@@ -127,16 +127,16 @@
 		poolError = '';
 		try {
 			const result = await backend.updatePoolSettings(ctx.token, poolUrl, poolSecret, poolEnabled);
-			poolUrl = result.pool_settings.nook_pool_url;
-			poolSecret = result.pool_settings.nook_pool_secret;
-			poolEnabled = result.pool_settings.nook_pool_enabled;
+			poolUrl = result.pool_settings.antenne_url;
+			poolSecret = result.pool_settings.antenne_secret;
+			poolEnabled = result.pool_settings.antenne_enabled;
 			poolConnected = result.connected;
 			if (result.connect_error) {
 				poolError = result.connect_error;
 				toast.error(poolError);
 			} else {
 				poolSaved = true;
-				toast.success(poolConnected ? 'Connected to Nook Pool' : 'Pool settings saved');
+				toast.success(poolConnected ? 'Connected to Antenne' : 'Pool settings saved');
 			}
 			setTimeout(() => (poolSaved = false), 2000);
 		} catch (e) {
@@ -167,8 +167,8 @@
 			class="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm font-medium transition-colors {activeTab === 'pool' ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
 			onclick={() => (activeTab = 'pool')}
 		>
-			<NookIcon size={16} />
-			Nook Pool
+			<AntenneIcon size={16} />
+			Antenne
 		</button>
 	</div>
 
@@ -261,8 +261,8 @@
 				<div class="flex items-center justify-between">
 					<div>
 						<Card.Title class="flex items-center gap-2">
-							<NookIcon size={20} />
-							Nook Pool
+							<AntenneIcon size={20} />
+							Antenne
 						</Card.Title>
 						<Card.Description>Sync projects and tasks with other Facile apps.</Card.Description>
 					</div>
@@ -302,7 +302,7 @@
 				<div class="flex items-center gap-3">
 					<Switch
 						bind:checked={poolEnabled}
-						aria-label="Enable Nook Pool sync"
+						aria-label="Enable Antenne sync"
 						class="data-[state=checked]:bg-green-600"
 					/>
 					<Label>Enable sync</Label>
@@ -324,7 +324,7 @@
 				<Card.Header>
 					<Card.Title>Pool events</Card.Title>
 					<Card.Description>
-						Choose which events are sent to Nook when they happen. Nook handles routing from there.
+						Choose which events are sent to Antenne when they happen. Antenne handles routing from there.
 					</Card.Description>
 				</Card.Header>
 				<Card.Content>

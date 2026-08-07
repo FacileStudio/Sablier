@@ -1,4 +1,4 @@
-package nookpool
+package antenne
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ import (
 )
 
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
-	router.Route("/nook-pool", func(r chi.Router) {
+	router.Route("/antenne", func(r chi.Router) {
 		r.Use(middleware.RequireAuth(authService))
 
 		r.Get("/", func(w http.ResponseWriter, req *http.Request) {

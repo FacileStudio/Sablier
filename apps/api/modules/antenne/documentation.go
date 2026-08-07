@@ -1,22 +1,22 @@
-package nookpool
+package antenne
 
 import documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 
 var Documentation = documentation.Module{
-	Name:        "nookpool",
-	Description: "Nook Pool connection management for syncing projects and tasks with other Facile apps.",
+	Name:        "antenne",
+	Description: "Antenne connection management for syncing projects and tasks with other Facile apps.",
 	Routes: []documentation.Route{
 		{
 			Method:       "GET",
-			Path:         "/nook-pool/",
+			Path:         "/antenne/",
 			Summary:      "Get pool settings",
-			Description:  "Returns the current Nook Pool connection settings and status.",
+			Description:  "Returns the current Antenne connection settings and status.",
 			Auth:         "required",
 			ResponseBody: "PoolSettingsResponse",
 		},
 		{
 			Method:       "POST",
-			Path:         "/nook-pool/sync",
+			Path:         "/antenne/sync",
 			Summary:      "Trigger initial sync",
 			Description:  "Syncs all existing projects and tasks to the Pool. Safe to run multiple times.",
 			Auth:         "required",
@@ -24,9 +24,9 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "PUT",
-			Path:         "/nook-pool/",
+			Path:         "/antenne/",
 			Summary:      "Update pool settings",
-			Description:  "Updates Nook Pool connection settings. If enabled with valid URL and secret, connects to the Pool.",
+			Description:  "Updates Antenne connection settings. If enabled with valid URL and secret, connects to the Pool.",
 			Auth:         "required",
 			RequestBody:  "UpdatePoolRequest",
 			ResponseBody: "PoolSettingsResponse",
@@ -36,7 +36,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "GET",
-			Path:         "/nook-pool/events",
+			Path:         "/antenne/events",
 			Summary:      "Get pool event subscriptions",
 			Description:  "Returns the event types this app publishes to and consumes from the Pool.",
 			Auth:         "required",
@@ -44,7 +44,7 @@ var Documentation = documentation.Module{
 		},
 		{
 			Method:       "PUT",
-			Path:         "/nook-pool/events",
+			Path:         "/antenne/events",
 			Summary:      "Update pool event subscriptions",
 			Description:  "Replaces the set of event types exchanged with the Pool.",
 			Auth:         "required",

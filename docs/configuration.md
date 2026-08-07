@@ -1,7 +1,7 @@
 # Sablier — Configuration
 
 Every environment variable the API actually reads, taken from `apps/api/internal/env`,
-`tronc/env`, `tronc/spa`, and `modules/nookpool/service.go`.
+`tronc/env`, `tronc/spa`, and `modules/antenne/service.go`.
 
 Configuration is read once at startup. `godotenv` loads a `.env` file from the working
 directory first if one exists, so `apps/api/.env` is picked up by `go run .` but plays no
@@ -76,16 +76,16 @@ the `/api` prefix — the router is the source of truth.
 Push stays off while the keys are unset. The reminder worker still ticks, it just has
 nothing to send.
 
-## Nook Pool
+## Antenne
 
 | Variable | Required | Default | What it does |
 |---|---|---|---|
-| `NOOK_POOL_URL` | no | — | Pool instance URL, used only as a fallback |
-| `NOOK_POOL_SECRET` | no | — | Pool shared secret, used only as a fallback |
+| `ANTENNE_URL` | no | — | Pool instance URL, used only as a fallback |
+| `ANTENNE_SECRET` | no | — | Pool shared secret, used only as a fallback |
 
-These are read directly with `os.Getenv` in `modules/nookpool/service.go` and are used
+These are read directly with `os.Getenv` in `modules/antenne/service.go` and are used
 **only when no `app_settings` row exists yet**. Once settings have been saved through
-`PUT /api/nook-pool`, the database wins and the environment is ignored. Even in the
+`PUT /api/antenne`, the database wins and the environment is ignored. Even in the
 fallback path the connection is only attempted when both values are non-empty.
 
 ## Compose-only

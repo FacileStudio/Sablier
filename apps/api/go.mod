@@ -4,8 +4,8 @@ go 1.25.0
 
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba
+	github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4
 	github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f
-	github.com/FacileStudio/pool/go v0.0.0-20260703193105-683b8b5581af
 	github.com/FacileStudio/tronc v0.9.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/coreos/go-oidc/v3 v3.11.0

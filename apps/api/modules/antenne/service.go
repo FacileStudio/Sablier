@@ -1,4 +1,4 @@
-package nookpool
+package antenne
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
-	pool "github.com/FacileStudio/pool/go"
+	antenneclient "github.com/FacileStudio/antenne-client/go"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -28,7 +28,7 @@ const appSettingID = 1
 
 type Service struct {
 	orm        *gorm.DB
-	client     *pool.Client
+	client     *antenneclient.Client
 	controller *Controller
 	mu         sync.RWMutex
 	logger     *slog.Logger
@@ -41,7 +41,7 @@ func NewService(orm *gorm.DB, logger *slog.Logger) *Service {
 }
 
 func getEnvPoolConfig() (string, string) {
-	return os.Getenv("NOOK_POOL_URL"), os.Getenv("NOOK_POOL_SECRET")
+	return os.Getenv("ANTENNE_URL"), os.Getenv("ANTENNE_SECRET")
 }
 
 func (s *Service) AutoConnect(ctx context.Context) {
@@ -83,22 +83,22 @@ func (s *Service) getSettings(ctx context.Context) (*PoolSettings, bool, error) 
 		return nil, false, errors.Internal("failed to get pool settings", err)
 	}
 	return &PoolSettings{
-		URL:     record.NookPoolURL,
-		Secret:  record.NookPoolSecret,
-		Enabled: record.NookPoolEnabled,
+		URL:     record.AntenneURL,
+		Secret:  record.AntenneSecret,
+		Enabled: record.AntenneEnabled,
 	}, false, nil
 }
 
 func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettings, string, error) {
 	record := schemas.AppSetting{
 		ID:              appSettingID,
-		NookPoolURL:     strings.TrimSpace(req.URL),
-		NookPoolSecret:  strings.TrimSpace(req.Secret),
-		NookPoolEnabled: req.Enabled,
+		AntenneURL:     strings.TrimSpace(req.URL),
+		AntenneSecret:  strings.TrimSpace(req.Secret),
+		AntenneEnabled: req.Enabled,
 	}
 	if err := s.orm.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"nook_pool_url", "nook_pool_secret", "nook_pool_enabled"}),
+		DoUpdates: clause.AssignmentColumns([]string{"antenne_url", "antenne_secret", "antenne_enabled"}),
 	}).Create(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to update pool settings", err)
 	}
@@ -114,33 +114,33 @@ func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*
 	}
 
 	return &PoolSettings{
-		URL:     record.NookPoolURL,
-		Secret:  record.NookPoolSecret,
-		Enabled: record.NookPoolEnabled,
+		URL:     record.AntenneURL,
+		Secret:  record.AntenneSecret,
+		Enabled: record.AntenneEnabled,
 	}, connectErr, nil
 }
 
 func (s *Service) connect(instanceURL, secret string) error {
 	s.disconnect()
 
-	cfg := &pool.Config{
+	cfg := &antenneclient.Config{
 		App:      "Sablier",
 		Instance: instanceURL,
 		Secret:   secret,
-		Events: pool.EventConfig{
+		Events: antenneclient.EventConfig{
 			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated"},
 			Listen: []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "agent_session.created", "agent_session.updated"},
 		},
 	}
 
-	client := pool.NewClient(cfg,
-		pool.WithOnConnect(func() {
+	client := antenneclient.NewClient(cfg,
+		antenneclient.WithOnConnect(func() {
 			s.logger.Info("pool: connected")
 		}),
-		pool.WithOnDisconnect(func() {
+		antenneclient.WithOnDisconnect(func() {
 			s.logger.Info("pool: disconnected")
 		}),
-		pool.WithOnError(func(err error) {
+		antenneclient.WithOnError(func(err error) {
 			s.logger.Error("pool: error", slog.Any("error", err))
 		}),
 	)
@@ -255,7 +255,7 @@ func (s *Service) shouldEmit() bool {
 	if err := s.orm.Where("id = ?", appSettingID).First(&record).Error; err != nil {
 		return false
 	}
-	return record.NookPoolEnabled
+	return record.AntenneEnabled
 }
 
 func (s *Service) enqueueOutbox(channel string, evt any) {
@@ -599,28 +599,28 @@ func (s *Service) setupListeners() {
 		return
 	}
 
-	client.Listen("project.created", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("project.created", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleProjectCreated(payload, meta)
 	})
-	client.Listen("project.updated", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("project.updated", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleProjectUpdated(payload, meta)
 	})
-	client.Listen("project.deleted", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("project.deleted", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleProjectDeleted(payload, meta)
 	})
-	client.Listen("task.created", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("task.created", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleTaskCreated(payload, meta)
 	})
-	client.Listen("task.updated", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("task.updated", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleTaskUpdated(payload, meta)
 	})
-	client.Listen("task.deleted", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("task.deleted", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleTaskDeleted(payload, meta)
 	})
-	client.Listen("agent_session.created", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("agent_session.created", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleAgentSession(payload, meta)
 	})
-	client.Listen("agent_session.updated", func(payload json.RawMessage, meta pool.EventMeta) {
+	client.Listen("agent_session.updated", func(payload json.RawMessage, meta antenneclient.EventMeta) {
 		s.handleAgentSession(payload, meta)
 	})
 }

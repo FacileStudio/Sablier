@@ -16,7 +16,7 @@ Live at [sablier.facile.studio](https://sablier.facile.studio).
 - Profiles with names, colors, avatar uploads, billing rate, and workday length
 - Long-lived API tokens for scripting, alongside browser session tokens
 - Web push reminders for timers that are still running
-- Two-way project and task sync over the Nook Pool, plus outbound webhooks
+- Two-way project and task sync over the Antenne, plus outbound webhooks
 
 ## Stack
 
@@ -78,7 +78,7 @@ Full reference: [docs/configuration.md](docs/configuration.md).
 ```
 apps/
   api/       Go backend — modules/ (auth, projects, timeentries, users, settings,
-             spaces, nookpool, notifications), schemas/ (GORM models + migrations)
+             spaces, antenne, notifications), schemas/ (GORM models + migrations)
   client/    SvelteKit 5 SPA, built into the API image and served by it
 scripts/     check.sh, the quality gate the pre-push hook runs
 docs/        Architecture, configuration, development, deployment, API

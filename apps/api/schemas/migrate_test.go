@@ -55,3 +55,34 @@ func openTestDatabase(t *testing.T) *gorm.DB {
 
 	return orm
 }
+
+func TestMigrateRenamesNookPoolColumnsKeepingValues(t *testing.T) {
+	orm := openTestDatabase(t)
+	if err := orm.Exec(`CREATE TABLE app_settings (
+		id integer PRIMARY KEY AUTOINCREMENT,
+		nook_pool_url text NOT NULL DEFAULT '',
+		nook_pool_secret text NOT NULL DEFAULT '',
+		nook_pool_enabled numeric NOT NULL DEFAULT false
+	)`).Error; err != nil {
+		t.Fatalf("create legacy table: %v", err)
+	}
+	if err := orm.Exec(`INSERT INTO app_settings (nook_pool_url, nook_pool_secret, nook_pool_enabled)
+		VALUES (?, ?, ?)`, "https://antenne.facile.studio", "s3cret", true).Error; err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
+	if err := Migrate(orm); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	var setting AppSetting
+	if err := orm.First(&setting).Error; err != nil {
+		t.Fatalf("read migrated row: %v", err)
+	}
+	if setting.AntenneURL != "https://antenne.facile.studio" || setting.AntenneSecret != "s3cret" || !setting.AntenneEnabled {
+		t.Fatalf("values lost in rename: %+v", setting)
+	}
+	if orm.Migrator().HasColumn(&AppSetting{}, "nook_pool_url") {
+		t.Fatal("legacy column still present")
+	}
+}

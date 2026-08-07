@@ -10,6 +10,9 @@ import (
 )
 
 func Migrate(db *gorm.DB) error {
+	if err := renameNookPoolColumns(db); err != nil {
+		return err
+	}
 	if err := db.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &ApiToken{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &PoolOutbox{}, &PoolProcessedEvent{}); err != nil {
 		return err
 	}
@@ -17,6 +20,31 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 	return backfillTimeEntryTasks(db)
+}
+
+func renameNookPoolColumns(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&AppSetting{}) {
+		return nil
+	}
+
+	renames := [][2]string{
+		{"nook_pool_url", "antenne_url"},
+		{"nook_pool_secret", "antenne_secret"},
+		{"nook_pool_enabled", "antenne_enabled"},
+	}
+
+	for _, rename := range renames {
+		from, to := rename[0], rename[1]
+		if !migrator.HasColumn(&AppSetting{}, from) || migrator.HasColumn(&AppSetting{}, to) {
+			continue
+		}
+		if err := migrator.RenameColumn(&AppSetting{}, from, to); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func backfillTimeEntryTasks(db *gorm.DB) error {

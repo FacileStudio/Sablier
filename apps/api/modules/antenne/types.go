@@ -1,15 +1,15 @@
-package nookpool
+package antenne
 
 type PoolSettings struct {
-	URL     string `json:"nook_pool_url"`
-	Secret  string `json:"nook_pool_secret"`
-	Enabled bool   `json:"nook_pool_enabled"`
+	URL     string `json:"antenne_url"`
+	Secret  string `json:"antenne_secret"`
+	Enabled bool   `json:"antenne_enabled"`
 }
 
 type UpdatePoolRequest struct {
-	URL     string `json:"nook_pool_url"`
-	Secret  string `json:"nook_pool_secret"`
-	Enabled bool   `json:"nook_pool_enabled"`
+	URL     string `json:"antenne_url"`
+	Secret  string `json:"antenne_secret"`
+	Enabled bool   `json:"antenne_enabled"`
 }
 
 type PoolSettingsResponse struct {
