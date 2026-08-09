@@ -8,7 +8,7 @@ How the image is built, what Compose declares, and how Sablier is routed on la r
 
 1. `oven/bun:1` installs `apps/client` dependencies with `--frozen-lockfile` and runs
    `bun run build`, producing static files in `/client/build`.
-2. `golang:1.24-alpine` builds the API with
+2. `golang:1.26-alpine` builds the API with
    `CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags="-s -w"`. Dependencies come from
    the committed `apps/api/vendor` directory, so the build never reaches the network.
 3. A throwaway stage creates `/data/avatars`, since a distroless image has no shell to
