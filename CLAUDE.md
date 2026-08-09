@@ -30,7 +30,7 @@ apps/
       lib/
         backend.ts      API client (fetch wrapper)
         components/     App components + shadcn-svelte ui/ primitives
-Dockerfile              Multi-stage: bun (client) + golang:1.24-alpine (api) -> distroless
+Dockerfile              Multi-stage: bun (client) + golang:1.26-alpine (api) -> distroless
 docker-compose.yml      Full stack: db + api (serves the client too)
 .env.example            Root-level env template (production)
 ```

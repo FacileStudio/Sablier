@@ -34,6 +34,8 @@
 		} catch {}
 		const raw = $page.url.searchParams.get('tab');
 		if (raw === 'register') tab = 'register';
+		const refused = $page.url.searchParams.get('error');
+		if (refused) message = refused;
 
 		try {
 			const cfg = await fetch(`${backend.baseUrl}/api/auth/config`).then((r) => r.json());
@@ -110,6 +112,15 @@
 			{#if !configLoaded}
 				<div class="h-40"></div>
 			{:else}
+				{#if message}
+					<p
+						role="alert"
+						class="mb-4 rounded-fc-md bg-fc-danger/10 px-3 py-2 text-fc-sm text-fc-danger"
+					>
+						{message}
+					</p>
+				{/if}
+
 				{#if !ssoOnly}
 					<div
 						class="mb-6 flex gap-1 rounded-fc-lg border border-fc-border bg-fc-surface p-1"
@@ -177,15 +188,6 @@
 								class={inputClass}
 							/>
 						</div>
-
-						{#if message}
-							<p
-								role="alert"
-								class="rounded-fc-md bg-fc-danger/10 px-3 py-2 text-fc-sm text-fc-danger"
-							>
-								{message}
-							</p>
-						{/if}
 
 						<button type="submit" disabled={busy} class={primaryButtonClass}>
 							{busy

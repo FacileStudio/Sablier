@@ -3,6 +3,72 @@
 Decisions are recorded with their reasoning. The reasoning is the part that stops a future
 session from undoing a deliberate choice.
 
+## v0.2.4 — 2026-08-09
+
+A failed login is a page now, not a JSON body. New optional `Config.FailureURL`; no breaking
+change, and an app that sets nothing gets the better behaviour.
+
+`/auth/oidc` and `/auth/oidc/callback` are browser navigations — the user *is* the HTTP client.
+Every failure in them called `httpjson.WriteError`, so an expired flow cookie or a provider that
+declined put `{"code":"invalid_argument","message":"..."}` in the address bar. Plume shipped the
+identical bug to production this morning and the report that came back was, in full, "le sso est
+cassé ça m'envoie ça en json wtf". That is the correct reaction.
+
+Both handlers now redirect to `Config.LoginFailure(reason)` — `FailureURL` when set, otherwise
+`/login` on `SuccessURL`'s **origin** — with the reason in an `error` query parameter for the
+login page to render. The default replaces `SuccessURL`'s path rather than appending to it: an
+app landing on `/dashboard` has its login page at `/login`, not `/dashboard/login`. The CLI's own
+endpoints (`/auth/cli/exchange`, back-channel logout, the middleware) keep writing JSON, because
+there the caller really is a program.
+
+Only failures porte classified as the caller's problem say what they were —
+`invalid_argument`, `already_exists`, `unauthenticated`, `permission_denied`. An internal error
+redirects with "could not sign you in" and puts the detail in the log, where it was already
+going: a redirect target is a URL a user can screenshot into a support channel, so it is no
+place for a database error.
+
+**The cost, stated plainly:** a refused callback and a successful one are now both a `302`, and
+`porte` no longer distinguishes them by status code. Anything watching these endpoints must look
+at `Location`, not the status. Four tests in `flow_test.go` asserted on status alone — including
+the roles-claim guard, whose entire purpose is catching a silent sign-in — and all four would
+have passed against a build that redirected failures to `SuccessURL`. They now assert the two
+things that actually differ: the browser lands on the login page carrying a reason, and no
+session cookie comes back. That second half is the one that would catch a regression that signs
+the user in anyway.
+
+## v0.2.3 — 2026-08-09
+
+**Security. Upgrade if you serve `POST /auth/register` to the public — Journal and Sablier both
+do, and both were exposed.**
+
+`local.Kit.Register` treated an address that already had an account *without* a password as "the
+same human adding a password". It hashed the caller's password onto that account, saved it as
+that account's `local` identity, and issued a session for it. So anyone who knew the address of a
+user who had only ever signed in through SSO — or who was migrated in from a legacy table whose
+hash did not come across — could register that address and be logged in as them. Registration
+being open is the whole precondition, and open registration is what the flag is for.
+
+The comment defending it was not wrong about the intent, only about who was asking: porte has no
+mailer and therefore cannot tell "the same human" from a stranger who typed a known address.
+Registration now refuses any address that already has an account, with `ErrEmailTaken`, whether
+or not that account has a password.
+
+Adding a password to an account that already exists is `Kit.SetPassword`, which takes a user id
+and so can only be called for a caller the app has already authenticated. That is the supported
+path and it always was; it is now the only one.
+
+The refusal also runs the timing equaliser. It previously returned before hashing, so the
+response time alone said whether an address was registered — a slower oracle than the status
+code, but one that survives every attempt to hide the status code. Equalisation is not perfect
+(the create path also writes two rows) and cannot be without a queue; argon2 is the dominant term
+and it is now paid on both paths.
+
+Not fixed here, and worth knowing: `emailClaimTrusted` still treats an **absent** `email_verified`
+claim as trusted, so an OIDC provider that omits the claim can link a callback to an existing
+account by a mutable email. That trade-off is deliberate — refusing it strands every account
+created before `oidc_subject` was recorded — but it is a trade-off, not a non-issue, and it wants
+a config switch rather than a constant.
+
 ## v0.2.2 — 2026-08-09
 
 `session.Manager` gained `List` and `Revoke`. The `SessionStore` contract has advertised
