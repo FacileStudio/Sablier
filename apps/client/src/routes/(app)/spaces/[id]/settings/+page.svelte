@@ -2,12 +2,17 @@
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
 	import { backend, type Space } from '$lib/backend';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { ArrowLeft, Trash2 } from 'lucide-svelte';
+	import {
+		Button,
+		ConfirmModal,
+		Input,
+		SettingsRow,
+		SettingsSection,
+		Textarea,
+		icons,
+		toast
+	} from '@facile/muse';
 
 	const ctx = getContext<{ token: string }>('app');
 
@@ -16,6 +21,7 @@
 	let description = $state('');
 	let saving = $state(false);
 	let deleting = $state(false);
+	let confirmDelete = $state(false);
 
 	const spaceId = $derived(page.params.id as string);
 
@@ -27,21 +33,20 @@
 			space = updated;
 			toast.success('Espace mis à jour');
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Impossible de modifier l\'espace');
+			toast.danger(e instanceof Error ? e.message : 'Impossible de modifier l\'espace');
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function deleteSpace() {
-		if (!confirm('Supprimer cet espace ? Les projets et entrées de temps seront dissociés mais pas supprimés.')) return;
 		deleting = true;
 		try {
 			await backend.deleteSpace(ctx.token, spaceId);
 			toast.success('Espace supprimé');
 			goto('/spaces');
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Impossible de supprimer l\'espace');
+			toast.danger(e instanceof Error ? e.message : 'Impossible de supprimer l\'espace');
 		} finally {
 			deleting = false;
 		}
@@ -59,52 +64,77 @@
 	<title>Paramètres — {space?.name ?? 'Espace'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-1 flex-col">
-	<div class="border-b px-4 py-4 md:px-8 md:py-5">
-		<a href="/spaces/{spaceId}" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-			<ArrowLeft class="h-4 w-4" />
-			{space?.name ?? 'Espace'}
-		</a>
-	</div>
+<div class="flex flex-col gap-10 p-4 md:p-8">
+	<Button
+		variant="ghost"
+		size="sm"
+		href="/spaces/{spaceId}"
+		icon={icons.chevronLeft}
+		class="w-fit pl-2"
+	>
+		{space?.name ?? 'Espace'}
+	</Button>
 
-	<div class="flex-1 p-4 md:p-8">
-		<div class="max-w-xl space-y-8">
-			<h1 class="text-xl font-semibold">Paramètres de l'espace</h1>
+	<h1 class="text-fc-xl font-semibold text-fc-fg">Paramètres de l'espace</h1>
 
-			<form
-				class="space-y-4"
-				onsubmit={(e) => { e.preventDefault(); save(); }}
-			>
-				<div class="space-y-1.5">
-					<Label for="space-name">Nom</Label>
-					<Input id="space-name" class="h-10" bind:value={name} required />
-				</div>
-				<div class="space-y-1.5">
-					<Label for="space-description">Description</Label>
-					<Input id="space-description" class="h-10" bind:value={description} placeholder="Optionnel" />
-				</div>
-				<Button type="submit" disabled={saving} class="h-10">
+	<form
+		class="flex max-w-xl flex-col gap-10"
+		onsubmit={(e) => {
+			e.preventDefault();
+			save();
+		}}
+	>
+		<SettingsSection title="Général">
+			<SettingsRow stacked label="Nom" for="space-name">
+				<Input id="space-name" bind:value={name} required class="w-full" />
+			</SettingsRow>
+			<SettingsRow stacked label="Description" for="space-description">
+				<Textarea
+					id="space-description"
+					rows={3}
+					bind:value={description}
+					placeholder="Optionnel"
+					class="w-full"
+				/>
+			</SettingsRow>
+			<SettingsRow>
+				<Button type="submit" size="lg" disabled={saving} class="w-full sm:w-auto">
 					{saving ? 'Enregistrement...' : 'Enregistrer'}
 				</Button>
-			</form>
+			</SettingsRow>
+		</SettingsSection>
+	</form>
 
-			{#if space?.role === 'owner'}
-				<div class="border-t border-border pt-8">
-					<h2 class="text-sm font-medium text-destructive">Zone de danger</h2>
-					<p class="mt-1 text-sm text-muted-foreground">
-						Supprimer un espace retire toutes les appartenances. Les projets et entrées de temps sont dissociés, pas supprimés.
-					</p>
-					<Button
-						variant="destructive"
-						disabled={deleting}
-						class="mt-4 gap-2 h-10"
-						onclick={deleteSpace}
-					>
-						<Trash2 class="h-4 w-4" />
-						{deleting ? 'Suppression...' : 'Supprimer cet espace'}
-					</Button>
-				</div>
-			{/if}
-		</div>
-	</div>
+	{#if space?.role === 'owner'}
+		<SettingsSection
+			class="max-w-xl"
+			title="Zone de danger"
+			description="Supprimer un espace retire toutes les appartenances. Les projets et entrées de temps sont dissociés, pas supprimés."
+		>
+			<SettingsRow
+				label="Supprimer cet espace"
+				description="Cette action est définitive et ne peut pas être annulée."
+			>
+				<Button
+					variant="danger"
+					size="lg"
+					icon={icons.remove}
+					disabled={deleting}
+					onclick={() => (confirmDelete = true)}
+				>
+					{deleting ? 'Suppression...' : 'Supprimer cet espace'}
+				</Button>
+			</SettingsRow>
+		</SettingsSection>
+	{/if}
 </div>
+
+<ConfirmModal
+	bind:open={confirmDelete}
+	tone="danger"
+	title="Supprimer cet espace ?"
+	description="Les projets et entrées de temps seront dissociés mais pas supprimés. Tous les membres perdent leur accès à l'espace."
+	confirmLabel="Supprimer"
+	cancelLabel="Annuler"
+	onConfirm={deleteSpace}
+/>

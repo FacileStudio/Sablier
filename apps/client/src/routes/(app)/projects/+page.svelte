@@ -3,13 +3,18 @@
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getActiveSpaceId } from '$lib/space-context.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Drawer from '$lib/components/ui/drawer';
-	import { Plus } from 'lucide-svelte';
+	import {
+		Button,
+		Card,
+		Drawer,
+		EmptyState,
+		Field,
+		Input,
+		StatusDot,
+		icons
+	} from '@facile/muse';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
+	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { toIconify } from '$lib/icons';
 	import { getEntryUserDisplayName } from '$lib/user-display';
@@ -28,7 +33,7 @@
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
 	let stopTimeEntrySync: (() => void) | undefined;
 
-	type ActiveUser = { key: string; color: string; label: string; initial: string; avatarUrl: string };
+	type ActiveUser = { key: string; color: string; label: string; avatarUrl: string };
 
 	function activeUsersForProject(projectId: number): ActiveUser[] {
 		const seen = new Set<string>();
@@ -40,9 +45,8 @@
 			seen.add(key);
 			const label = getEntryUserDisplayName(e);
 			const color = normalizeUserColor(e.user_color);
-			const initial = (label[0] ?? '?').toUpperCase();
 			const avatarUrl = e.user_avatar_url ?? '';
-			users.push({ key, color, label, initial, avatarUrl });
+			users.push({ key, color, label, avatarUrl });
 		}
 		return users;
 	}
@@ -151,116 +155,95 @@
 	<title>Projects — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center justify-between">
-		<h1 class="text-2xl font-semibold">Projects</h1>
-		<Drawer.Root bind:open={drawerOpen} direction="bottom">
-			<Drawer.Trigger>
-				<Button variant="outline" class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
-					<Plus class="h-4 w-4" />
-					New project
-				</Button>
-			</Drawer.Trigger>
-			<Drawer.Portal>
-				<Drawer.Overlay class="fixed inset-0 bg-black/40" />
-				<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
-					<div class="mx-auto w-12 h-1.5 rounded-full bg-muted mt-4 mb-6 shrink-0"></div>
-					<div class="px-6 pb-8 flex flex-col gap-6 max-w-lg mx-auto w-full">
-						<Drawer.Header class="p-0">
-							<Drawer.Title>New project</Drawer.Title>
-						</Drawer.Header>
-						<form
-							class="flex flex-col gap-4"
-							onsubmit={(e) => {
-								e.preventDefault();
-								create();
-							}}
-						>
-							<div class="flex flex-col gap-1.5">
-								<Label>Icon</Label>
-								<IconPicker value={newProjectIcon} onSelect={(icon) => (newProjectIcon = icon)} />
-							</div>
-							<div class="flex flex-col gap-1.5">
-								<Label for="proj-name">Name</Label>
-								<Input id="proj-name" bind:value={name} required />
-							</div>
-							<div class="flex flex-col gap-1.5">
-								<Label for="proj-description">Description</Label>
-								<Input id="proj-description" bind:value={description} placeholder="Optional" />
-							</div>
-							<Button type="submit" class="w-full h-12 text-base">
-								<Plus class="h-4 w-4 mr-2" />
-								Create project
-							</Button>
-						</form>
-					</div>
-				</Drawer.Content>
-			</Drawer.Portal>
-		</Drawer.Root>
-	</div>
+<div class="flex flex-col gap-10 p-4 sm:p-6">
+	<section class="flex flex-col gap-4">
+		<div class="flex items-center justify-between gap-4">
+			<h1 class="text-fc-2xl font-semibold text-fc-fg">Projects</h1>
+			<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>New project</Button>
+		</div>
 
-	{#if projects.length === 0}
-		<p class="text-muted-foreground text-center py-12">No projects yet.</p>
-	{:else}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			{#each projects as project}
-				{@const activeUsers = activeUsersForProject(project.id)}
-				<Card.Root
-					class="border-border cursor-pointer transition-colors hover:bg-muted/40"
-					onclick={() => (window.location.href = `/projects/${project.id}`)}
-				>
-					<Card.Header class="gap-4">
+		{#if projects.length === 0}
+			<EmptyState
+				icon={icons.folder}
+				title="No projects yet."
+				description="Create a project to start tracking time against it."
+			>
+				<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>New project</Button>
+			</EmptyState>
+		{:else}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				{#each projects as project (project.id)}
+					{@const activeUsers = activeUsersForProject(project.id)}
+					<Card href={`/projects/${project.id}`} class="flex flex-col gap-4">
 						<div class="flex items-start justify-between gap-2">
-							<div class="min-w-0 flex-1 flex items-start gap-2.5">
-								<iconify-icon icon={toIconify(project.icon)} width="20" height="20" class="text-muted-foreground shrink-0 mt-0.5"></iconify-icon>
-								<div class="min-w-0">
-									<Card.Title class="truncate">{project.name}</Card.Title>
-									<Card.Description>Created {formatDate(project.created_at)}</Card.Description>
+							<div class="flex min-w-0 flex-1 items-start gap-2.5">
+								<iconify-icon
+									icon={toIconify(project.icon)}
+									width="20"
+									height="20"
+									class="mt-0.5 block shrink-0 text-fc-fg-muted"
+								></iconify-icon>
+								<div class="flex min-w-0 flex-col gap-1">
+									<p class="truncate text-fc-md font-semibold text-fc-fg">{project.name}</p>
+									<p class="text-fc-xs text-fc-fg-muted">
+										Created {formatDate(project.created_at)}
+									</p>
 								</div>
 							</div>
 							{#if activeUsers.length > 0}
 								<div class="flex shrink-0 items-center gap-1.5">
 									<div class="flex -space-x-2">
-										{#each activeUsers.slice(0, 4) as user}
-											{#if user.avatarUrl}
-												<img
-													src={user.avatarUrl}
-													alt={user.label}
-													title="{user.label} — working now"
-													class="h-7 w-7 rounded-full object-cover shadow-sm ring-1 ring-black/10"
-												/>
-											{:else}
-												<div
-													title="{user.label} — working now"
-													class="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white shadow-sm ring-1 ring-black/10"
-													style="background-color: {user.color};"
-												>
-													{user.initial}
-												</div>
-											{/if}
+										{#each activeUsers.slice(0, 4) as user (user.key)}
+											<UserAvatarBadge
+												name={user.label}
+												avatarUrl={user.avatarUrl}
+												color={user.color}
+												class="size-7 ring-1 ring-fc-border"
+											/>
 										{/each}
 										{#if activeUsers.length > 4}
-											<div class="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground shadow-sm ring-1 ring-black/10">
+											<span
+												class="flex size-7 items-center justify-center rounded-fc-pill bg-fc-surface text-fc-xs font-medium text-fc-fg-muted ring-1 ring-fc-border"
+											>
 												+{activeUsers.length - 4}
-											</div>
+											</span>
 										{/if}
 									</div>
-									<span class="relative flex h-2 w-2 shrink-0">
-										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-										<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-									</span>
+									<StatusDot tone="success" pulse label="Working now" />
 								</div>
 							{/if}
 						</div>
-					</Card.Header>
-					<Card.Content class="flex flex-col gap-4">
-						<p class="min-h-12 text-sm text-muted-foreground">
+
+						<p class="min-h-12 text-fc-sm text-fc-fg-muted">
 							{project.description || 'No description yet.'}
 						</p>
+
 						<UserColorSplitBar segments={projectSegments[project.id] ?? []} showLegend={false} />
-					</Card.Content>
-				</Card.Root>
-			{/each}
-		</div>
-	{/if}
+					</Card>
+				{/each}
+			</div>
+		{/if}
+	</section>
 </div>
+
+<Drawer bind:open={drawerOpen} title="New project">
+	<form
+		class="flex flex-col gap-4"
+		onsubmit={(e) => {
+			e.preventDefault();
+			create();
+		}}
+	>
+		<div class="flex flex-col gap-1.5">
+			<span class="text-fc-sm text-fc-fg">Icon</span>
+			<IconPicker value={newProjectIcon} onSelect={(icon) => (newProjectIcon = icon)} />
+		</div>
+		<Field label="Name">
+			<Input bind:value={name} required />
+		</Field>
+		<Field label="Description">
+			<Input bind:value={description} placeholder="Optional" />
+		</Field>
+		<Button type="submit" size="lg" icon={icons.plus} class="w-full">Create project</Button>
+	</form>
+</Drawer>

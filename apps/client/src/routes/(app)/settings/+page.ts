@@ -3,5 +3,5 @@ import { redirect } from '@sveltejs/kit';
 export const prerender = false;
 
 export function load() {
-	redirect(308, '/settings/profile');
+	redirect(307, '/settings/profile');
 }

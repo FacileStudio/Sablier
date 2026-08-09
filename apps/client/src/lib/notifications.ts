@@ -1,4 +1,4 @@
-import { toast } from 'svelte-sonner';
+import { toast } from '@facile/muse';
 import { backend } from '$lib/backend';
 import { urlBase64ToUint8Array } from './utils';
 
@@ -93,7 +93,7 @@ export class NotificationService {
 			if (permission === 'granted') {
 				toast.success('Notifications enabled! You will now receive alerts about your time entries.');
 			} else {
-				toast.error(
+				toast.danger(
 					'Notifications are disabled. Please enable notifications in your browser settings.'
 				);
 			}
