@@ -50,10 +50,6 @@
 
 	onMount(async () => {
 		const stored = localStorage.getItem(TOKEN_KEY) ?? '';
-		if (!stored) {
-			goto('/login');
-			return;
-		}
 		try {
 			const result = await backend.me(stored);
 			token = stored;

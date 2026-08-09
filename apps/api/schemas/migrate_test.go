@@ -11,7 +11,7 @@ import (
 
 func TestMigrateBackfillsMissingUserColors(t *testing.T) {
 	orm := openTestDatabase(t)
-	if err := orm.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}); err != nil {
+	if err := orm.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}); err != nil {
 		t.Fatalf("prepare schema: %v", err)
 	}
 
@@ -24,7 +24,7 @@ func TestMigrateBackfillsMissingUserColors(t *testing.T) {
 		}
 	}
 
-	if err := Migrate(orm); err != nil {
+	if err := Migrate(orm, ""); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -71,7 +71,7 @@ func TestMigrateRenamesNookPoolColumnsKeepingValues(t *testing.T) {
 		t.Fatalf("seed legacy row: %v", err)
 	}
 
-	if err := Migrate(orm); err != nil {
+	if err := Migrate(orm, ""); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -104,7 +104,7 @@ func TestMigrateRenamesPoolTablesKeepingRows(t *testing.T) {
 		t.Fatalf("seed outbox row: %v", err)
 	}
 
-	if err := Migrate(orm); err != nil {
+	if err := Migrate(orm, ""); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 

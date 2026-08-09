@@ -25,6 +25,10 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/modules/users"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/porte/local"
+	"github.com/FacileStudio/porte/oidc"
+	portepg "github.com/FacileStudio/porte/pg"
+	"github.com/FacileStudio/porte/session"
 
 	"github.com/FacileStudio/Journal/sdk/journal"
 	"github.com/FacileStudio/tronc/apiref"
@@ -62,11 +66,61 @@ func referenceConfig() apiref.Config {
 	}
 }
 
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service) chi.Router {
-	authService := auth.NewService(db, appEnv.StorageDir, appLogger)
+// buildAuth constructs porte: one session manager, shared by the OIDC kit and
+// the local login, over the identity tables.
+//
+// One manager and not two: they would each keep their own idea of the clock
+// and of whether the cookie is Secure, and porte refuses a kit whose config
+// disagrees with its manager's for exactly that reason. Discovery runs here,
+// so an unreachable or half-configured issuer fails at boot rather than on
+// somebody's first login — which is a change from what this app did, where a
+// discovery failure at route-registration time silently left SSO 404ing until
+// the next restart.
+func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *local.Kit, *oidc.Kit, error) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	store := portepg.New(sqlDB)
+	users := auth.NewUserStore(db)
+	cfg := appEnv.Porte()
+
+	sessions, err := session.New(cfg, session.Deps{Sessions: store.Sessions(), Logger: appLogger})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	kit, err := oidc.New(ctx, cfg, oidc.Deps{
+		Users:       users,
+		Identities:  store.Identities(),
+		Sessions:    sessions,
+		Codes:       store.LoginCodes(),
+		Logger:      appLogger,
+		ConfigExtra: func() map[string]any { return nil },
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// Sablier's floor has always been eight characters. porte defaults to
+	// twelve; raising it here would reject a password this app accepted
+	// yesterday, which is a product decision and not a migration.
+	passwords, err := local.New(local.Config{AllowRegistration: !appEnv.SSOOnly, MinPasswordLength: 8}, local.Deps{
+		Users:      users,
+		Identities: store.Identities(),
+		Sessions:   sessions,
+		Logger:     appLogger,
+		Count:      users.CountUsers,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return sessions, passwords, kit, nil
+}
+
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, passwords *local.Kit, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service) chi.Router {
+	authService := auth.NewService(db, sessions, passwords, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
-	userService := users.NewService(db, appEnv.StorageDir)
+	userService := users.NewService(db, appEnv.StorageDir, authService)
 	settingsService := settings.NewService(db)
 	spaceService := spaces.NewService(db)
 	projectService.SetPoolService(antenneService)
@@ -84,6 +138,8 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
 	router.Route("/api", func(api chi.Router) {
+		sessions.Mount(api)
+		kit.Mount(api)
 		auth.RegisterRoutes(api, authService, *appEnv)
 		projects.RegisterRoutes(api, projectService, authService)
 		timeentries.RegisterRoutes(api, timeEntryService, authService)
@@ -104,7 +160,11 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 }
 
 func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service) (*http.Server, error) {
-	router := buildRouter(db, sqlDB, appEnv, appLogger, notificationsService, antenneService)
+	sessions, passwords, kit, err := buildAuth(context.Background(), db, appEnv, appLogger)
+	if err != nil {
+		return nil, err
+	}
+	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService)
 
 	antenneService.AutoConnect(context.Background())
 
@@ -158,7 +218,7 @@ func run() error {
 		return err
 	}
 
-	if err := schemas.Migrate(db); err != nil {
+	if err := schemas.Migrate(db, appEnv.Porte().Issuer); err != nil {
 		appLogger.Error("failed to run migrations", slog.Any("error", err))
 		return err
 	} else {

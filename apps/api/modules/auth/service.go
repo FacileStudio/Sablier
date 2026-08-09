@@ -2,304 +2,98 @@ package auth
 
 import (
 	"context"
-	stderrors "errors"
 	"log/slog"
+	"net/http"
 	"strconv"
-	"strings"
-	"time"
 
-	"github.com/FacileStudio/Sablier/apps/api/internal/authcrypto"
-	"github.com/FacileStudio/Sablier/apps/api/internal/oidcavatar"
-	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/local"
+	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/errors"
 
-	gooidc "github.com/coreos/go-oidc/v3/oidc"
-	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
 
+// Service is what is left of Sablier's authentication after porte took the
+// credential: the profile lookup the rest of the app reads, and a thin wrapper
+// over porte/local so the register and login routes keep their response shape.
 type Service struct {
 	orm        *gorm.DB
-	storageDir string
+	sessions   *session.Manager
+	passwords  *local.Kit
 	logger     *slog.Logger
 	controller *Controller
 }
 
-func NewService(orm *gorm.DB, storageDir string, logger *slog.Logger) *Service {
-	service := &Service{orm: orm, storageDir: storageDir, logger: logger}
+func NewService(orm *gorm.DB, sessions *session.Manager, passwords *local.Kit, logger *slog.Logger) *Service {
+	service := &Service{orm: orm, sessions: sessions, passwords: passwords, logger: logger}
 	service.controller = newController(service)
 	return service
 }
 
-func (service *Service) registerUser(context context.Context, email string, password string) (userID string, token string, err error) {
-	hash, err := authcrypto.HashPassword(password)
-	if err != nil {
-		return "", "", errors.Invalid("invalid password")
-	}
-
-	color, err := usercolor.NextAvailable(context, service.orm)
-	if err != nil {
-		return "", "", errors.Internal("failed to choose user color", err)
-	}
-
-	record := &schemas.User{
-		Email:        email,
-		Color:        color,
-		PasswordHash: hash,
-	}
-	if err := service.orm.WithContext(context).Create(record).Error; err != nil {
-		if stderrors.Is(err, gorm.ErrDuplicatedKey) {
-			return "", "", errors.Conflict("email already registered")
-		}
-		return "", "", errors.Internal("failed to create user", err)
-	}
-
-	token, err = authcrypto.NewToken()
-	if err != nil {
-		return "", "", errors.Internal("failed to create session", err)
-	}
-	if err := service.insertSession(context, token, record.ID); err != nil {
-		return "", "", err
-	}
-
-	return strconv.FormatInt(record.ID, 10), token, nil
+// RequireAuth is porte's session middleware, re-exported so the eight module
+// routers keep passing this one service to middleware.RequireAuth.
+func (service *Service) RequireAuth(next http.Handler) http.Handler {
+	return service.sessions.RequireAuth(next)
 }
 
-func (service *Service) loginUser(context context.Context, email string, password string) (userID string, token string, err error) {
-	var record schemas.User
-	err = service.orm.WithContext(context).Where("email = ?", email).First(&record).Error
-	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return "", "", errors.Unauthorized("invalid credentials")
-	}
-	if err != nil {
-		return "", "", errors.Internal("failed to read user", err)
-	}
-	if !authcrypto.VerifyPassword(password, record.PasswordHash) {
-		return "", "", errors.Unauthorized("invalid credentials")
-	}
-
-	token, err = authcrypto.NewToken()
-	if err != nil {
-		return "", "", errors.Internal("failed to create session", err)
-	}
-	if err := service.insertSession(context, token, record.ID); err != nil {
-		return "", "", err
-	}
-
-	return strconv.FormatInt(record.ID, 10), token, nil
-}
-
-func (service *Service) insertSession(context context.Context, token string, userID int64) error {
-	record := &schemas.Session{
-		Token:     authcrypto.HashToken(token),
-		UserID:    userID,
-		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
-	}
-	if err := service.orm.WithContext(context).Create(record).Error; err != nil {
-		return errors.Internal("failed to persist session", err)
-	}
-	return nil
-}
-
-func normalizeBearer(authorization string) string {
-	value := strings.TrimSpace(authorization)
-	if len(value) >= 7 && strings.EqualFold(value[:7], "bearer ") {
-		return strings.TrimSpace(value[7:])
-	}
-	return value
-}
-
-func (service *Service) authenticateRequest(context context.Context, authorization string) (string, *Data, error) {
-	token := normalizeBearer(authorization)
-	if token == "" {
-		return "", nil, errors.Unauthorized("missing auth token")
-	}
-
-	hashed := authcrypto.HashToken(token)
-
+// IdentityForUser turns the user id porte authenticated into the identity the
+// rest of Sablier reads. It is no longer where authentication happens.
+//
+// The email costs one query per authenticated request, which is what the old
+// join cost. porte deliberately carries neither the email nor any role: what a
+// role may do is the app's business, and the profile lives in the app's table.
+func (service *Service) IdentityForUser(ctx context.Context, userID int64) (string, string, error) {
 	var out struct {
-		UserID    int64
-		Email     string
-		ExpiresAt time.Time
+		ID    int64
+		Email string
 	}
-	err := service.orm.WithContext(context).
-		Table("sessions s").
-		Select("u.id as user_id, u.email as email, s.expires_at as expires_at").
-		Joins("join users u on u.id = s.user_id").
-		Where("s.token = ?", hashed).
+	err := service.orm.WithContext(ctx).
+		Model(&schemas.User{}).
+		Select("id", "email").
+		Where("id = ?", userID).
 		Scan(&out).Error
 	if err != nil {
-		return "", nil, errors.Internal("failed to validate auth token", err)
+		return "", "", errors.Internal("failed to load the account", err)
 	}
-	if out.UserID != 0 {
-		if time.Now().After(out.ExpiresAt) {
-			return "", nil, errors.Unauthorized("expired auth token")
-		}
-		return strconv.FormatInt(out.UserID, 10), &Data{Email: out.Email}, nil
+	if out.ID == 0 {
+		// The session outlived the user. porte's foreign key cascades a
+		// delete, so this is a race, and it is still not authenticated.
+		return "", "", errors.Unauthorized("invalid auth token")
 	}
-
-	var apiOut struct {
-		UserID int64
-		Email  string
-	}
-	err = service.orm.WithContext(context).
-		Table("api_tokens t").
-		Select("u.id as user_id, u.email as email").
-		Joins("join users u on u.id = t.user_id").
-		Where("t.token = ?", hashed).
-		Scan(&apiOut).Error
-	if err != nil {
-		return "", nil, errors.Internal("failed to validate api token", err)
-	}
-	if apiOut.UserID == 0 {
-		return "", nil, errors.Unauthorized("invalid auth token")
-	}
-	return strconv.FormatInt(apiOut.UserID, 10), &Data{Email: apiOut.Email}, nil
+	return strconv.FormatInt(out.ID, 10), out.Email, nil
 }
 
-func (service *Service) Authenticate(context context.Context, authorization string) (string, any, error) {
-	return service.authenticateRequest(context, authorization)
-}
-
-func (service *Service) upsertOIDCUser(ctx context.Context, subject string, email string, emailTrusted bool, profile oidcavatar.Profile, oauth2Token *oauth2.Token) (userID string, token string, err error) {
-	var record schemas.User
-	found := false
-	if subject != "" {
-		lookupErr := service.orm.WithContext(ctx).Where("oidc_subject = ?", subject).First(&record).Error
-		if lookupErr == nil {
-			found = true
-		} else if !stderrors.Is(lookupErr, gorm.ErrRecordNotFound) {
-			return "", "", errors.Internal("failed to look up user", lookupErr)
-		}
-	}
-	if !found && emailTrusted {
-		lookupErr := service.orm.WithContext(ctx).Where("email = ?", email).First(&record).Error
-		if lookupErr == nil {
-			found = true
-		} else if !stderrors.Is(lookupErr, gorm.ErrRecordNotFound) {
-			return "", "", errors.Internal("failed to look up user", lookupErr)
-		}
-	}
-
-	isNew := !found
-	if isNew {
-		color, colorErr := usercolor.NextAvailable(ctx, service.orm)
-		if colorErr != nil {
-			return "", "", errors.Internal("failed to choose user color", colorErr)
-		}
-		record = schemas.User{Email: email, Color: color}
-		if displayName := profile.DisplayName(); displayName != "" {
-			record.Name = displayName
-		}
-		if err := service.orm.WithContext(ctx).Create(&record).Error; err != nil {
-			return "", "", errors.Internal("failed to create user", err)
-		}
-		record.OIDCAccessToken = oauth2Token.AccessToken
-		record.OIDCRefreshToken = oauth2Token.RefreshToken
-		record.OIDCTokenExpiry = oauth2Token.Expiry
-		record.ProfileSyncedAt = time.Now()
-		record.OIDCPictureURL = oidcavatar.PhotoURL(profile.Picture)
-		service.orm.WithContext(ctx).Save(&record)
-	} else {
-		if displayName := profile.DisplayName(); displayName != "" {
-			record.Name = displayName
-		}
-		record.OIDCPictureURL = oidcavatar.PhotoURL(profile.Picture)
-		record.OIDCAccessToken = oauth2Token.AccessToken
-		record.OIDCRefreshToken = oauth2Token.RefreshToken
-		record.OIDCTokenExpiry = oauth2Token.Expiry
-		record.ProfileSyncedAt = time.Now()
-		service.orm.WithContext(ctx).Save(&record)
-	}
-
-	if subject != "" && (record.OIDCSubject == nil || *record.OIDCSubject != subject) {
-		record.OIDCSubject = &subject
-		service.orm.WithContext(ctx).Select("oidc_subject").Save(&record)
-	}
-	if email != "" && record.Email != email {
-		record.Email = email
-		service.orm.WithContext(ctx).Select("email").Save(&record)
-	}
-
-	token, err = authcrypto.NewToken()
+// Register creates an account through porte/local and signs it in. The cookie
+// is set on the way out and the token comes back for the bearer transport, so
+// one call serves the dashboard and a script.
+func (service *Service) Register(ctx context.Context, w http.ResponseWriter, r *http.Request, email, password string) (string, string, error) {
+	userID, token, err := service.passwords.Register(ctx, w, r, email, "", password)
 	if err != nil {
-		return "", "", errors.Internal("failed to create session", err)
-	}
-	if err := service.insertSession(ctx, token, record.ID); err != nil {
 		return "", "", err
 	}
-	return strconv.FormatInt(record.ID, 10), token, nil
+	return strconv.FormatInt(userID, 10), token, nil
 }
 
-func (service *Service) SyncOIDCProfile(ctx context.Context, userID string, provider *gooidc.Provider, oauth2Cfg oauth2.Config) (bool, error) {
-	var record schemas.User
-	if err := service.orm.WithContext(ctx).Where("id = ?", userID).First(&record).Error; err != nil {
-		return false, errors.Internal("failed to load user", err)
-	}
-
-	if record.OIDCAccessToken == "" {
-		return false, nil
-	}
-
-	if time.Since(record.ProfileSyncedAt) < 5*time.Minute {
-		return false, nil
-	}
-
-	storedToken := &oauth2.Token{
-		AccessToken:  record.OIDCAccessToken,
-		RefreshToken: record.OIDCRefreshToken,
-		Expiry:       record.OIDCTokenExpiry,
-	}
-
-	tokenSource := oauth2Cfg.TokenSource(ctx, storedToken)
-
-	userInfo, err := provider.UserInfo(ctx, tokenSource)
+func (service *Service) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, email, password string) (string, string, error) {
+	userID, token, err := service.passwords.Login(ctx, w, r, email, password)
 	if err != nil {
-		service.logger.Warn("OIDC profile sync failed, clearing stored tokens", slog.Int64("user_id", record.ID), slog.Any("error", err))
-		record.OIDCAccessToken = ""
-		record.OIDCRefreshToken = ""
-		record.OIDCTokenExpiry = time.Time{}
-		service.orm.WithContext(ctx).Save(&record)
-		return false, nil
+		return "", "", err
 	}
-
-	var claims struct {
-		Name              string `json:"name"`
-		PreferredUsername string `json:"preferred_username"`
-		GivenName         string `json:"given_name"`
-		FamilyName        string `json:"family_name"`
-		Picture           string `json:"picture"`
-	}
-	if err := userInfo.Claims(&claims); err != nil {
-		service.logger.Warn("failed to parse UserInfo claims", slog.Int64("user_id", record.ID), slog.Any("error", err))
-		return false, nil
-	}
-
-	profile := oidcavatar.Profile{
-		Name:              claims.Name,
-		PreferredUsername: claims.PreferredUsername,
-		GivenName:         claims.GivenName,
-		FamilyName:        claims.FamilyName,
-		Picture:           claims.Picture,
-	}
-
-	if displayName := profile.DisplayName(); displayName != "" {
-		record.Name = displayName
-	}
-
-	record.OIDCPictureURL = oidcavatar.PhotoURL(profile.Picture)
-
-	newToken, tokenErr := tokenSource.Token()
-	if tokenErr == nil {
-		record.OIDCAccessToken = newToken.AccessToken
-		record.OIDCRefreshToken = newToken.RefreshToken
-		record.OIDCTokenExpiry = newToken.Expiry
-	}
-
-	record.ProfileSyncedAt = time.Now()
-	service.orm.WithContext(ctx).Save(&record)
-
-	service.logger.Info("synced OIDC profile", slog.Int64("user_id", record.ID))
-	return true, nil
+	return strconv.FormatInt(userID, 10), token, nil
 }
+
+// SetPassword is what PATCH /users/me calls when the body carries one.
+func (service *Service) SetPassword(ctx context.Context, userID int64, email, password string) error {
+	return service.passwords.SetPassword(ctx, userID, email, password)
+}
+
+// Issue mints a named API token: a porte session with a label and no
+// expiry, which is what the separate api_tokens table used to be.
+func (service *Service) Issue(ctx context.Context, userID int64, label string) (string, porte.Session, error) {
+	return service.sessions.Issue(ctx, userID, label)
+}
+
+// Sessions exposes the manager for the modules that list or revoke tokens.
+func (service *Service) Sessions() *session.Manager { return service.sessions }

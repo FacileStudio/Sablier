@@ -11,22 +11,32 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FacileStudio/Sablier/apps/api/internal/authcrypto"
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/errors"
 
 	"gorm.io/gorm"
 )
 
+// TokenIssuer is the slice of the auth service this module needs: minting a
+// labelled session and reaching the manager that lists and revokes them.
+type TokenIssuer interface {
+	Issue(ctx context.Context, userID int64, label string) (string, porte.Session, error)
+	Sessions() *session.Manager
+	SetPassword(ctx context.Context, userID int64, email, password string) error
+}
+
 type Service struct {
 	orm        *gorm.DB
 	storageDir string
+	tokens     TokenIssuer
 	controller *Controller
 }
 
-func NewService(orm *gorm.DB, storageDir string) *Service {
-	service := &Service{orm: orm, storageDir: storageDir}
+func NewService(orm *gorm.DB, storageDir string, tokens TokenIssuer) *Service {
+	service := &Service{orm: orm, storageDir: storageDir, tokens: tokens}
 	service.controller = newController(service)
 	return service
 }
@@ -82,12 +92,24 @@ func (service *Service) updateUser(context context.Context, userID string, name 
 	if email != nil {
 		updates["email"] = *email
 	}
+	// The password is porte's, not a column on this row. Writing
+	// users.password_hash would look like it worked and change nothing:
+	// porte reads the identity table, so the old password would keep
+	// signing in and the new one would never work.
 	if password != nil {
-		hash, err := authcrypto.HashPassword(*password)
-		if err != nil {
-			return nil, errors.Invalid("invalid password")
+		address := ""
+		if email != nil {
+			address = *email
+		} else {
+			var current schemas.User
+			if err := service.orm.WithContext(context).Select("email").First(&current, id).Error; err != nil {
+				return nil, errors.Internal("failed to read the account", err)
+			}
+			address = current.Email
 		}
-		updates["password_hash"] = hash
+		if err := service.tokens.SetPassword(context, id, address, *password); err != nil {
+			return nil, err
+		}
 	}
 	if color != nil {
 		updates["color"] = *color
@@ -283,47 +305,42 @@ func mapUser(record schemas.User) *User {
 	}
 }
 
-func (service *Service) createApiToken(context context.Context, userID string, name string) (string, *schemas.ApiToken, error) {
+// The API token is a porte session with a label and no expiry. It used to be
+// its own table with its own lookup in the auth path; porte.Session.Label
+// exists precisely so that a named credential is not a second mechanism, and
+// folding it in means one place issues, one place verifies, one place revokes.
+//
+// One token per user, as before: creating replaces.
+func (service *Service) createApiToken(context context.Context, userID string, name string) (string, *porte.Session, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return "", nil, errors.Internal("failed to parse user id", err)
 	}
-
-	service.orm.WithContext(context).Where("user_id = ?", id).Delete(&schemas.ApiToken{})
-
-	rawToken, err := authcrypto.NewToken()
+	if err := service.revokeLabelled(context, id); err != nil {
+		return "", nil, err
+	}
+	rawToken, issued, err := service.tokens.Issue(context, id, name)
 	if err != nil {
-		return "", nil, errors.Internal("failed to generate token", err)
+		return "", nil, err
 	}
-
-	hasher := authcrypto.HashToken(rawToken)
-	record := &schemas.ApiToken{
-		Token:  hasher,
-		UserID: id,
-		Name:   name,
-	}
-	if err := service.orm.WithContext(context).Create(record).Error; err != nil {
-		return "", nil, errors.Internal("failed to store api token", err)
-	}
-
-	return rawToken, record, nil
+	return rawToken, &issued, nil
 }
 
-func (service *Service) getApiToken(context context.Context, userID string) (*schemas.ApiToken, error) {
+func (service *Service) getApiToken(context context.Context, userID string) (*porte.Session, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Internal("failed to parse user id", err)
 	}
-
-	var record schemas.ApiToken
-	err = service.orm.WithContext(context).Where("user_id = ?", id).First(&record).Error
-	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
+	held, err := service.tokens.Sessions().List(context, id)
 	if err != nil {
 		return nil, errors.Internal("failed to read api token", err)
 	}
-	return &record, nil
+	for _, candidate := range held {
+		if candidate.IsAPIToken() {
+			return &candidate, nil
+		}
+	}
+	return nil, nil
 }
 
 func (service *Service) deleteApiToken(context context.Context, userID string) error {
@@ -331,8 +348,24 @@ func (service *Service) deleteApiToken(context context.Context, userID string) e
 	if err != nil {
 		return errors.Internal("failed to parse user id", err)
 	}
+	return service.revokeLabelled(context, id)
+}
 
-	service.orm.WithContext(context).Where("user_id = ?", id).Delete(&schemas.ApiToken{})
+// revokeLabelled drops every named token this user holds, and only those: an
+// interactive login has no label and must survive minting a new API token.
+func (service *Service) revokeLabelled(context context.Context, userID int64) error {
+	held, err := service.tokens.Sessions().List(context, userID)
+	if err != nil {
+		return errors.Internal("failed to read api tokens", err)
+	}
+	for _, candidate := range held {
+		if !candidate.IsAPIToken() {
+			continue
+		}
+		if err := service.tokens.Sessions().Revoke(context, userID, candidate.ID); err != nil {
+			return errors.Internal("failed to revoke api token", err)
+		}
+	}
 	return nil
 }
 

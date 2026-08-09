@@ -27,6 +27,11 @@
 			goto('/dashboard');
 			return;
 		}
+		try {
+			await backend.me();
+			goto('/dashboard');
+			return;
+		} catch {}
 		const raw = $page.url.searchParams.get('tab');
 		if (raw === 'register') tab = 'register';
 

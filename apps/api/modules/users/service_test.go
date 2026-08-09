@@ -18,7 +18,7 @@ import (
 
 func TestPersistAvatarFileWritesToStorageDir(t *testing.T) {
 	storageDir := t.TempDir()
-	service := NewService(nil, storageDir)
+	service := NewService(nil, storageDir, nil)
 	payload := bytes.Repeat([]byte{0x89, 0x50, 0x4e, 0x47}, 256)
 
 	relativePath, absolutePath, err := service.persistAvatarFile(42, bytes.NewReader(payload), "image/png")
@@ -45,7 +45,7 @@ func TestPersistAvatarFileWritesToStorageDir(t *testing.T) {
 
 func TestRemoveAvatarFileDeletesManagedAvatarOnly(t *testing.T) {
 	storageDir := t.TempDir()
-	service := NewService(nil, storageDir)
+	service := NewService(nil, storageDir, nil)
 
 	managedPath := filepath.Join(storageDir, "avatars", "managed.png")
 	if err := os.MkdirAll(filepath.Dir(managedPath), 0o755); err != nil {
@@ -157,7 +157,7 @@ func newDatabaseBackedService(t *testing.T) *Service {
 		t.Fatalf("migrate test database: %v", err)
 	}
 
-	return NewService(orm, t.TempDir())
+	return NewService(orm, t.TempDir(), nil)
 }
 
 func seedUser(t *testing.T, orm *gorm.DB, email string, color string) schemas.User {
