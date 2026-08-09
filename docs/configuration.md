@@ -60,6 +60,7 @@ required, and startup fails with a clear error if any of them is blank.
 | `OIDC_CLIENT_SECRET` | with issuer | — | Client secret from the provider |
 | `OIDC_REDIRECT_URL` | with issuer | — | Must point at `/api/auth/oidc/callback` on the public hostname |
 | `OIDC_SUCCESS_URL` | no | first `CORS_ALLOWED_ORIGINS` entry | Where the callback redirects after a successful login |
+| `OIDC_CLAIMS_SCOPE` | no | — | Scope carrying the `roles` claim, `roles` on Facile's provider. Setting it while the provider does not advertise the scope stops the API from booting, on purpose: a half-configured role claim denies everyone silently |
 
 The callback route is registered inside the `/api` group, so the redirect URL is
 `https://<host>/api/auth/oidc/callback`. Both `.env.example` files still show it without
