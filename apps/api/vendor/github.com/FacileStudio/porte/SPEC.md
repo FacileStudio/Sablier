@@ -582,6 +582,9 @@ Dependency rules, following `caisse`:
 
 - `tronc/errors` for the suite error envelope, so `httpjson.WriteError` maps failures to the
   right status with no glue in the app. This couples `porte` to the suite deliberately.
+  **Exception, v0.2.4:** the two handlers a browser navigates to — `/auth/oidc` and its
+  callback — redirect to `Config.LoginFailure(reason)` instead. An error envelope is for a
+  caller that parses it, and there the caller is a person looking at an address bar.
 - **No GORM.** All six apps use it, but forcing it is a heavier commitment than anything the
   suite shares today, and it is what pushed `tronc` to split `migrate` and `testdb` into
   separate modules. `database/sql` keeps everything in one module.
@@ -772,52 +775,118 @@ in CHANGELOG.md with their reasoning. Three changed the contract and are noted i
 `Config.SessionIdleTTL` and the seven-day idle window, `IdentityStore.MarkRolesSynced`, and the
 `__Host-` cookie prefix with the bare names still read for migration.
 
-### Still unproven — recorded 2026-08-09, after the first adoption
+### Still unproven — recorded 2026-08-09, after the first adoption, revised the same day after the second
 
-Journal runs `porte` against the suite's Authentik, so the browser login, the callback, the upsert,
-the cookie and the password login are walked by real users. Two things are not, and one of them is
-a live gap rather than a missing test.
+Journal and Sablier run `porte` against the suite's Authentik, so the browser login, the callback,
+the upsert, the cookie and the password login are walked by real users. One of the two gaps below
+has since closed; what closed it is recorded because the closing is what the rest of the suite
+inherits.
 
 **The CLI flow has never run against a real Authentik.** `?flow=cli`, the loopback `?port=N`
 callback, the one-time code and `POST /auth/oidc/exchange` are walked end to end in
 `oidc/flow_test.go` against the conformant in-process issuer, and no further. Journal has no CLI,
-so the first app that does is the first real exercise. What is untested is not the code path — it
-is Authentik's behaviour on a redirect URI pointing at `127.0.0.1` with a variable port, which is
-a provider configuration question the flow test cannot ask.
+so the first app that does is the first real exercise.
 
-**Back-channel logout cannot work against the deployed Authentik, and does not.** The endpoint is
-implemented, validates the logout token, and is covered by the flow test — but the deployed
-provider is **Authentik 2025.6.3, which has no field to configure a back-channel logout URI at
-all**. Support landed in 2025.10. Nothing is calling `POST /auth/backchannel-logout` in
-production, and nothing can until that upgrade.
+This section used to say the untested part was "Authentik's behaviour on a redirect URI pointing
+at `127.0.0.1` with a variable port, a provider configuration question the flow test cannot ask."
+**That is wrong, and the design is why.** The port never reaches the IdP: `?port=N` is validated
+and parked in `porte`'s own pending-state cookie (`oidc/cookie.go:25`, `handlers.go:85`), the
+authorization request carries the app's single fixed `OIDC_REDIRECT_URL`, and the redirect to
+`127.0.0.1:N` is issued by the *app* after the callback, once the code is minted
+(`handlers.go:252`). Confirmed against the deployed provider: Sablier's has exactly one redirect
+URI, `https://sablier.facile.studio/api/auth/oidc/callback`, in `STRICT` matching mode — and the
+CLI flow does not need a second one. A loopback URI in the provider would be the design that
+hands the CLI an authorization code worth something on its own, which is the design this one was
+chosen over.
 
-The consequence is concrete and must not be softened: **an account disabled or deleted in
-Authentik keeps its Journal session until that session expires.** The IdP stops issuing new
-tokens immediately, so the user cannot log in again — but the session they already hold is an
-opaque token in `porte`'s own table, and the only mechanisms that reach it are back-channel logout
-and the app's own revocation. `ClaimsTTL` does not close this: it refreshes *roles* within five
-minutes, and only when `ClaimsScope` is configured, which no app has enabled. A deactivated
-employee therefore retains access for up to `SessionIdleTTL` — seven days of not using it, thirty
-days if they keep using it.
+So the exercise is narrower than it looked, and worth stating so the result is not over-read:
+`sablier-cli` (`src/login.rs:39`) against a Sablier that is `SSO_ONLY=true` proves the one-time
+code survives a real provider's timing and a real browser's redirect chain. It cannot fail for
+provider-configuration reasons, because the provider is not configured for it at all.
 
-Until Authentik is on 2025.10 or later, offboarding means revoking sessions in each app, and the
-mechanism for that is `session.Manager.RevokeUser`. Upgrading the provider is what makes this a
-protocol concern again; it is a deployment task, and it is the highest-value one open against
-`porte`.
+**Back-channel logout is wired — closed 2026-08-09.** This section used to say the endpoint could
+not work, because the deployed provider was Authentik 2025.6.3 and the field to configure a
+back-channel logout URI did not exist before 2025.10. The provider was taken to **2026.5.6** that
+day, and the field exists: `OAuth2Provider` carries `logout_method` (`backchannel` /
+`frontchannel`) and `logout_uri`.
+
+Both `porte` adopters are pointed at their endpoint —
+`https://journal.facile.studio/api/auth/backchannel-logout` and the Sablier equivalent. The other
+eleven providers carry the default `logout_method=backchannel` with an **empty** `logout_uri`,
+which means they receive nothing; that is correct rather than pending, because they have no
+endpoint to receive it until they adopt `porte`. It is also the concrete per-app benefit to lead
+with when proposing the next adoption: **disabling an account in Authentik now reaches sessions it
+already issued**, which for the eleven is still not true.
+
+Two things about the upgrade are load-bearing for `porte` and are not Authentik trivia:
+
+- **Sessions minted before the upgrade become unreadable** and 500 inside Authentik's own login
+  middleware. Anonymous requests pass, so discovery and health checks stay green while a real
+  user sees a server error. Purging `Session` and `AuthenticatedSession` is part of the upgrade,
+  not an optional tidy-up. This is Authentik's session table, not `porte`'s — a `porte` session
+  survives, which is exactly the decoupling the opaque-token design was for.
+- **Authentik 2026.x no longer serves `/media/` over HTTP at all.** Every Facile app stores the
+  absolute `https://porte.facile.studio/media/user-avatars/<uuid>.<ext>` in `oidc_picture_url` and
+  receives it as `Claims.AvatarURL`, so the whole suite's avatars died at once and are now served
+  by an nginx sidecar on the same volume, behind a higher-priority Traefik route. The lesson for
+  `porte` is narrower than "pin the IdP": an absolute URL to the IdP's file storage is a contract
+  with an internal detail that has now proven it changes between versions, which is an argument
+  for `porte/avatarfs` — apps that store the bytes rather than the URL were unaffected.
+
+What has *not* changed is the offboarding runbook for an app that has not adopted `porte`:
+revoking in each app, and for `porte` apps the mechanism remains `session.Manager.RevokeUser`,
+which is still what a manual revocation goes through when the IdP is not the trigger.
+
+### Done since this list was written — 2026-08-09
+
+- ~~**The roles scope mapping in `authentik-config`**, the producing half of §5c.~~ The
+  `Facile roles` scope mapping exists on the provider (`scope_name = roles`), it is granted to
+  Journal's application and to no other, and **Journal runs `OIDC_CLAIMS_SCOPE=roles` in
+  production**. The claim arrives from a real provider, so §5c is no longer paper on the
+  producing side either.
+
+  **It carries a trap that must be settled before any app authorizes on it.** The mapping is
+  built from the user's groups, and Facile groups are *per-app membership markers*
+  (`journal-users`, `nuage-users`, `coffre-users`, …) rather than roles — a real user sits in
+  around twelve. So the `roles` claim is a cross-app membership list, and an app that authorizes
+  on it is reading other apps' access as its own. Nothing reads it today: Journal requests the
+  scope, `porte` stores it on the identity, and no handler consults it. That is a safe place to
+  stand, not a resolution. The two exits are Authentik's built-in `entitlements` mapping, which
+  is already filtered to the application the token is for and needs RBAC entitlements defined,
+  or filtering the groups by app prefix in the mapping. Decide before the first `RequireRole`,
+  not during.
+
+  Related, and found only by upgrading: `request.user.ak_groups` is deprecated in 2026.2 and the
+  mapping has been migrated to `request.user.groups`. The startup guard in §5c is aimed at
+  exactly this failure — a scope granted with nothing behind it — and this is the first evidence
+  that the shape it guards against occurs in practice.
+
+- ~~**Back-channel logout blocked on the provider version.**~~ See above: Authentik is on
+  2026.5.6 and both adopters receive logout tokens.
+
+- ~~**`authentik-config` is version control.**~~ It is not. The directory holds the two policy
+  scripts and a README, and the git repository in it **has no commits at all** — so the mirror
+  the avatar recipe tells you to copy from is not actually tracking anything. Its README also
+  still documents `FILE_PATH = /media/user-avatars/`, while the volume now mounts at `/data`, so
+  a new avatar upload would land in the container layer and vanish on the next deploy. Verify
+  against the live policy object before trusting either file. This is not a `porte` change, but
+  it is the thing most likely to silently break the avatar path `porte` depends on.
 
 ### Still ahead, in order
 
-1. **The roles scope mapping in `authentik-config`** — the producing half of §5c. Until it
-   exists, `ClaimsScope` cannot be enabled against a real provider. The failure it guards
-   against — a granted scope with no claim behind it — is now covered by the flow test, so what
-   is missing is the deployment, not the assurance.
-2. **The e-commerce demo**, greenfield and outside the suite, which forces the non-Authentik
-   issuer test on day one.
+1. **The Sablier CLI login against the real provider** — the last unwalked path in §5b, and now
+   a ten-minute test rather than a missing consumer. See the CLI note above for what it does and
+   does not prove.
+2. **`docs/architecture.md`** — both conditions are met: a production request path, and a second
+   adopter of the opposite shape to the first. Drawn from Journal and Sablier together it
+   documents `porte`; drawn from either alone it documents that app.
 3. **Nuage**, the extraction source, then **Perception**, whose `internal/identity/` seam and
    `seam_test.go` were designed against this idea rather than extracted from it — it is the repo
-   whose structure will say whether the interface shape is right.
-4. **`docs/architecture.md`**, once there is a **second** adopter. The original condition — a
-   request flow somebody has walked in production rather than in a test — is met, and the page is
-   still not worth writing from one app: drawn from Journal alone it would document Journal's
-   wiring. v0.2 is the evidence for that caution, since one consumer was enough to move a package
-   boundary.
+   whose structure will say whether the interface shape is right. Nuage is also where the
+   `roles`-versus-`entitlements` question above stops being theoretical, because it has real
+   per-space authorization.
+4. **The e-commerce demo**, greenfield and outside the suite, which forces the non-Authentik
+   issuer test on day one.
+5. **v0.3 `porte/espace`** — still gated on `enveloppe` learning to carry a space identity, as
+   §4 records. Do not start it before Nuage: Nuage is the app whose spaces should decide the
+   shape, and building the package first would buy a v0.4 that breaks it.
