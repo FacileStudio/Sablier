@@ -69,6 +69,10 @@ for dir in $GO_MODULES; do
 
     "$GO" vet ./... || s=1
     "$GO" test ./... || s=1
+
+    if [ -z "${SABLIER_TEST_DATABASE_URL:-}" ]; then
+      echo "check: SABLIER_TEST_DATABASE_URL is unset, the PostgreSQL migration tests were skipped (CI still runs them)" >&2
+    fi
     exit "$s"
   ) || status=1
 done

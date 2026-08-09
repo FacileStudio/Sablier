@@ -159,7 +159,8 @@
 		}
 	}
 
-	function logout() {
+	async function logout() {
+		await backend.logout(ctx.token).catch(() => {});
 		localStorage.removeItem(TOKEN_KEY);
 		goto('/login');
 	}

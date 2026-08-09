@@ -5,37 +5,54 @@ import (
 	"net/http"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/porte"
 	"github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
 )
 
+// Authenticator is the auth service: porte's session middleware, plus the
+// lookup that turns the user id porte resolved into the identity the rest of
+// Sablier reads.
+//
+// It stays one parameter so that all eight module routers keep calling
+// middleware.RequireAuth(authService) unchanged — the seam this migration was
+// designed around.
 type Authenticator interface {
-	Authenticate(context context.Context, authorization string) (string, any, error)
+	RequireAuth(http.Handler) http.Handler
+	IdentityForUser(ctx context.Context, userID int64) (id string, email string, err error)
 }
 
-func RequireAuth(authService Authenticator) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
+// RequireAuth runs porte's middleware and then fills in what porte
+// deliberately does not carry.
+//
+// porte verifies the credential — cookie or bearer, one hashed session row,
+// one expiry, one idle window — and hands on a user id. It holds no email,
+// because a library that decided what an identity means to an app would be
+// routed around by the second app that adopted it. So the profile is looked up
+// here and lands in the same context every controller already reads, keeping
+// authcontext.Identity.UserID a decimal string and leaving the twenty-odd
+// strconv.ParseInt call sites downstream untouched.
+func RequireAuth(auth Authenticator) func(http.Handler) http.Handler {
+	hydrate := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-			userID, rawData, err := authService.Authenticate(request.Context(), request.Header.Get("Authorization"))
+			authenticated, ok := porte.From(request.Context())
+			if !ok {
+				httpjson.WriteError(w, errors.Unauthorized("missing auth token"))
+				return
+			}
+			userID, email, err := auth.IdentityForUser(request.Context(), authenticated.UserID)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return
 			}
-			data, ok := rawData.(interface{ GetEmail() string })
-			if !ok {
-				httpjson.WriteError(w, errors.Unauthorized("missing auth"))
-				return
-			}
-			if data == nil {
-				httpjson.WriteError(w, errors.Unauthorized("missing auth"))
-				return
-			}
-
 			authContext := authcontext.WithIdentity(request.Context(), authcontext.Identity{
 				UserID: userID,
-				Email:  data.GetEmail(),
+				Email:  email,
 			})
 			next.ServeHTTP(w, request.WithContext(authContext))
 		})
+	}
+	return func(next http.Handler) http.Handler {
+		return auth.RequireAuth(hydrate(next))
 	}
 }

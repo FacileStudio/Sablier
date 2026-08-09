@@ -127,23 +127,42 @@ type ApiErrorPayload = {
 	error?: { message?: string };
 };
 
-async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
-	const headers = new Headers(options.headers);
-	if (!headers.has('Content-Type') && options.body) {
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function buildHeaders(init: HeadersInit | undefined, method: string, token?: string, jsonBody = false) {
+	const headers = new Headers(init);
+	if (jsonBody && !headers.has('Content-Type')) {
 		headers.set('Content-Type', 'application/json');
 	}
 	if (token) {
 		headers.set('Authorization', `Bearer ${token}`);
 	}
-	const response = await fetch(`${backendBaseUrl}${path}`, { ...options, headers });
+	if (!SAFE_METHODS.has(method.toUpperCase())) {
+		headers.set('X-Facile-CSRF', '1');
+	}
+	return headers;
+}
+
+async function requestError(response: Response) {
+	let payload: ApiErrorPayload | undefined;
+	try {
+		payload = (await response.json()) as ApiErrorPayload;
+	} catch {
+		payload = undefined;
+	}
+	return new Error(payload?.error?.message || `Request failed with status ${response.status}`);
+}
+
+async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
+	const method = options.method ?? 'GET';
+	const headers = buildHeaders(options.headers, method, token, Boolean(options.body));
+	const response = await fetch(`${backendBaseUrl}${path}`, {
+		...options,
+		headers,
+		credentials: 'same-origin'
+	});
 	if (!response.ok) {
-		let payload: ApiErrorPayload | undefined;
-		try {
-			payload = (await response.json()) as ApiErrorPayload;
-		} catch {
-			payload = undefined;
-		}
-		throw new Error(payload?.error?.message || `Request failed with status ${response.status}`);
+		throw await requestError(response);
 	}
 	return (await response.json()) as T;
 }
@@ -188,7 +207,10 @@ export const backend = {
 			body: JSON.stringify({ email, password })
 		});
 	},
-	me(token: string) {
+	logout(token?: string) {
+		return apiFetch<{ logged_out: boolean }>('/api/auth/logout', { method: 'POST' }, token);
+	},
+	me(token?: string) {
 		return apiFetch<MeResponse>('/api/users/me', {}, token).then((result) => ({
 			user: normalizeUser(result.user)
 		}));
@@ -216,24 +238,17 @@ export const backend = {
 			user: normalizeUser(result.user)
 		}));
 	},
-	async uploadAvatar(token: string, file: File) {
+	async uploadAvatar(token: string | undefined, file: File) {
 		const formData = new FormData();
 		formData.set('avatar', file);
-		const headers = new Headers();
-		headers.set('Authorization', `Bearer ${token}`);
 		const response = await fetch(`${backendBaseUrl}/api/users/me/avatar`, {
 			method: 'POST',
 			body: formData,
-			headers
+			headers: buildHeaders(undefined, 'POST', token),
+			credentials: 'same-origin'
 		});
 		if (!response.ok) {
-			let payload: ApiErrorPayload | undefined;
-			try {
-				payload = (await response.json()) as ApiErrorPayload;
-			} catch {
-				payload = undefined;
-			}
-			throw new Error(payload?.error?.message || `Request failed with status ${response.status}`);
+			throw await requestError(response);
 		}
 		const result = (await response.json()) as MeResponse;
 		return { user: normalizeUser(result.user) };

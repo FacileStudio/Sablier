@@ -198,7 +198,7 @@ func (controller *Controller) getApiToken(context context.Context) (*ApiTokenSta
 	}
 	return &ApiTokenStatusResponse{
 		HasToken:  true,
-		Name:      record.Name,
+		Name:      record.Label,
 		CreatedAt: record.CreatedAt.UTC().Format(time.RFC3339),
 	}, nil
 }
@@ -218,7 +218,7 @@ func (controller *Controller) createApiToken(context context.Context, req *Creat
 	}
 	return &ApiTokenResponse{
 		Token:     rawToken,
-		Name:      record.Name,
+		Name:      record.Label,
 		CreatedAt: record.CreatedAt.UTC().Format(time.RFC3339),
 	}, nil
 }

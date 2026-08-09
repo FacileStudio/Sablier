@@ -11,7 +11,12 @@ import (
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
+	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
+	"github.com/FacileStudio/porte/local"
+	"github.com/FacileStudio/porte/oidc"
+	portepg "github.com/FacileStudio/porte/pg"
+	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/apiref"
 	"github.com/go-chi/chi/v5"
 )
@@ -26,7 +31,26 @@ func testRouter(t *testing.T) chi.Router {
 	appLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	notificationsService := notifications.NewService(nil, "", "", "", appLogger)
 	antenneService := antenne.NewService(nil, appLogger)
-	return buildRouter(nil, noopPinger{}, appEnv, appLogger, notificationsService, antenneService)
+
+	store := portepg.New(nil)
+	sessions, err := session.New(appEnv.Porte(), session.Deps{Sessions: store.Sessions(), Logger: appLogger})
+	if err != nil {
+		t.Fatalf("session.New: %v", err)
+	}
+	kit, err := oidc.New(context.Background(), appEnv.Porte(), oidc.Deps{Sessions: sessions, Logger: appLogger})
+	if err != nil {
+		t.Fatalf("oidc.New: %v", err)
+	}
+	passwords, err := local.New(local.Config{}, local.Deps{
+		Users:      auth.NewUserStore(nil),
+		Identities: store.Identities(),
+		Sessions:   sessions,
+		Count:      func(context.Context) (int64, error) { return 0, nil },
+	})
+	if err != nil {
+		t.Fatalf("local.New: %v", err)
+	}
+	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService)
 }
 
 // The registry is hand-written, so it rots the moment someone registers a route

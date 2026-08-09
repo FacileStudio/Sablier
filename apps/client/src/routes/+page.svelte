@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { backend } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { Button, Divider, TextElevate, icons } from '@facile/muse';
@@ -11,23 +10,17 @@
 
 	const startHref = $derived(ssoOnly ? '/login' : '/login?tab=register');
 
-	function readSsoToken(): string | null {
-		const fragment = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
-		return new URLSearchParams(fragment).get('token');
-	}
-
 	onMount(async () => {
-		const token = readSsoToken();
-		if (token) {
-			localStorage.setItem(TOKEN_KEY, token);
-			history.replaceState(null, '', $page.url.pathname);
-			goto('/dashboard');
-			return;
-		}
 		if (localStorage.getItem(TOKEN_KEY)) {
 			goto('/dashboard');
 			return;
 		}
+
+		try {
+			await backend.me();
+			goto('/dashboard');
+			return;
+		} catch {}
 
 		try {
 			const cfg = await fetch(`${backend.baseUrl}/api/auth/config`).then((r) => r.json());

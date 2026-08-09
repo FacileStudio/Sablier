@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/FacileStudio/porte"
 	troncenv "github.com/FacileStudio/tronc/env"
 	"github.com/joho/godotenv"
 )
@@ -17,10 +18,32 @@ type OIDCConfig struct {
 	SuccessURL   string
 }
 
+// Porte returns the shared auth kit's configuration. The environment variable
+// names are the suite convention and do not change; this only reshapes what
+// Load already read.
+//
+// SSOOnly rides along because porte serves /auth/config and the frontend
+// decides on it whether to draw a password form at all.
+func (c Config) Porte() porte.Config {
+	if c.OIDC == nil {
+		return porte.Config{SSOOnly: c.SSOOnly}
+	}
+	return porte.Config{
+		Issuer:       c.OIDC.Issuer,
+		ClientID:     c.OIDC.ClientID,
+		ClientSecret: c.OIDC.ClientSecret,
+		RedirectURL:  c.OIDC.RedirectURL,
+		SuccessURL:   c.OIDC.SuccessURL,
+		SSOOnly:      c.SSOOnly,
+		ClaimsScope:  c.OIDCClaimsScope,
+	}
+}
+
 type Config struct {
 	troncenv.Core
 	StorageDir      string
 	OIDC            *OIDCConfig
+	OIDCClaimsScope string
 	SSOOnly         bool
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
@@ -55,6 +78,7 @@ func Load() (Config, error) {
 		VAPIDPublicKey:  troncenv.String("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey: troncenv.String("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
+		OIDCClaimsScope: troncenv.String("OIDC_CLAIMS_SCOPE", ""),
 	}
 
 	if issuer := troncenv.String("OIDC_ISSUER", ""); issuer != "" {

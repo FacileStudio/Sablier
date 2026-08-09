@@ -11,7 +11,7 @@
 		icons,
 		toast
 	} from '@facile/muse';
-	import type { UserProfile } from '$lib/backend';
+	import { backend, type UserProfile } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
@@ -25,7 +25,8 @@
 	/* Everything this app persists in the browser is namespaced under `sablier.` — the auth
 	   token, the selected space and the theme preference — so the prefix is the contract,
 	   not any one key. */
-	function clearLocalData() {
+	async function clearLocalData() {
+		await backend.logout(ctx.token).catch(() => {});
 		for (const key of Object.keys(localStorage)) {
 			if (key.startsWith('sablier.')) localStorage.removeItem(key);
 		}

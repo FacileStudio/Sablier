@@ -9,14 +9,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func Migrate(db *gorm.DB) error {
+// Migrate brings the schema up to date. issuer is the configured OIDC_ISSUER,
+// needed by AdoptPorte to key the identity rows it backfills.
+func Migrate(db *gorm.DB, issuer string) error {
 	if err := renameNookPoolColumns(db); err != nil {
 		return err
 	}
 	if err := renamePoolTables(db); err != nil {
 		return err
 	}
-	if err := db.AutoMigrate(&User{}, &Session{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &ApiToken{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}); err != nil {
+		return err
+	}
+	if err := AdoptPorte(db, issuer); err != nil {
 		return err
 	}
 	if err := backfillAvatarUploadPath(db); err != nil {
