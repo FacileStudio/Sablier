@@ -428,7 +428,7 @@
 	<title>{project?.name ?? 'Project'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-10 p-4 sm:p-6">
+<div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div>
 			<Button variant="ghost" href="/projects" icon={icons.chevronLeft} class="-ml-4">Projects</Button>

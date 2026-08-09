@@ -97,9 +97,13 @@
 			/>
 		</div>
 		<main class="min-w-0 flex-1 overflow-auto overscroll-contain pb-28 md:pb-0">
-			<PageTransition key={page.url.pathname}>
-				{@render children()}
-			</PageTransition>
+			<div
+				class="mx-auto flex w-full max-w-fc-xl flex-col gap-10 px-4 py-8 sm:px-6 md:px-10 md:pt-24 md:pb-10"
+			>
+				<PageTransition key={page.url.pathname}>
+					{@render children()}
+				</PageTransition>
+			</div>
 		</main>
 		<MobileNav items={navPages} user={navUser} profileHref="/settings" profileActive={settingsActive} />
 	</div>

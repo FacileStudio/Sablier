@@ -64,7 +64,7 @@
 	<title>Users — Sablier</title>
 </svelte:head>
 
-<div class="flex w-full flex-col gap-10 p-4 md:p-8">
+<div class="flex w-full flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<h1 class="text-fc-xl font-semibold text-fc-fg">Users</h1>

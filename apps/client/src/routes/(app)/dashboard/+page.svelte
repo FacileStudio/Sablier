@@ -327,248 +327,246 @@
 	<title>Dashboard — Sablier</title>
 </svelte:head>
 
-<div class="p-4 md:p-6">
-	<div class="flex flex-col gap-10">
-		<section class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1">
-				<h1 class="text-fc-2xl font-semibold text-fc-fg">Dashboard</h1>
-				<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
-			</div>
+<div class="flex flex-col gap-10">
+	<section class="flex flex-col gap-4">
+		<div class="flex flex-col gap-1">
+			<h1 class="text-fc-2xl font-semibold text-fc-fg">Dashboard</h1>
+			<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
+		</div>
 
-			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<StatCard label="Today's total" value={todayTotal()}>
-					<Sparkline data={recentDays.map((d) => d.minutes)} class="mt-2" />
-				</StatCard>
+		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<StatCard label="Today's total" value={todayTotal()}>
+				<Sparkline data={recentDays.map((d) => d.minutes)} class="mt-2" />
+			</StatCard>
 
-				{#if todayEarnings !== null}
-					<StatCard label="Today's value" value={todayEarnings} />
-				{/if}
+			{#if todayEarnings !== null}
+				<StatCard label="Today's value" value={todayEarnings} />
+			{/if}
 
-				<StatCard label="Sessions today" value={todaySessionCount()} />
-				<StatCard label="Projects" value={projects.length} />
-			</div>
-		</section>
+			<StatCard label="Sessions today" value={todaySessionCount()} />
+			<StatCard label="Projects" value={projects.length} />
+		</div>
+	</section>
 
-		<section class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Activity</h2>
-				<p class="text-fc-sm text-fc-fg-muted">
-					{activitySummary.activeDays} active {activitySummary.activeDays === 1 ? 'day' : 'days'} ·
-					{formatMinutes(activitySummary.totalMinutes)} tracked in the last year
-				</p>
-			</div>
+	<section class="flex flex-col gap-4">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-fc-lg font-semibold text-fc-fg">Activity</h2>
+			<p class="text-fc-sm text-fc-fg-muted">
+				{activitySummary.activeDays} active {activitySummary.activeDays === 1 ? 'day' : 'days'} ·
+				{formatMinutes(activitySummary.totalMinutes)} tracked in the last year
+			</p>
+		</div>
 
-			<Card class="flex flex-col gap-4">
-				<div class="flex w-full gap-1.5">
+		<Card class="flex flex-col gap-4">
+			<div class="flex w-full gap-1.5">
+				<div
+					class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-fc-xs text-fc-fg-muted"
+				>
+					{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel, i (i)}
+						<span>{dayLabel}</span>
+					{/each}
+				</div>
+				<div class="min-w-0 flex-1">
 					<div
-						class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-fc-xs text-fc-fg-muted"
+						class="mb-[3px] grid"
+						style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;"
 					>
-						{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel, i (i)}
-							<span>{dayLabel}</span>
+						{#each activityData.weeks as _week, i (i)}
+							<div class="overflow-hidden whitespace-nowrap text-fc-xs leading-none text-fc-fg-muted">
+								{activityData.monthHeaders[i] ?? ''}
+							</div>
 						{/each}
 					</div>
-					<div class="min-w-0 flex-1">
-						<div
-							class="mb-[3px] grid"
-							style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;"
-						>
-							{#each activityData.weeks as _week, i (i)}
-								<div class="overflow-hidden whitespace-nowrap text-fc-xs leading-none text-fc-fg-muted">
-									{activityData.monthHeaders[i] ?? ''}
-								</div>
-							{/each}
-						</div>
-						<div
-							class="grid"
-							style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;"
-						>
-							{#each activityData.weeks as week, w (w)}
-								<div class="flex flex-col gap-[2px]">
-									{#each week as day (day.key)}
-										{@const active = !day.isFuture && day.level > 0}
-										<div
-											class="aspect-square w-full rounded-fc-xs {active
-												? ''
-												: day.isFuture
-													? 'bg-fc-surface/40'
-													: 'bg-fc-surface'}"
-											style:background-color={active ? chartColor(0) : undefined}
-											style:opacity={active ? activityOpacity(day.level) : undefined}
-											title="{day.label} — {formatMinutes(day.minutes)}"
-										></div>
-									{/each}
-								</div>
-							{/each}
-						</div>
+					<div
+						class="grid"
+						style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;"
+					>
+						{#each activityData.weeks as week, w (w)}
+							<div class="flex flex-col gap-[2px]">
+								{#each week as day (day.key)}
+									{@const active = !day.isFuture && day.level > 0}
+									<div
+										class="aspect-square w-full rounded-fc-xs {active
+											? ''
+											: day.isFuture
+												? 'bg-fc-surface/40'
+												: 'bg-fc-surface'}"
+										style:background-color={active ? chartColor(0) : undefined}
+										style:opacity={active ? activityOpacity(day.level) : undefined}
+										title="{day.label} — {formatMinutes(day.minutes)}"
+									></div>
+								{/each}
+							</div>
+						{/each}
 					</div>
 				</div>
+			</div>
 
-				<div class="flex items-center gap-1.5 text-fc-xs text-fc-fg-muted">
-					<span>Less</span>
-					<span class="h-3 w-3 rounded-fc-xs bg-fc-surface"></span>
-					{#each activityRamp as step, i (i)}
-						<span
-							class="h-3 w-3 rounded-fc-xs"
-							style:background-color={chartColor(0)}
-							style:opacity={step}
-						></span>
-					{/each}
-					<span>More</span>
-				</div>
+			<div class="flex items-center gap-1.5 text-fc-xs text-fc-fg-muted">
+				<span>Less</span>
+				<span class="h-3 w-3 rounded-fc-xs bg-fc-surface"></span>
+				{#each activityRamp as step, i (i)}
+					<span
+						class="h-3 w-3 rounded-fc-xs"
+						style:background-color={chartColor(0)}
+						style:opacity={step}
+					></span>
+				{/each}
+				<span>More</span>
+			</div>
+		</Card>
+
+		<div class="grid gap-4 lg:grid-cols-3">
+			<Card class="flex flex-col gap-4 lg:col-span-2">
+				<h3 class="text-fc-sm font-medium text-fc-fg">Last 14 days</h3>
+				<BarChart
+					class="flex-1"
+					labels={recentDays.map((d) => d.label)}
+					series={[{ name: 'Tracked', data: recentDays.map((d) => d.minutes), color: chartColor(0) }]}
+					yFormat={formatMinutesAxis}
+					showLegend={false}
+				/>
 			</Card>
 
-			<div class="grid gap-4 lg:grid-cols-3">
-				<Card class="flex flex-col gap-4 lg:col-span-2">
-					<h3 class="text-fc-sm font-medium text-fc-fg">Last 14 days</h3>
-					<BarChart
+			<Card class="flex flex-col gap-4">
+				<h3 class="text-fc-sm font-medium text-fc-fg">By project</h3>
+				{#if projectShare.length === 0}
+					<EmptyState
+						bare
 						class="flex-1"
-						labels={recentDays.map((d) => d.label)}
-						series={[{ name: 'Tracked', data: recentDays.map((d) => d.minutes), color: chartColor(0) }]}
-						yFormat={formatMinutesAxis}
-						showLegend={false}
+						icon={icons.folder}
+						title="Nothing tracked yet"
+						description="Time logged against a project shows up here."
+					>
+						<Button icon={icons.plus} href="/projects">New session</Button>
+					</EmptyState>
+				{:else}
+					<DonutChart
+						class="flex-1"
+						data={projectShare}
+						centerLabel="Tracked"
+						centerValue={formatMinutes(trackedTotal)}
+						valueFormat={formatMinutes}
 					/>
-				</Card>
+				{/if}
+			</Card>
+		</div>
+	</section>
 
-				<Card class="flex flex-col gap-4">
-					<h3 class="text-fc-sm font-medium text-fc-fg">By project</h3>
-					{#if projectShare.length === 0}
-						<EmptyState
-							bare
-							class="flex-1"
-							icon={icons.folder}
-							title="Nothing tracked yet"
-							description="Time logged against a project shows up here."
-						>
-							<Button icon={icons.plus} href="/projects">New session</Button>
-						</EmptyState>
-					{:else}
-						<DonutChart
-							class="flex-1"
-							data={projectShare}
-							centerLabel="Tracked"
-							centerValue={formatMinutes(trackedTotal)}
-							valueFormat={formatMinutes}
-						/>
-					{/if}
-				</Card>
-			</div>
-		</section>
+	<section class="flex flex-col gap-4">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-fc-lg font-semibold text-fc-fg">Currently working</h2>
+			<p class="text-fc-sm text-fc-fg-muted">
+				{runningEntries.length} active {runningEntries.length === 1 ? 'session' : 'sessions'}
+			</p>
+		</div>
 
-		<section class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Currently working</h2>
-				<p class="text-fc-sm text-fc-fg-muted">
-					{runningEntries.length} active {runningEntries.length === 1 ? 'session' : 'sessions'}
-				</p>
-			</div>
-
-			{#if runningEntries.length === 0}
-				<EmptyState
-					icon={icons.clock}
-					title="No one is currently working"
-					description="Start a timer on a project and it shows up here in real time."
-				>
-					<Button icon={icons.plus} href="/projects">Start a session</Button>
-				</EmptyState>
-			{:else}
-				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{#each runningEntries as entry (entry.id)}
-						{@const paused = isTimeEntryPaused(entry)}
-						{@const label = getEntryUserDisplayName(entry)}
-						<Card href={`/projects/${entry.project_id}`} class="flex flex-col gap-4">
-							<div class="flex items-center gap-3">
-								<UserAvatarBadge name={label} avatarUrl={entry.user_avatar_url} color={entry.user_color} />
-								<div class="min-w-0">
-									<p class="truncate text-fc-sm font-medium text-fc-fg">{label}</p>
-									<p class="truncate text-fc-xs text-fc-fg-muted">
-										{projectName(entry.project_id)}{entry.task_name ? ` · ${entry.task_name}` : ''}
-									</p>
-								</div>
+		{#if runningEntries.length === 0}
+			<EmptyState
+				icon={icons.clock}
+				title="No one is currently working"
+				description="Start a timer on a project and it shows up here in real time."
+			>
+				<Button icon={icons.plus} href="/projects">Start a session</Button>
+			</EmptyState>
+		{:else}
+			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{#each runningEntries as entry (entry.id)}
+					{@const paused = isTimeEntryPaused(entry)}
+					{@const label = getEntryUserDisplayName(entry)}
+					<Card href={`/projects/${entry.project_id}`} class="flex flex-col gap-4">
+						<div class="flex items-center gap-3">
+							<UserAvatarBadge name={label} avatarUrl={entry.user_avatar_url} color={entry.user_color} />
+							<div class="min-w-0">
+								<p class="truncate text-fc-sm font-medium text-fc-fg">{label}</p>
+								<p class="truncate text-fc-xs text-fc-fg-muted">
+									{projectName(entry.project_id)}{entry.task_name ? ` · ${entry.task_name}` : ''}
+								</p>
 							</div>
-							<div class="flex items-center justify-between gap-2">
-								<StatusDot
-									tone={paused ? 'warning' : 'success'}
-									pulse={!paused}
-									label={paused ? 'Paused' : 'Running'}
-								/>
-								<span class="text-fc-sm tabular-nums text-fc-fg">
-									{formatDuration(getTimeEntryDurationMs(entry, now), { includeSeconds: true })}
-								</span>
-							</div>
-						</Card>
-					{/each}
-				</div>
-			{/if}
-		</section>
-
-		<section class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Recent sessions</h2>
-				<p class="text-fc-sm text-fc-fg-muted">The last five entries across this space.</p>
+						</div>
+						<div class="flex items-center justify-between gap-2">
+							<StatusDot
+								tone={paused ? 'warning' : 'success'}
+								pulse={!paused}
+								label={paused ? 'Paused' : 'Running'}
+							/>
+							<span class="text-fc-sm tabular-nums text-fc-fg">
+								{formatDuration(getTimeEntryDurationMs(entry, now), { includeSeconds: true })}
+							</span>
+						</div>
+					</Card>
+				{/each}
 			</div>
+		{/if}
+	</section>
 
-			{#if recentEntries.length === 0}
-				<EmptyState
-					icon={icons.history}
-					title="No sessions yet"
-					description="Track time on a project and the latest entries land here."
-				>
-					<Button icon={icons.plus} href="/projects">New session</Button>
-				</EmptyState>
-			{:else}
-				<Table>
-					<thead>
+	<section class="flex flex-col gap-4">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-fc-lg font-semibold text-fc-fg">Recent sessions</h2>
+			<p class="text-fc-sm text-fc-fg-muted">The last five entries across this space.</p>
+		</div>
+
+		{#if recentEntries.length === 0}
+			<EmptyState
+				icon={icons.history}
+				title="No sessions yet"
+				description="Track time on a project and the latest entries land here."
+			>
+				<Button icon={icons.plus} href="/projects">New session</Button>
+			</EmptyState>
+		{:else}
+			<Table>
+				<thead>
+					<tr>
+						<th>Project</th>
+						<th>User</th>
+						<th>Task</th>
+						<th class="hidden md:table-cell">Started</th>
+						<th class="md:hidden">Started</th>
+						<th class="text-right">Duration</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each recentEntries as entry (entry.id)}
 						<tr>
-							<th>Project</th>
-							<th>User</th>
-							<th>Task</th>
-							<th class="hidden md:table-cell">Started</th>
-							<th class="md:hidden">Started</th>
-							<th class="text-right">Duration</th>
+							<td class="font-medium">
+								<a
+									href={`/projects/${entry.project_id}`}
+									class="rounded-fc-xs hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
+								>
+									{projectName(entry.project_id)}
+								</a>
+							</td>
+							<td class="text-fc-fg-muted">
+								<div class="flex items-center gap-2">
+									<UserAvatarBadge
+										name={getEntryUserDisplayName(entry)}
+										avatarUrl={entry.user_avatar_url}
+										color={entry.user_color}
+									/>
+									<span class="hidden md:block">{getEntryUserDisplayName(entry)}</span>
+								</div>
+							</td>
+							<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
+							<td class="hidden text-fc-fg-muted md:table-cell">{formatLongDate(entry.started_at)}</td>
+							<td class="text-fc-fg-muted md:hidden">{formatShortDate(entry.started_at)}</td>
+							<td class="text-right">
+								{#if entry.stopped_at === null}
+									{@const paused = isTimeEntryPaused(entry)}
+									<StatusDot
+										class="justify-end"
+										tone={paused ? 'warning' : 'success'}
+										pulse={!paused}
+										label={paused ? 'Paused' : 'Running'}
+									/>
+								{:else}
+									<span class="tabular-nums">{entryDuration(entry)}</span>
+								{/if}
+							</td>
 						</tr>
-					</thead>
-					<tbody>
-						{#each recentEntries as entry (entry.id)}
-							<tr>
-								<td class="font-medium">
-									<a
-										href={`/projects/${entry.project_id}`}
-										class="rounded-fc-xs hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
-									>
-										{projectName(entry.project_id)}
-									</a>
-								</td>
-								<td class="text-fc-fg-muted">
-									<div class="flex items-center gap-2">
-										<UserAvatarBadge
-											name={getEntryUserDisplayName(entry)}
-											avatarUrl={entry.user_avatar_url}
-											color={entry.user_color}
-										/>
-										<span class="hidden md:block">{getEntryUserDisplayName(entry)}</span>
-									</div>
-								</td>
-								<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
-								<td class="hidden text-fc-fg-muted md:table-cell">{formatLongDate(entry.started_at)}</td>
-								<td class="text-fc-fg-muted md:hidden">{formatShortDate(entry.started_at)}</td>
-								<td class="text-right">
-									{#if entry.stopped_at === null}
-										{@const paused = isTimeEntryPaused(entry)}
-										<StatusDot
-											class="justify-end"
-											tone={paused ? 'warning' : 'success'}
-											pulse={!paused}
-											label={paused ? 'Paused' : 'Running'}
-										/>
-									{:else}
-										<span class="tabular-nums">{entryDuration(entry)}</span>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</Table>
-			{/if}
-		</section>
-	</div>
+					{/each}
+				</tbody>
+			</Table>
+		{/if}
+	</section>
 </div>
