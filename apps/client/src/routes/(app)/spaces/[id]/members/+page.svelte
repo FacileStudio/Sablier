@@ -112,7 +112,7 @@
 	<title>Membres — {space?.name ?? 'Espace'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-10 p-4 md:p-8">
+<div class="flex flex-col gap-10">
 	<Button
 		variant="ghost"
 		size="sm"

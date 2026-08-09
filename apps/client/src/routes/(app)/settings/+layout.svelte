@@ -17,7 +17,7 @@
 	);
 </script>
 
-<div class="mx-auto flex w-full max-w-fc-lg flex-col gap-10 p-6 md:pt-24">
+<div class="mx-auto flex w-full max-w-fc-lg flex-col gap-10">
 	<div class="flex flex-col gap-4">
 		<Tabs items={sections} value={active} />
 		<Divider class="my-0" />

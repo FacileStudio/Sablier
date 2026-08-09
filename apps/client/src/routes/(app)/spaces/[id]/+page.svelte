@@ -68,7 +68,7 @@
 	<title>{space?.name ?? 'Espace'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-10 p-4 md:p-8">
+<div class="flex flex-col gap-10">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<Button variant="ghost" size="sm" href="/spaces" icon={icons.chevronLeft} class="pl-2">
 			Espaces
