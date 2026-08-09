@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { cn } from '$lib/utils';
+	import { Input, cn } from '@facile/muse';
 	import type { Task } from '$lib/backend';
 
 	type Props = {
@@ -19,13 +19,25 @@
 		loading = false
 	}: Props = $props();
 
+	const uid = $props.id();
+	const listboxId = `${uid}-listbox`;
+	const optionId = (index: number) => `${uid}-option-${index}`;
+
 	let open = $state(false);
 	let rootEl = $state<HTMLDivElement | null>(null);
 	let inputEl = $state<HTMLInputElement | null>(null);
-	let optionEls = $state<Array<HTMLButtonElement | null>>([]);
+	let optionEls = $state<Array<HTMLDivElement | null>>([]);
 	let activeIndex = $state(-1);
 	let menuPlacement = $state<'up' | 'down'>('down');
 	let menuMaxHeight = $state(224);
+	let menuLeft = $state(0);
+	let menuWidth = $state(0);
+	let menuOffset = $state(0);
+
+	const GAP = 8;
+	const MARGIN = 12;
+	const MIN_HEIGHT = 160;
+	const MAX_HEIGHT = 224;
 
 	let filtered = $derived(
 		value.trim()
@@ -59,23 +71,23 @@
 	}
 
 	function updateMenuLayout() {
-		if (!inputEl || typeof window === 'undefined') {
+		const anchor = inputEl ?? rootEl;
+		if (!anchor || typeof window === 'undefined') {
 			return;
 		}
-		const rect = inputEl.getBoundingClientRect();
-		const viewportPadding = 12;
-		const gap = 8;
-		const maxPreferredHeight = 224;
-		const minUsefulHeight = 120;
-		const spaceBelow = window.innerHeight - rect.bottom - viewportPadding - gap;
-		const spaceAbove = rect.top - viewportPadding - gap;
-		const shouldOpenUp = spaceBelow < minUsefulHeight && spaceAbove > spaceBelow;
+		const box = anchor.getBoundingClientRect();
+		const below = window.innerHeight - box.bottom - GAP - MARGIN;
+		const above = box.top - GAP - MARGIN;
+		const shouldOpenUp = below < MIN_HEIGHT && above > below;
 		menuPlacement = shouldOpenUp ? 'up' : 'down';
-		const availableSpace = shouldOpenUp ? spaceAbove : spaceBelow;
-		menuMaxHeight = Math.max(96, Math.min(maxPreferredHeight, availableSpace));
+		menuMaxHeight = Math.max(96, Math.min(MAX_HEIGHT, Math.floor(shouldOpenUp ? above : below)));
+		menuLeft = box.left;
+		menuWidth = box.width;
+		menuOffset = shouldOpenUp ? window.innerHeight - box.top + GAP : box.bottom + GAP;
 	}
 
-	function handleFocus() {
+	function handleFocus(event: FocusEvent) {
+		inputEl = event.currentTarget as HTMLInputElement;
 		openMenu();
 	}
 
@@ -121,9 +133,10 @@
 			return;
 		}
 		if (e.key === 'Escape') {
+			e.stopPropagation();
 			open = false;
 			activeIndex = -1;
-			inputEl?.blur();
+			inputEl?.focus();
 		}
 	}
 
@@ -159,40 +172,55 @@
 	onDestroy(() => {
 		optionEls = [];
 	});
+
+	const menuVisible = $derived(open && (!loading || filtered.length > 0 || showCreate || Boolean(value.trim())));
 </script>
 
 <div bind:this={rootEl} class="relative w-full">
-	<input
-		bind:this={inputEl}
+	<Input
+		bind:value
 		{disabled}
 		{placeholder}
-		bind:value
 		onfocus={handleFocus}
 		oninput={handleInput}
 		onblur={handleBlur}
 		onkeydown={handleKeydown}
 		autocomplete="off"
 		title={value.trim() || placeholder}
-		class={cn(
-			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 disabled:bg-input/50 dark:disabled:bg-input/80 h-10 w-full min-w-0 rounded-xl border bg-transparent px-3 text-sm outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-muted-foreground'
-		)}
+		role="combobox"
+		aria-autocomplete="list"
+		aria-expanded={menuVisible}
+		aria-controls={listboxId}
+		aria-activedescendant={menuVisible && activeIndex >= 0 ? optionId(activeIndex) : undefined}
 	/>
 
-	{#if open && (!loading || filtered.length > 0 || showCreate || value.trim())}
+	{#if menuVisible}
 		<div
-			class={cn(
-				'absolute left-0 right-0 z-50 overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-lg',
-				menuPlacement === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'
-			)}
+			class="fixed z-40 flex flex-col overflow-hidden rounded-fc-md border border-fc-border bg-fc-component shadow-lg"
+			style:left="{menuLeft}px"
+			style:width="{menuWidth}px"
+			style:top={menuPlacement === 'down' ? `${menuOffset}px` : undefined}
+			style:bottom={menuPlacement === 'up' ? `${menuOffset}px` : undefined}
+			style:max-height="{menuMaxHeight}px"
 		>
-			<div class="overflow-y-auto overscroll-contain p-1" style={`max-height: ${menuMaxHeight}px;`}>
-				{#each filtered as task, index}
-					<button
+			<div
+				id={listboxId}
+				role="listbox"
+				aria-label="Tasks"
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
+			>
+				{#each filtered as task, index (task.id)}
+					<div
 						bind:this={optionEls[index]}
-						type="button"
+						id={optionId(index)}
+						role="option"
+						aria-selected={value.toLowerCase() === task.name.toLowerCase()}
+						tabindex="-1"
 						class={cn(
-							'flex w-full cursor-default items-center rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground',
-							(activeIndex === index || value.toLowerCase() === task.name.toLowerCase()) && 'bg-accent text-accent-foreground'
+							'flex w-full cursor-default items-center rounded-fc-sm px-2.5 py-2 text-left text-fc-sm transition-colors',
+							activeIndex === index || value.toLowerCase() === task.name.toLowerCase()
+								? 'bg-fc-accent text-fc-accent-fg font-medium'
+								: 'text-fc-fg hover:bg-fc-surface'
 						)}
 						title={task.name}
 						onmouseenter={() => (activeIndex = index)}
@@ -202,15 +230,20 @@
 						}}
 					>
 						<span class="block min-w-0 flex-1 truncate">{task.name}</span>
-					</button>
+					</div>
 				{/each}
 				{#if showCreate}
-					<button
+					<div
 						bind:this={optionEls[filtered.length]}
-						type="button"
+						id={optionId(filtered.length)}
+						role="option"
+						aria-selected="false"
+						tabindex="-1"
 						class={cn(
-							'flex w-full cursor-default items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-							activeIndex === filtered.length && 'bg-accent text-accent-foreground'
+							'flex w-full cursor-default items-center gap-2 rounded-fc-sm px-2.5 py-2 text-left text-fc-sm transition-colors',
+							activeIndex === filtered.length
+								? 'bg-fc-accent text-fc-accent-fg font-medium'
+								: 'text-fc-fg-muted hover:bg-fc-surface hover:text-fc-fg'
 						)}
 						title={value.trim()}
 						onmouseenter={() => (activeIndex = filtered.length)}
@@ -220,13 +253,13 @@
 						}}
 					>
 						<span class="min-w-0 flex-1 truncate">Create "{value.trim()}"</span>
-					</button>
+					</div>
 				{:else if !loading && filtered.length === 0}
-					<div class="px-3 py-2 text-sm text-muted-foreground">
+					<div class="px-2.5 py-2 text-fc-sm text-fc-fg-muted">
 						No matching task
 					</div>
 				{:else if loading}
-					<div class="px-3 py-2 text-sm text-muted-foreground">
+					<div class="px-2.5 py-2 text-fc-sm text-fc-fg-muted">
 						Loading tasks…
 					</div>
 				{/if}

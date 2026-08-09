@@ -1,12 +1,8 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
 	import { backend } from '$lib/backend';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { ArrowLeft } from 'lucide-svelte';
+	import { Button, Card, Field, Input, Textarea, icons, toast } from '@facile/muse';
 
 	const ctx = getContext<{ token: string }>('app');
 
@@ -22,7 +18,7 @@
 			toast.success(`Espace "${space.name}" créé`);
 			goto(`/spaces/${space.id}`);
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Impossible de créer l\'espace');
+			toast.danger(e instanceof Error ? e.message : 'Impossible de créer l\'espace');
 		} finally {
 			saving = false;
 		}
@@ -33,39 +29,38 @@
 	<title>Nouvel espace — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-1 flex-col">
-	<div class="border-b px-4 py-4 md:px-8 md:py-5">
-		<a href="/spaces" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-			<ArrowLeft class="h-4 w-4" />
-			Espaces
-		</a>
-	</div>
+<div class="flex flex-col gap-10 p-4 md:p-8">
+	<Button variant="ghost" size="sm" href="/spaces" icon={icons.chevronLeft} class="w-fit pl-2">
+		Espaces
+	</Button>
 
-	<div class="flex-1 p-4 md:p-8">
-		<div class="max-w-xl space-y-6">
-			<div>
-				<h1 class="text-xl font-semibold">Nouvel espace</h1>
-				<p class="mt-1 text-sm text-muted-foreground">
-					Créez un espace pour regrouper projets, tâches et entrées de temps pour une équipe ou un client.
-				</p>
-			</div>
+	<section class="flex max-w-xl flex-col gap-4">
+		<div class="flex flex-col gap-1">
+			<h1 class="text-fc-xl font-semibold text-fc-fg">Nouvel espace</h1>
+			<p class="text-fc-sm text-fc-fg-muted">
+				Créez un espace pour regrouper projets, tâches et entrées de temps pour une équipe ou un
+				client.
+			</p>
+		</div>
 
+		<Card>
 			<form
-				class="space-y-4"
-				onsubmit={(e) => { e.preventDefault(); create(); }}
+				class="flex flex-col gap-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					create();
+				}}
 			>
-				<div class="space-y-1.5">
-					<Label for="space-name">Nom</Label>
-					<Input id="space-name" class="h-10" bind:value={name} placeholder="ex. Acme Corp" required />
-				</div>
-				<div class="space-y-1.5">
-					<Label for="space-description">Description</Label>
-					<Input id="space-description" class="h-10" bind:value={description} placeholder="Optionnel" />
-				</div>
-				<Button type="submit" disabled={saving} class="h-10">
+				<Field label="Nom" for="space-name">
+					<Input id="space-name" bind:value={name} placeholder="ex. Acme Corp" required />
+				</Field>
+				<Field label="Description" for="space-description">
+					<Textarea id="space-description" rows={3} bind:value={description} placeholder="Optionnel" />
+				</Field>
+				<Button type="submit" size="lg" disabled={saving} class="w-full sm:w-auto">
 					{saving ? 'Création...' : 'Créer l\'espace'}
 				</Button>
 			</form>
-		</div>
-	</div>
+		</Card>
+	</section>
 </div>

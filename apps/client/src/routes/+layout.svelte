@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { browser } from '$app/environment';
-	import { Toaster } from '$lib/components/ui/sonner';
+	import { Toaster } from '@facile/muse';
 	import { theme } from '$lib/theme.svelte';
 
 	if (browser) {
@@ -13,4 +13,4 @@
 </script>
 
 {@render children()}
-<Toaster />
+<Toaster class="pb-28 md:pb-6" />

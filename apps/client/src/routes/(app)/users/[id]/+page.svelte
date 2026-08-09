@@ -1,13 +1,21 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { backend, type UserProfile, type TimeEntry, type Project } from '$lib/backend';
-	import { normalizeUserColor } from '$lib/user-colors';
-	import * as Table from '$lib/components/ui/table';
-	import { Button } from '$lib/components/ui/button';
-	import { ArrowLeft, Clock, Timer, Calendar } from 'lucide-svelte';
-	import * as Card from '$lib/components/ui/card';
+	import {
+		Alert,
+		Badge,
+		Button,
+		Card,
+		EmptyState,
+		ProfileCard,
+		StatCard,
+		StatusDot,
+		Table,
+		chartColor,
+		icons,
+		normalizeUserColor
+	} from '@facile/muse';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
@@ -49,13 +57,6 @@
 		return projects.find((p) => p.id === id)?.name ?? '—';
 	}
 
-	function getInitials(value: string) {
-		const parts = value.trim().split(/\s+/).filter(Boolean);
-		if (parts.length === 0) return '?';
-		if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-		return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
-	}
-
 	function localDateKey(d: Date): string {
 		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 	}
@@ -69,13 +70,12 @@
 		return `${h}h ${min}m`;
 	}
 
-	function activityLevelClass(level: number, isFuture: boolean): string {
-		if (isFuture) return 'bg-muted/30';
-		if (level === 0) return 'bg-muted';
-		if (level === 1) return 'bg-green-200 dark:bg-green-900';
-		if (level === 2) return 'bg-green-400 dark:bg-green-700';
-		if (level === 3) return 'bg-green-500 dark:bg-green-600';
-		return 'bg-green-700 dark:bg-green-400';
+	/* One chart slot, four steps of alpha: an intensity ramp encodes magnitude, not identity,
+	   so the slot index stays fixed at 0 and never rides on rank. */
+	const activityRamp = [0.28, 0.5, 0.75, 1];
+
+	function activityOpacity(level: number): number {
+		return activityRamp[Math.min(Math.max(level, 1), 4) - 1];
 	}
 
 	type ActivityDay = {
@@ -104,14 +104,6 @@
 
 	function formatEarnings(eur: number): string {
 		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(eur);
-	}
-
-	function formatHours(ms: number): string {
-		const h = Math.floor(ms / 3_600_000);
-		const m = Math.round((ms % 3_600_000) / 60_000);
-		if (h === 0) return `${m}m`;
-		if (m === 0) return `${h}h`;
-		return `${h}h ${m}m`;
 	}
 
 	function sumMsWhere(predicate: (e: (typeof entries)[0]) => boolean): number {
@@ -155,6 +147,27 @@
 				)
 			: null
 	);
+	const profileMeta = $derived.by(() => {
+		if (!user) return [];
+		const rows: { label: string; value: string }[] = [
+			{ label: 'Member since', value: formatDateLong(user.created_at) }
+		];
+		if ((user.rate ?? 0) > 0) {
+			rows.push({
+				label: 'Rate',
+				value:
+					user.rate_type === 'daily'
+						? `${user.rate} €/day · ${user.workday_hours > 0 ? user.workday_hours : 8}h workday`
+						: `${user.rate} €/h`
+			});
+		}
+		rows.push({ label: 'Total time', value: formatDuration(totalMs) });
+		rows.push({
+			label: 'Sessions',
+			value: `${entries.length} ${entries.length === 1 ? 'session' : 'sessions'}`
+		});
+		return rows;
+	});
 	const projectStats = $derived.by(() => {
 		const stats = new Map<
 			number,
@@ -294,122 +307,46 @@
 	<title>{user?.name || 'User'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
-	<Button variant="ghost" href="/users" class="mb-4 gap-2 pl-0 text-muted-foreground w-fit">
-		<ArrowLeft class="h-4 w-4" />
+<div class="flex flex-col gap-10 p-4 md:p-8">
+	<Button variant="ghost" size="sm" href="/users" icon={icons.chevronLeft} class="w-fit pl-2">
 		Users
 	</Button>
 
 	{#if loading}
-		<p class="text-sm text-muted-foreground">Loading…</p>
+		<p class="text-fc-sm text-fc-fg-muted">Loading…</p>
 	{:else if error}
-		<p class="text-sm text-destructive">{error}</p>
+		<Alert tone="danger">{error}</Alert>
 	{:else if user}
 		{@const color = normalizeUserColor(user.color)}
 		{@const name = user.name || user.email}
 
-		<div class="flex items-center gap-4">
-			{#if user.avatar_url}
-				<img src={user.avatar_url} alt={name} class="h-16 w-16 rounded-full object-cover ring-2 ring-border" />
-			{:else}
-				<div
-					class="flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold text-white"
-					style="background-color: {color};"
-				>
-					{getInitials(name)}
-				</div>
-			{/if}
-			<div>
-				<div class="flex items-center gap-2">
-					<span class="inline-block h-3 w-3 rounded-full" style="background-color: {color};"></span>
-					<h1 class="text-2xl font-bold tracking-tight">{name}</h1>
-				</div>
-				<p class="text-sm text-muted-foreground">{user.email}</p>
-				<p class="mt-0.5 text-xs text-muted-foreground">Member since {formatDateLong(user.created_at)}</p>
+		<ProfileCard
+			{name}
+			email={user.email}
+			avatar={user.avatar_url || undefined}
+			{color}
+			meta={profileMeta}
+		/>
+
+		<section class="flex flex-col gap-4">
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				<StatCard label="Today" value={formatDuration(workedTimeBreakdown.today)} />
+				<StatCard label="This Week" value={formatDuration(workedTimeBreakdown.week)} />
+				<StatCard label="This Month" value={formatDuration(workedTimeBreakdown.month)} />
+				<StatCard label="Total Time" value={formatDuration(workedTimeBreakdown.total)} />
+				<StatCard label="Avg Session" value={formatDuration(avgMs)} />
+				<StatCard
+					label="Last Session"
+					value={lastEntry ? formatDate(lastEntry.started_at) : 'Never'}
+				/>
 			</div>
-		</div>
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<Card.Root>
-				<Card.Header class="pb-2">
-					<Card.Title class="text-sm font-medium text-muted-foreground">Today</Card.Title>
-				</Card.Header>
-				<Card.Content>
-					<div class="flex items-center gap-2">
-						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.today)}</span>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Header class="pb-2">
-					<Card.Title class="text-sm font-medium text-muted-foreground">This Week</Card.Title>
-				</Card.Header>
-				<Card.Content>
-					<div class="flex items-center gap-2">
-						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.week)}</span>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Header class="pb-2">
-					<Card.Title class="text-sm font-medium text-muted-foreground">This Month</Card.Title>
-				</Card.Header>
-				<Card.Content>
-					<div class="flex items-center gap-2">
-						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.month)}</span>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Header class="pb-2">
-					<Card.Title class="text-sm font-medium text-muted-foreground">Total Time</Card.Title>
-				</Card.Header>
-				<Card.Content>
-					<div class="flex items-center gap-2">
-						<Clock class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(workedTimeBreakdown.total)}</span>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Header class="pb-2">
-					<Card.Title class="text-sm font-medium text-muted-foreground">Avg Session</Card.Title>
-				</Card.Header>
-				<Card.Content>
-					<div class="flex items-center gap-2">
-						<Timer class="h-4 w-4 text-muted-foreground" />
-						<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(avgMs)}</span>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Header class="pb-2">
-					<Card.Title class="text-sm font-medium text-muted-foreground">Last Session</Card.Title>
-				</Card.Header>
-				<Card.Content>
-					<div class="flex items-center gap-2">
-						<Calendar class="h-4 w-4 text-muted-foreground" />
-						<span class="text-sm font-medium">
-							{lastEntry ? formatDate(lastEntry.started_at) : 'Never'}
-						</span>
-					</div>
-				</Card.Content>
-			</Card.Root>
-		</div>
+		</section>
 
 		{#if earningsBreakdown !== null}
-			<section>
-				<div class="mb-3">
-					<h2 class="text-lg font-semibold">Virtual Earnings</h2>
-					<p class="text-sm text-muted-foreground">
+			<section class="flex flex-col gap-4">
+				<div class="flex flex-col gap-1">
+					<h2 class="text-fc-lg font-semibold text-fc-fg">Virtual Earnings</h2>
+					<p class="text-fc-sm text-fc-fg-muted">
 						{#if user.rate_type === 'daily'}
 							At {user.rate} €/day · {user.workday_hours > 0 ? user.workday_hours : 8}h workday.
 						{:else}
@@ -418,81 +355,71 @@
 					</p>
 				</div>
 				<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-					<Card.Root>
-						<Card.Header class="pb-2">
-							<Card.Title class="text-sm font-medium text-muted-foreground">Today</Card.Title>
-						</Card.Header>
-						<Card.Content>
-							<span class="text-2xl font-bold font-mono tabular-nums">
-								{earningsBreakdown.today !== null ? formatEarnings(earningsBreakdown.today) : '—'}
-							</span>
-						</Card.Content>
-					</Card.Root>
-					<Card.Root>
-						<Card.Header class="pb-2">
-							<Card.Title class="text-sm font-medium text-muted-foreground">This Week</Card.Title>
-						</Card.Header>
-						<Card.Content>
-							<span class="text-2xl font-bold font-mono tabular-nums">
-								{earningsBreakdown.week !== null ? formatEarnings(earningsBreakdown.week) : '—'}
-							</span>
-						</Card.Content>
-					</Card.Root>
-					<Card.Root>
-						<Card.Header class="pb-2">
-							<Card.Title class="text-sm font-medium text-muted-foreground">This Month</Card.Title>
-						</Card.Header>
-						<Card.Content>
-							<span class="text-2xl font-bold font-mono tabular-nums">
-								{earningsBreakdown.month !== null ? formatEarnings(earningsBreakdown.month) : '—'}
-							</span>
-						</Card.Content>
-					</Card.Root>
-					<Card.Root>
-						<Card.Header class="pb-2">
-							<Card.Title class="text-sm font-medium text-muted-foreground">Total</Card.Title>
-						</Card.Header>
-						<Card.Content>
-							<span class="text-2xl font-bold font-mono tabular-nums">
-								{earningsBreakdown.total !== null ? formatEarnings(earningsBreakdown.total) : '—'}
-							</span>
-						</Card.Content>
-					</Card.Root>
+					<StatCard
+						label="Today"
+						value={earningsBreakdown.today !== null ? formatEarnings(earningsBreakdown.today) : '—'}
+					/>
+					<StatCard
+						label="This Week"
+						value={earningsBreakdown.week !== null ? formatEarnings(earningsBreakdown.week) : '—'}
+					/>
+					<StatCard
+						label="This Month"
+						value={earningsBreakdown.month !== null ? formatEarnings(earningsBreakdown.month) : '—'}
+					/>
+					<StatCard
+						label="Total"
+						value={earningsBreakdown.total !== null ? formatEarnings(earningsBreakdown.total) : '—'}
+					/>
 				</div>
 			</section>
 		{/if}
 
-		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
-				<div>
-					<Card.Title>Activity</Card.Title>
-					<p class="mt-1 text-xs text-muted-foreground">
+		<section class="flex flex-col gap-4">
+			<Card class="flex flex-col gap-4">
+				<div class="flex flex-col gap-1">
+					<h2 class="text-fc-lg font-semibold text-fc-fg">Activity</h2>
+					<p class="text-fc-xs text-fc-fg-muted">
 						{activityData.activeDays} active {activityData.activeDays === 1 ? 'day' : 'days'} ·
 						{formatMinutes(activityData.totalMinutes)} tracked in the last year
 					</p>
 				</div>
-			</Card.Header>
-			<Card.Content>
+
 				<div class="flex w-full gap-1.5">
-					<div class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-[10px] text-muted-foreground">
-						{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel}
+					<div
+						class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-fc-xs text-fc-fg-muted"
+					>
+						{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel, i (i)}
 							<span>{dayLabel}</span>
 						{/each}
 					</div>
 					<div class="min-w-0 flex-1">
-						<div class="mb-[3px] grid" style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;">
-							{#each activityData.weeks as _week, i}
-								<div class="overflow-hidden whitespace-nowrap text-[10px] leading-none text-muted-foreground">
+						<div
+							class="mb-[3px] grid"
+							style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;"
+						>
+							{#each activityData.weeks as _week, i (i)}
+								<div class="overflow-hidden whitespace-nowrap text-fc-xs leading-none text-fc-fg-muted">
 									{activityData.monthHeaders[i] ?? ''}
 								</div>
 							{/each}
 						</div>
-						<div class="grid" style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;">
-							{#each activityData.weeks as week}
+						<div
+							class="grid"
+							style="grid-template-columns: repeat({activityData.numWeeks}, minmax(0, 1fr)); gap: 2px;"
+						>
+							{#each activityData.weeks as week, w (w)}
 								<div class="flex flex-col gap-[2px]">
-									{#each week as day}
+									{#each week as day (day.key)}
+										{@const active = !day.isFuture && day.level > 0}
 										<div
-											class="w-full aspect-square rounded transition-opacity hover:opacity-70 cursor-default {activityLevelClass(day.level, day.isFuture)}"
+											class="aspect-square w-full rounded-fc-xs {active
+												? ''
+												: day.isFuture
+													? 'bg-fc-surface/40'
+													: 'bg-fc-surface'}"
+											style:background-color={active ? chartColor(0) : undefined}
+											style:opacity={active ? activityOpacity(day.level) : undefined}
 											title="{day.label} — {formatMinutes(day.minutes)}"
 										></div>
 									{/each}
@@ -502,91 +429,96 @@
 					</div>
 				</div>
 
-				<div class="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+				<div class="flex items-center gap-1.5 text-fc-xs text-fc-fg-muted">
 					<span>Less</span>
-					<div class="h-3 w-3 rounded-[2px] bg-muted"></div>
-					<div class="h-3 w-3 rounded-[2px] bg-green-200 dark:bg-green-900"></div>
-					<div class="h-3 w-3 rounded-[2px] bg-green-400 dark:bg-green-700"></div>
-					<div class="h-3 w-3 rounded-[2px] bg-green-500 dark:bg-green-600"></div>
-					<div class="h-3 w-3 rounded-[2px] bg-green-700 dark:bg-green-400"></div>
+					<span class="h-3 w-3 rounded-fc-xs bg-fc-surface"></span>
+					{#each activityRamp as step, i (i)}
+						<span
+							class="h-3 w-3 rounded-fc-xs"
+							style:background-color={chartColor(0)}
+							style:opacity={step}
+						></span>
+					{/each}
 					<span>More</span>
 				</div>
-			</Card.Content>
-		</Card.Root>
+			</Card>
+		</section>
 
-		<section>
-			<h2 class="mb-4 text-lg font-semibold">Project Breakdown</h2>
+		<section class="flex flex-col gap-4">
+			<h2 class="text-fc-lg font-semibold text-fc-fg">Project Breakdown</h2>
 			{#if projectStats.length === 0}
-				<p class="text-sm text-muted-foreground">No project time yet.</p>
+				<EmptyState icon={icons.folder} title="No project time yet." />
 			{:else}
-				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-					{#each projectStats as stat}
-						<a
-							href={`/projects/${stat.projectId}`}
-							class="rounded-2xl border p-4 transition-colors hover:border-foreground/20 hover:bg-muted/30"
-						>
+				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					{#each projectStats as stat (stat.projectId)}
+						<Card href={`/projects/${stat.projectId}`} class="flex flex-col gap-4">
 							<div class="flex items-start justify-between gap-3">
-								<div class="min-w-0">
-									<p class="truncate font-medium">{stat.name}</p>
-									<p class="mt-1 text-xs text-muted-foreground">
-										{stat.sessionCount} {stat.sessionCount === 1 ? 'session' : 'sessions'}
-									</p>
+								<div class="flex min-w-0 flex-col gap-1">
+									<span class="truncate text-fc-sm font-medium text-fc-fg">{stat.name}</span>
+									<span class="text-fc-xs text-fc-fg-muted">
+										{stat.sessionCount}
+										{stat.sessionCount === 1 ? 'session' : 'sessions'}
+									</span>
 								</div>
-								<span class="font-mono text-sm font-semibold tabular-nums">
+								<span class="shrink-0 text-fc-sm font-semibold tabular-nums text-fc-fg">
 									{formatDuration(stat.totalMs)}
 								</span>
 							</div>
-							<p class="mt-3 text-xs text-muted-foreground">
+							<p class="text-fc-xs text-fc-fg-muted">
 								Last session {formatDate(stat.lastStartedAt)}
 							</p>
-						</a>
+						</Card>
 					{/each}
 				</div>
 			{/if}
 		</section>
 
-		<section>
-			<h2 class="mb-4 text-lg font-semibold">Recent Sessions</h2>
+		<section class="flex flex-col gap-4">
+			<h2 class="text-fc-lg font-semibold text-fc-fg">Recent Sessions</h2>
 			{#if recentEntries.length === 0}
-				<p class="text-sm text-muted-foreground">No sessions yet.</p>
+				<EmptyState icon={icons.clock} title="No sessions yet." />
 			{:else}
-				<Table.Root>
-					<Table.Header>
-						<Table.Row>
-							<Table.Head>Project</Table.Head>
-							<Table.Head>Task</Table.Head>
-							<Table.Head>Started</Table.Head>
-							<Table.Head class="text-right">Duration</Table.Head>
-						</Table.Row>
-					</Table.Header>
-					<Table.Body>
-						{#each recentEntries as entry}
-							<Table.Row class="cursor-pointer" onclick={() => goto(`/projects/${entry.project_id}`)}>
-								<Table.Cell class="font-medium">
-									<span class="hover:underline">{projectName(entry.project_id)}</span>
-								</Table.Cell>
-								<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
-								<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
-								<Table.Cell class="text-right">
+				<Table>
+					<thead>
+						<tr>
+							<th>Project</th>
+							<th>Task</th>
+							<th>Started</th>
+							<th class="text-right">Duration</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each recentEntries as entry (entry.id)}
+							<tr>
+								<td>
+									<a
+										href={`/projects/${entry.project_id}`}
+										class="font-medium text-fc-fg hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
+									>
+										{projectName(entry.project_id)}
+									</a>
+								</td>
+								<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
+								<td class="whitespace-nowrap text-fc-fg-muted">{formatDate(entry.started_at)}</td>
+								<td class="text-right">
 									{#if entry.stopped_at === null}
 										{@const paused = isTimeEntryPaused(entry)}
-										<span class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${paused ? 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'}`}>
-											{#if !paused}
-												<span class="relative flex h-2 w-2">
-													<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-													<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-												</span>
-											{/if}
-											{paused ? 'Paused' : 'Running'}
-										</span>
+										{#if paused}
+											<Badge tone="warning" class="ml-auto">Paused</Badge>
+										{:else}
+											<Badge tone="success" class="ml-auto">
+												<StatusDot tone="success" pulse />
+												Running
+											</Badge>
+										{/if}
 									{:else}
-										<span class="font-mono text-sm tabular-nums">{entryDuration(entry)}</span>
+										<span class="tabular-nums">{entryDuration(entry)}</span>
 									{/if}
-								</Table.Cell>
-							</Table.Row>
+								</td>
+							</tr>
 						{/each}
-					</Table.Body>
-				</Table.Root>
+					</tbody>
+				</Table>
 			{/if}
 		</section>
 	{/if}

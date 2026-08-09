@@ -3,15 +3,13 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { backend } from '$lib/backend';
-	import { Clock, Users, BarChart2, ArrowRight } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Separator } from '$lib/components/ui/separator';
-    import { TOKEN_KEY } from '$lib/constants';
-
+	import { TOKEN_KEY } from '$lib/constants';
+	import { Button, Divider, TextElevate, icons } from '@facile/muse';
 
 	let redirecting = $state(true);
 	let ssoOnly = $state(false);
+
+	const startHref = $derived(ssoOnly ? '/login' : '/login?tab=register');
 
 	function readSsoToken(): string | null {
 		const fragment = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
@@ -38,6 +36,27 @@
 
 		redirecting = false;
 	});
+
+	const features = [
+		{
+			icon: icons.clock,
+			title: 'One-click timers',
+			description:
+				"Start and stop timers instantly. Add a description and pick a project — that's it."
+		},
+		{
+			icon: icons.usersGroup,
+			title: 'Multi-user',
+			description:
+				'Every team member has their own account. Time entries are private and per-user.'
+		},
+		{
+			icon: icons.dashboard,
+			title: 'Project breakdown',
+			description:
+				'Organize work by project. Filter your log, see total hours, know where time went.'
+		}
+	];
 </script>
 
 <svelte:head>
@@ -46,101 +65,92 @@
 </svelte:head>
 
 {#if !redirecting}
-<div class="min-h-screen bg-background text-foreground">
-	<header class="border-b border-border">
-		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <div class="flex h-14 items-center gap-3">
-                <iconify-icon icon="solar:hourglass-bold-duotone" width="28" class="text-foreground"></iconify-icon>
-                <span class="text-2xl font-bold font-heading tracking-tight">Sablier</span>
-            </div>
-			<div class="flex items-center gap-2">
-				<Button variant="ghost" href="/login">Log in</Button>
-				<Button href={ssoOnly ? '/login' : '/login?tab=register'}>
-					{ssoOnly ? 'Continue with SSO' : 'Get started'}
-				</Button>
+	<div class="min-h-dvh bg-fc-page text-fc-fg">
+		<header class="border-b border-fc-border">
+			<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+				<div class="flex h-14 items-center gap-3">
+					<iconify-icon
+						icon="solar:hourglass-bold-duotone"
+						width="24"
+						height="24"
+						class="block shrink-0"
+					></iconify-icon>
+					<span class="font-fc-title text-fc-xl font-semibold tracking-tight">Sablier</span>
+				</div>
+				<div class="flex items-center gap-2">
+					<Button variant="ghost" href="/login">Log in</Button>
+					<Button href={startHref}>
+						{ssoOnly ? 'Continue with SSO' : 'Get started'}
+					</Button>
+				</div>
 			</div>
-		</div>
-	</header>
+		</header>
 
-	<main>
-		<section class="mx-auto max-w-5xl px-6 py-24 text-center">
-			<h1 class="text-5xl font-bold tracking-tight">
-				Track time.<br />Ship faster.
-			</h1>
-			<p class="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
-				Sablier is a no-nonsense time tracker for individuals and teams. Log hours per project,
-				see where your time goes, stay accountable.
-			</p>
-			<div class="mt-10 flex justify-center gap-3">
-				<Button size="lg" href={ssoOnly ? '/login' : '/login?tab=register'}>
-					{ssoOnly ? 'Continue with SSO' : 'Start tracking'}
-					<ArrowRight class="ml-2 size-4" />
-				</Button>
-				<Button size="lg" variant="outline" href="/login">Log in</Button>
+		<main>
+			<section class="mx-auto max-w-5xl px-6 py-24 text-center">
+				<h1 class="font-fc-title text-fc-3xl font-semibold tracking-tight">
+					<span class="block"><TextElevate text="Track time." delay={0.1} /></span>
+					<span class="block"><TextElevate text="Ship faster." delay={0.25} /></span>
+				</h1>
+				<p class="mx-auto mt-6 max-w-xl text-fc-md text-fc-fg-muted">
+					Sablier is a no-nonsense time tracker for individuals and teams. Log hours per project,
+					see where your time goes, stay accountable.
+				</p>
+				<div class="mt-10 flex flex-wrap justify-center gap-3">
+					<Button size="lg" href={startHref} iconRight={icons.arrow}>
+						{ssoOnly ? 'Continue with SSO' : 'Start tracking'}
+					</Button>
+					<Button size="lg" variant="outline" href="/login">Log in</Button>
+				</div>
+			</section>
+
+			<Divider class="my-0" />
+
+			<section class="mx-auto max-w-5xl px-6 py-20">
+				<div class="grid gap-6 md:grid-cols-3">
+					{#each features as feature (feature.title)}
+						<div class="rounded-fc-lg border border-fc-border p-6">
+							<div
+								class="mb-3 flex size-10 items-center justify-center rounded-fc-md border border-fc-border"
+							>
+								<iconify-icon icon={feature.icon} width="20" height="20" class="block shrink-0"
+								></iconify-icon>
+							</div>
+							<h3 class="text-fc-lg font-semibold">{feature.title}</h3>
+							<p class="mt-1.5 text-fc-sm text-fc-fg-muted">{feature.description}</p>
+						</div>
+					{/each}
+				</div>
+			</section>
+
+			<Divider class="my-0" />
+
+			<section class="mx-auto max-w-5xl px-6 py-20 text-center">
+				<h2 class="font-fc-title text-fc-2xl font-semibold tracking-tight">
+					{ssoOnly ? 'Ready to sign in?' : 'Ready to start?'}
+				</h2>
+				<p class="mt-4 text-fc-sm text-fc-fg-muted">
+					{ssoOnly
+						? 'Use your organization SSO to access Sablier.'
+						: 'Free to use. No credit card required.'}
+				</p>
+				<div class="mt-8 flex justify-center">
+					<Button size="lg" href={startHref}>
+						{ssoOnly ? 'Continue with SSO' : 'Create an account'}
+					</Button>
+				</div>
+			</section>
+		</main>
+
+		<footer class="border-t border-fc-border">
+			<div class="mx-auto max-w-5xl px-6 py-6 text-center text-fc-sm text-fc-fg-muted">
+				© {new Date().getFullYear()} Sablier by
+				<a
+					href="https://facile.studio"
+					class="font-semibold underline underline-offset-2 transition-colors hover:text-fc-fg"
+					>Facile.</a
+				>
 			</div>
-		</section>
-
-		<Separator />
-
-		<section class="mx-auto max-w-5xl px-6 py-20">
-			<div class="grid gap-6 md:grid-cols-3">
-				<Card.Root class="border border-border">
-					<Card.Header>
-						<div class="mb-2 flex size-10 items-center justify-center rounded-md border border-border">
-							<Clock class="size-5" />
-						</div>
-						<Card.Title>One-click timers</Card.Title>
-						<Card.Description>
-							Start and stop timers instantly. Add a description and pick a project — that's it.
-						</Card.Description>
-					</Card.Header>
-				</Card.Root>
-
-				<Card.Root class="border border-border">
-					<Card.Header>
-						<div class="mb-2 flex size-10 items-center justify-center rounded-md border border-border">
-							<Users class="size-5" />
-						</div>
-						<Card.Title>Multi-user</Card.Title>
-						<Card.Description>
-							Every team member has their own account. Time entries are private and per-user.
-						</Card.Description>
-					</Card.Header>
-				</Card.Root>
-
-				<Card.Root class="border border-border">
-					<Card.Header>
-						<div class="mb-2 flex size-10 items-center justify-center rounded-md border border-border">
-							<BarChart2 class="size-5" />
-						</div>
-						<Card.Title>Project breakdown</Card.Title>
-						<Card.Description>
-							Organize work by project. Filter your log, see total hours, know where time went.
-						</Card.Description>
-					</Card.Header>
-				</Card.Root>
-			</div>
-		</section>
-
-		<Separator />
-
-		<section class="mx-auto max-w-5xl px-6 py-20 text-center">
-			<h2 class="text-3xl font-bold tracking-tight">
-				{ssoOnly ? 'Ready to sign in?' : 'Ready to start?'}
-			</h2>
-			<p class="mt-4 text-muted-foreground">
-				{ssoOnly ? 'Use your organization SSO to access Sablier.' : 'Free to use. No credit card required.'}
-			</p>
-			<Button class="mt-8" size="lg" href={ssoOnly ? '/login' : '/login?tab=register'}>
-				{ssoOnly ? 'Continue with SSO' : 'Create an account'}
-			</Button>
-		</section>
-	</main>
-
-	<footer class="border-t border-border text-center text-muted">
-		<div class="mx-auto max-w-5xl px-6 py-6 text-sm text-muted-foreground">
-			© {new Date().getFullYear()} Sablier by <a href="https://facile.studio" class="underline hover:cursor-pointer font-semibold">Facile.</a>
-		</div>
-	</footer>
-</div>
+		</footer>
+	</div>
 {/if}

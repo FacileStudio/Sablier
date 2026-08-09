@@ -1,21 +1,11 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
-	import type { DateValue } from '@internationalized/date';
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getActiveSpaceId } from '$lib/space-context.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
-	import * as Drawer from '$lib/components/ui/drawer';
-	import * as Popover from '$lib/components/ui/popover';
-	import * as Calendar from '$lib/components/ui/calendar';
+	import { Button, Drawer, Field, Input, Select, icons } from '@facile/muse';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
-	import { CalendarIcon, Plus, Pencil } from 'lucide-svelte';
-	import { cn } from '$lib/utils';
 
 	type Props = {
 		projects: Project[];
@@ -29,18 +19,17 @@
 	let { projects, editEntry = null, open = $bindable(false), hideTrigger = false, onchange, onclose }: Props = $props();
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
+	const uid = $props.id();
 
 	let drawerOpen = $state(false);
 	let selectedProjectId = $state('');
 	let tasks = $state<Task[]>([]);
 	let taskName = $state('');
 	let taskProjectId = $state('');
-	let startDate = $state<DateValue | undefined>(undefined);
+	let startDate = $state('');
 	let startTime = $state('');
-	let endDate = $state<DateValue | undefined>(undefined);
+	let endDate = $state('');
 	let endTime = $state('');
-	let startPopoverOpen = $state(false);
-	let endPopoverOpen = $state(false);
 	let saving = $state(false);
 	let taskLoading = $state(false);
 	let error = $state('');
@@ -48,9 +37,12 @@
 	const isEditMode = $derived(editEntry != null);
 	const isRunningEdit = $derived(editEntry != null && editEntry.stopped_at == null);
 
-	function isoToDateValue(iso: string): DateValue {
-		const d = new Date(iso);
-		return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+	function toDateInput(d: Date): string {
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	}
+
+	function isoToDateValue(iso: string): string {
+		return toDateInput(new Date(iso));
 	}
 
 	function isoToTime(iso: string): string {
@@ -58,24 +50,12 @@
 		return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 	}
 
-	function projectName(id: number): string {
-		return projects.find((p) => p.id === id)?.name ?? String(id);
-	}
-
-	function formatDate(date: DateValue | undefined): string {
-		if (!date) return 'Pick a date';
-		return new Date(date.year, date.month - 1, date.day).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
-	function buildIso(date: DateValue | undefined, time: string): string | null {
+	function buildIso(date: string, time: string): string | null {
 		if (!date || !time) return null;
+		const [year, month, day] = date.split('-').map(Number);
 		const [hours, minutes] = time.split(':').map(Number);
-		const d = new Date(date.year, date.month - 1, date.day, hours, minutes);
-		return d.toISOString();
+		if ([year, month, day, hours, minutes].some((n) => Number.isNaN(n))) return null;
+		return new Date(year, month - 1, day, hours, minutes).toISOString();
 	}
 
 	function reset() {
@@ -83,9 +63,9 @@
 		tasks = [];
 		taskName = '';
 		taskProjectId = '';
-		startDate = undefined;
+		startDate = '';
 		startTime = '';
-		endDate = undefined;
+		endDate = '';
 		endTime = '';
 		error = '';
 	}
@@ -99,7 +79,7 @@
 			endDate = isoToDateValue(entry.stopped_at);
 			endTime = isoToTime(entry.stopped_at);
 		} else {
-			endDate = undefined;
+			endDate = '';
 			endTime = '';
 		}
 	}
@@ -109,8 +89,8 @@
 		return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
 	}
 
-	function todayDate(): DateValue {
-		return today(getLocalTimeZone());
+	function todayDate(): string {
+		return toDateInput(new Date());
 	}
 
 	$effect(() => {
@@ -237,105 +217,62 @@
 	}
 </script>
 
-<Drawer.Root bind:open={drawerOpen} direction="bottom">
-	{#if !hideTrigger}
-		<Drawer.Trigger>
-			<Button variant="outline" class="gap-2 h-10 px-5" onclick={() => (drawerOpen = true)}>
-				<Plus class="h-4 w-4" />
-				Add session
-			</Button>
-		</Drawer.Trigger>
-	{/if}
-	<Drawer.Content class="rounded-t-2xl">
-			<div class="px-6 pb-8 pt-4 flex flex-col gap-6 max-w-lg mx-auto w-full">
-				<Drawer.Header class="p-0">
-					<Drawer.Title>{isEditMode ? 'Edit session' : 'Add a session'}</Drawer.Title>
-				</Drawer.Header>
-				<div class="flex flex-col gap-4">
-					<div class="flex flex-col gap-1.5">
-						<Label for="manual-project-select">Project</Label>
-							<Select.Root type="single" bind:value={selectedProjectId}>
-							<Select.Trigger id="manual-project-select" class="w-full">
-								{selectedProjectId ? projectName(Number(selectedProjectId)) : 'Select a project'}
-							</Select.Trigger>
-							<Select.Content>
-								{#each projects as project}
-									<Select.Item value={String(project.id)}>{project.name}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
-					</div>
-					<div class={isRunningEdit ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
-						<div class="flex flex-col gap-1.5">
-							<Label>Start</Label>
-							<Popover.Root bind:open={startPopoverOpen}>
-								<Popover.Trigger>
-									<Button
-										variant="outline"
-										class={cn('w-full justify-start text-left font-normal gap-2', !startDate && 'text-muted-foreground')}
-									>
-										<CalendarIcon class="h-4 w-4 shrink-0" />
-										{formatDate(startDate)}
-									</Button>
-								</Popover.Trigger>
-								<Popover.Content class="w-auto p-0" align="start">
-									<Calendar.Calendar
-										type="single"
-										bind:value={startDate}
-										onValueChange={() => (startPopoverOpen = false)}
-									/>
-								</Popover.Content>
-							</Popover.Root>
-							<Input type="time" bind:value={startTime} class="w-full" />
-						</div>
-						{#if !isRunningEdit}
-							<div class="flex flex-col gap-1.5">
-								<Label>End</Label>
-								<Popover.Root bind:open={endPopoverOpen}>
-									<Popover.Trigger>
-										<Button
-											variant="outline"
-											class={cn('w-full justify-start text-left font-normal gap-2', !endDate && 'text-muted-foreground')}
-										>
-											<CalendarIcon class="h-4 w-4 shrink-0" />
-											{formatDate(endDate)}
-										</Button>
-									</Popover.Trigger>
-									<Popover.Content class="w-auto p-0" align="start">
-										<Calendar.Calendar
-											type="single"
-											bind:value={endDate}
-											onValueChange={() => (endPopoverOpen = false)}
-										/>
-									</Popover.Content>
-								</Popover.Root>
-								<Input type="time" bind:value={endTime} class="w-full" />
-							</div>
-						{/if}
-					</div>
-					<div class="flex flex-col gap-1.5">
-						<Label>Task</Label>
-						<TaskCombobox
-							{tasks}
-							bind:value={taskName}
-							disabled={!selectedProjectId}
-							loading={taskLoading}
-							placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
-						/>
-					</div>
-					{#if error}
-						<p class="text-sm text-destructive">{error}</p>
-					{/if}
-					<Button class="gap-2 w-full h-12 text-base" onclick={handleSave} disabled={saving}>
-						{#if isEditMode}
-							<Pencil class="h-4 w-4" />
-							{saving ? 'Saving…' : isRunningEdit ? 'Update session' : 'Save changes'}
-						{:else}
-							<Plus class="h-4 w-4" />
-							{saving ? 'Saving…' : 'Add session'}
-						{/if}
-					</Button>
-				</div>
-			</div>
-		</Drawer.Content>
-</Drawer.Root>
+{#if !hideTrigger}
+	<Button variant="outline" icon={icons.plus} onclick={() => (drawerOpen = true)}>Add session</Button>
+{/if}
+
+<Drawer bind:open={drawerOpen} title={isEditMode ? 'Edit session' : 'Add a session'}>
+	<div class="flex flex-col gap-4">
+		<Field label="Project">
+			<Select bind:value={selectedProjectId}>
+				<option value="">Select a project</option>
+				{#each projects as project (project.id)}
+					<option value={String(project.id)}>{project.name}</option>
+				{/each}
+			</Select>
+		</Field>
+
+		<div class={isRunningEdit ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+			<Field label="Start">
+				<Input type="date" bind:value={startDate} />
+				<Input id="{uid}-start-time" type="time" bind:value={startTime} aria-label="Start time" />
+			</Field>
+			{#if !isRunningEdit}
+				<Field label="End">
+					<Input type="date" bind:value={endDate} />
+					<Input id="{uid}-end-time" type="time" bind:value={endTime} aria-label="End time" />
+				</Field>
+			{/if}
+		</div>
+
+		<Field label="Task">
+			<TaskCombobox
+				{tasks}
+				bind:value={taskName}
+				disabled={!selectedProjectId}
+				loading={taskLoading}
+				placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+			/>
+		</Field>
+
+		{#if error}
+			<p class="text-fc-sm text-fc-danger" role="alert">{error}</p>
+		{/if}
+	</div>
+
+	{#snippet footer()}
+		<Button
+			size="lg"
+			class="w-full"
+			icon={isEditMode ? icons.edit : icons.plus}
+			onclick={handleSave}
+			disabled={saving}
+		>
+			{#if isEditMode}
+				{saving ? 'Saving…' : isRunningEdit ? 'Update session' : 'Save changes'}
+			{:else}
+				{saving ? 'Saving…' : 'Add session'}
+			{/if}
+		</Button>
+	{/snippet}
+</Drawer>

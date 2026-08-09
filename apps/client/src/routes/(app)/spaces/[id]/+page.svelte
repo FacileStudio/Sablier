@@ -2,28 +2,31 @@
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
 	import { backend, type Space, type SpaceMember } from '$lib/backend';
-	import { Button } from '$lib/components/ui/button';
-	import { ArrowLeft, Users, Settings, LogOut, Building2 } from 'lucide-svelte';
+	import {
+		Badge,
+		Button,
+		Card,
+		ConfirmModal,
+		EmptyState,
+		Table,
+		icons,
+		toast
+	} from '@facile/muse';
 
 	const ctx = getContext<{ token: string }>('app');
 
 	let space = $state<Space | null>(null);
 	let members = $state<SpaceMember[]>([]);
 	let leaving = $state(false);
+	let confirmLeave = $state(false);
 
 	const spaceId = $derived(page.params.id as string);
 
-	function roleBadgeClasses(role: string): string {
-		switch (role) {
-			case 'owner':
-				return 'bg-amber-500/10 text-amber-600';
-			case 'admin':
-				return 'bg-blue-500/10 text-blue-600';
-			default:
-				return 'bg-muted text-muted-foreground';
-		}
+	function roleTone(role: string): 'owner' | 'admin' | 'neutral' {
+		if (role === 'owner') return 'owner';
+		if (role === 'admin') return 'admin';
+		return 'neutral';
 	}
 
 	function roleLabel(role: string): string {
@@ -39,14 +42,13 @@
 	}
 
 	async function leave() {
-		if (!confirm('Êtes-vous sûr de vouloir quitter cet espace ?')) return;
 		leaving = true;
 		try {
 			await backend.leaveSpace(ctx.token, spaceId);
 			toast.success('Espace quitté');
 			goto('/spaces');
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : 'Impossible de quitter l\'espace');
+			toast.danger(e instanceof Error ? e.message : 'Impossible de quitter l\'espace');
 		} finally {
 			leaving = false;
 		}
@@ -66,95 +68,102 @@
 	<title>{space?.name ?? 'Espace'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-1 flex-col">
-	<div class="flex items-center justify-between border-b px-4 py-4 md:px-8 md:py-5">
-		<div class="flex items-center gap-3">
-			<a href="/spaces" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-				<ArrowLeft class="h-4 w-4" />
-				Espaces
-			</a>
-		</div>
-		<div class="flex items-center gap-2">
+<div class="flex flex-col gap-10 p-4 md:p-8">
+	<div class="flex flex-wrap items-center justify-between gap-4">
+		<Button variant="ghost" size="sm" href="/spaces" icon={icons.chevronLeft} class="pl-2">
+			Espaces
+		</Button>
+		<div class="flex flex-wrap items-center gap-2">
 			{#if space && (space.role === 'owner' || space.role === 'admin')}
-				<Button variant="outline" size="sm" href="/spaces/{spaceId}/settings" class="gap-1.5">
-					<Settings class="h-4 w-4" />
+				<Button variant="outline" size="sm" href="/spaces/{spaceId}/settings" icon={icons.settings}>
 					Paramètres
 				</Button>
 			{/if}
 			{#if space && space.role !== 'owner'}
 				<Button
-					variant="ghost"
+					variant="ghost-danger"
 					size="sm"
-					class="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+					icon={icons.logout}
 					disabled={leaving}
-					onclick={leave}
+					onclick={() => (confirmLeave = true)}
 				>
-					<LogOut class="h-4 w-4" />
 					{leaving ? 'Départ...' : 'Quitter'}
 				</Button>
 			{/if}
 		</div>
 	</div>
 
-	<div class="flex-1 p-4 md:p-8">
-		{#if space}
-			<div class="space-y-8">
-				<div class="flex items-start gap-4">
-					<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-						<Building2 class="h-6 w-6 text-primary" />
-					</div>
-					<div>
-						<h1 class="text-xl font-semibold">{space.name}</h1>
-						{#if space.description}
-							<p class="mt-1 text-sm text-muted-foreground">{space.description}</p>
-						{/if}
-						<div class="mt-2 flex items-center gap-2">
-							<span class="rounded-full px-2 py-0.5 text-xs font-medium {roleBadgeClasses(space.role)}">
-								{roleLabel(space.role)}
-							</span>
-							<span class="text-xs text-muted-foreground">
-								Créé le {formatDate(space.created_at)}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<div>
-					<div class="flex items-center justify-between pb-4">
-						<h2 class="flex items-center gap-2 text-sm font-medium">
-							<Users class="h-4 w-4" />
-							Membres ({members.length})
-						</h2>
-						{#if space.role === 'owner' || space.role === 'admin'}
-							<Button variant="outline" size="sm" href="/spaces/{spaceId}/members" class="gap-1.5 text-sm">
-								Gérer
-							</Button>
-						{/if}
-					</div>
-					{#if members.length === 0}
-						<p class="text-sm text-muted-foreground">Aucun membre.</p>
-					{:else}
-						<div class="space-y-2">
-							{#each members as member}
-								<div class="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50">
-									<div>
-										<p class="text-sm font-medium">{member.user_name || member.user_email}</p>
-										<p class="text-xs text-muted-foreground">{member.user_email}</p>
-									</div>
-									<div class="flex items-center gap-3">
-										<span class="rounded-full px-2 py-0.5 text-xs font-medium {roleBadgeClasses(member.role)}">
-											{roleLabel(member.role)}
-										</span>
-										<span class="text-xs text-muted-foreground">
-											{formatDate(member.joined_at)}
-										</span>
-									</div>
-								</div>
-							{/each}
-						</div>
+	{#if space}
+		<section class="flex flex-col gap-4">
+			<Card class="flex items-start gap-4">
+				<span
+					class="flex h-12 w-12 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
+				>
+					<iconify-icon icon={icons.usersGroup} width="24" height="24" class="block"></iconify-icon>
+				</span>
+				<div class="flex min-w-0 flex-1 flex-col gap-1">
+					<h1 class="truncate text-fc-xl font-semibold text-fc-fg">{space.name}</h1>
+					{#if space.description}
+						<p class="text-fc-sm text-fc-fg-muted">{space.description}</p>
 					{/if}
+					<div class="flex flex-wrap items-center gap-2">
+						<Badge tone={roleTone(space.role)}>{roleLabel(space.role)}</Badge>
+						<span class="text-fc-xs text-fc-fg-muted">
+							Créé le {formatDate(space.created_at)}
+						</span>
+					</div>
 				</div>
+			</Card>
+		</section>
+
+		<section class="flex flex-col gap-4">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<h2 class="text-fc-lg font-semibold text-fc-fg">Membres ({members.length})</h2>
+				{#if space.role === 'owner' || space.role === 'admin'}
+					<Button variant="outline" size="sm" href="/spaces/{spaceId}/members">Gérer</Button>
+				{/if}
 			</div>
-		{/if}
-	</div>
+			{#if members.length === 0}
+				<EmptyState icon={icons.usersGroup} title="Aucun membre." />
+			{:else}
+				<Table>
+					<thead>
+						<tr>
+							<th>Membre</th>
+							<th>Rôle</th>
+							<th>Rejoint le</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each members as member (member.id)}
+							<tr>
+								<td>
+									<div class="flex min-w-0 flex-col gap-0.5">
+										<span class="truncate font-medium text-fc-fg">
+											{member.user_name || member.user_email}
+										</span>
+										<span class="truncate text-fc-xs text-fc-fg-muted">{member.user_email}</span>
+									</div>
+								</td>
+								<td>
+									<Badge tone={roleTone(member.role)}>{roleLabel(member.role)}</Badge>
+								</td>
+								<td class="whitespace-nowrap text-fc-fg-muted">{formatDate(member.joined_at)}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</Table>
+			{/if}
+		</section>
+	{/if}
 </div>
+
+<ConfirmModal
+	bind:open={confirmLeave}
+	tone="danger"
+	title="Quitter cet espace ?"
+	description="Êtes-vous sûr de vouloir quitter cet espace ? Vous perdez l'accès à ses projets et à ses entrées de temps ; vos entrées existantes ne sont pas supprimées."
+	confirmLabel="Quitter"
+	cancelLabel="Annuler"
+	onConfirm={leave}
+/>

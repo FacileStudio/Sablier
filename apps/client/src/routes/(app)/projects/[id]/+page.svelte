@@ -8,16 +8,24 @@
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import * as Drawer from '$lib/components/ui/drawer';
-	import * as Card from '$lib/components/ui/card';
-	import * as Table from '$lib/components/ui/table';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
+	import {
+		Alert,
+		Badge,
+		Button,
+		Card,
+		ConfirmModal,
+		Drawer,
+		EmptyState,
+		Field,
+		Input,
+		Spinner,
+		StatCard,
+		StatusDot,
+		Table,
+		Tabs,
+		icons
+	} from '@facile/muse';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
-	import { Clock, BarChart3, ArrowLeft, Timer, Pencil, Trash2, Check, X, Save, Search } from 'lucide-svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { toIconify } from '$lib/icons';
 
@@ -54,6 +62,7 @@
 	let editDrawerOpen = $state(false);
 	let taskSearch = $state('');
 	let now = $state(Date.now());
+	let activeTab = $state('tasks');
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let stopTimeEntrySync: (() => void) | undefined;
 
@@ -179,8 +188,15 @@
 				)
 	);
 
+	const tabItems = $derived([
+		{ id: 'tasks', label: 'Tasks', icon: icons.check, badge: tasksWithStats.length },
+		{ id: 'sessions', label: 'Sessions', icon: icons.clock, badge: sortedEntries.length },
+		{ id: 'repartition', label: 'User Repartition', icon: icons.usersGroup }
+	]);
+
 	function openEntryDeleteDialog(entry: TimeEntry) {
 		deleteEntryTarget = entry;
+		deleteError = '';
 		entryDeleteDialogOpen = true;
 	}
 
@@ -194,10 +210,9 @@
 		try {
 			await backend.deleteEntry(ctx.token, target.id);
 			entries = entries.filter((entry) => entry.id !== target.id);
-			entryDeleteDialogOpen = false;
-			deleteEntryTarget = null;
 		} catch (e) {
 			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
+			throw e;
 		} finally {
 			deletingEntryId = null;
 		}
@@ -206,6 +221,7 @@
 	function openTaskDeleteDialog(taskId: number, name: string, sessionCount: number) {
 		deleteTaskTarget = { id: taskId, name, sessionCount };
 		taskSaveError = '';
+		taskDeleteError = '';
 		taskDeleteDialogOpen = true;
 	}
 
@@ -237,10 +253,9 @@
 			await backend.deleteTask(ctx.token, project.id, target.id);
 			tasks = tasks.filter((t) => t.id !== target.id);
 			entries = entries.map((e) => e.task_id === target.id ? { ...e, task_id: 0, task_name: '' } : e);
-			taskDeleteDialogOpen = false;
-			deleteTaskTarget = null;
 		} catch (e) {
 			taskDeleteError = e instanceof Error ? e.message : 'Failed to delete task.';
+			throw e;
 		} finally {
 			deletingTaskId = null;
 		}
@@ -278,6 +293,20 @@
 	function statusLabel(status: string): string {
 		const labels: Record<string, string> = { 'to-do': 'Not started', 'in-progress': 'In progress', 'in-review': 'In review', 'done': 'Completed' };
 		return labels[status] ?? 'Not started';
+	}
+
+	function statusDotClass(status: string): string {
+		if (status === 'done') return 'border-fc-success bg-fc-success';
+		if (status === 'in-review') return 'border-fc-info bg-fc-info';
+		if (status === 'in-progress') return 'border-fc-warning bg-fc-warning';
+		return 'border-fc-border hover:border-fc-fg';
+	}
+
+	function statusTone(status: string): 'success' | 'info' | 'warning' | 'neutral' {
+		if (status === 'done') return 'success';
+		if (status === 'in-review') return 'info';
+		if (status === 'in-progress') return 'warning';
+		return 'neutral';
 	}
 
 	async function toggleTaskStatus(taskId: number) {
@@ -335,11 +364,11 @@
 		projectActionError = '';
 		try {
 			await backend.deleteProject(ctx.token, project.id);
-			projectDeleteDialogOpen = false;
 			await goto('/projects');
 		} catch (e) {
 			projectActionError = e instanceof Error ? e.message : 'Failed to delete project.';
 			deletingProject = false;
+			throw e;
 		}
 	}
 
@@ -399,269 +428,262 @@
 	<title>{project?.name ?? 'Project'} — Sablier</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
-	<div>
-		<Button variant="ghost" href="/projects" class="mb-4 gap-2 pl-0 text-muted-foreground">
-			<ArrowLeft class="h-4 w-4" />
-			Projects
-		</Button>
+<div class="flex flex-col gap-10 p-4 sm:p-6">
+	<section class="flex flex-col gap-4">
+		<div>
+			<Button variant="ghost" href="/projects" icon={icons.chevronLeft} class="-ml-4">Projects</Button>
+		</div>
 
 		{#if loading}
-			<p class="text-sm text-muted-foreground">Loading…</p>
+			<div class="flex items-center gap-2 text-fc-sm text-fc-fg-muted">
+				<Spinner size="sm" />
+				Loading…
+			</div>
 		{:else if error}
-			<p class="text-sm text-destructive">{error}</p>
+			<Alert tone="danger">{error}</Alert>
 		{:else if project}
-			<div class="flex items-start justify-between gap-4">
-				<div class="flex flex-col gap-1">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div class="flex min-w-0 flex-col gap-1">
 					<div class="flex items-center gap-2.5">
-						<iconify-icon icon={toIconify(project.icon)} width="24" height="24" class="text-muted-foreground shrink-0"></iconify-icon>
-						<h1 class="text-2xl font-bold tracking-tight">{project.name}</h1>
+						<iconify-icon
+							icon={toIconify(project.icon)}
+							width="24"
+							height="24"
+							class="block shrink-0 text-fc-fg-muted"
+						></iconify-icon>
+						<h1 class="truncate text-fc-2xl font-semibold text-fc-fg">{project.name}</h1>
 					</div>
-					<p class="text-sm text-muted-foreground">
+					<p class="text-fc-sm text-fc-fg-muted">
 						{project.description || 'No description'}
 					</p>
-					<p class="mt-1 text-xs text-muted-foreground">
+					<p class="text-fc-xs text-fc-fg-muted">
 						Created {formatDateShort(project.created_at)}
 					</p>
 				</div>
-				<div class="flex shrink-0 items-center gap-3">
-					<div class="flex gap-2">
-						<Button variant="outline" class="gap-2 h-10 px-5" onclick={startProjectEdit}>
-							<Pencil class="h-4 w-4" />
-							Edit
-						</Button>
-						<Button
-							class="gap-2 h-10 px-5 border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-							onclick={() => { projectDeleteDialogOpen = true; }}
-							disabled={deletingProject}
-						>
-							<Trash2 class="h-4 w-4" />
-							{deletingProject ? 'Deleting…' : 'Delete'}
-						</Button>
-					</div>
+				<div class="flex shrink-0 items-center gap-2">
+					<Button variant="outline" icon={icons.edit} onclick={startProjectEdit}>Edit</Button>
+					<Button
+						variant="danger"
+						icon={icons.remove}
+						onclick={() => { projectDeleteDialogOpen = true; }}
+						disabled={deletingProject}
+					>
+						{deletingProject ? 'Deleting…' : 'Delete'}
+					</Button>
 				</div>
 			</div>
 
 			{#if projectActionError}
-				<p class="mt-4 text-sm text-destructive">{projectActionError}</p>
+				<Alert tone="danger">{projectActionError}</Alert>
 			{/if}
+		{/if}
+	</section>
 
-			<div class="mt-6 grid grid-cols-2 gap-4" class:sm:grid-cols-3={projectValue === null} class:sm:grid-cols-4={projectValue !== null}>
-				<Card.Root>
-					<Card.Header class="pb-2">
-						<Card.Title class="text-sm font-medium text-muted-foreground">Total Time</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<div class="flex items-center gap-2">
-							<Clock class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(totalMs)}</span>
-						</div>
-					</Card.Content>
-				</Card.Root>
-
-				<Card.Root>
-					<Card.Header class="pb-2">
-						<Card.Title class="text-sm font-medium text-muted-foreground">Tasks</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<div class="flex items-center gap-2">
-							<BarChart3 class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold font-mono tabular-nums">{tasks.length}</span>
-						</div>
-					</Card.Content>
-				</Card.Root>
-
-				<Card.Root>
-					<Card.Header class="pb-2">
-						<Card.Title class="text-sm font-medium text-muted-foreground">Avg Session</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<div class="flex items-center gap-2">
-							<Timer class="h-4 w-4 text-muted-foreground" />
-							<span class="text-2xl font-bold font-mono tabular-nums">{formatDuration(avgMs)}</span>
-						</div>
-					</Card.Content>
-				</Card.Root>
-
+	{#if !loading && !error && project}
+		<section class="flex flex-col gap-4">
+			<div
+				class="grid grid-cols-2 gap-4"
+				class:sm:grid-cols-3={projectValue === null}
+				class:sm:grid-cols-4={projectValue !== null}
+			>
+				<StatCard label="Total Time" value={formatDuration(totalMs)} class="tabular-nums" />
+				<StatCard label="Tasks" value={tasks.length} class="tabular-nums" />
+				<StatCard label="Avg Session" value={formatDuration(avgMs)} class="tabular-nums" />
 				{#if projectValue !== null}
-					<Card.Root>
-						<Card.Header class="pb-2">
-							<Card.Title class="text-sm font-medium text-muted-foreground">Project Value</Card.Title>
-						</Card.Header>
-						<Card.Content>
-							<span class="text-2xl font-bold font-mono tabular-nums">{projectValue}</span>
-						</Card.Content>
-					</Card.Root>
+					<StatCard label="Project Value" value={projectValue} class="tabular-nums" />
 				{/if}
 			</div>
+		</section>
 
-			<section class="mt-6 rounded-2xl border p-5">
-				<div>
-					<div>
-						<h2 class="text-lg font-semibold">User Repartition</h2>
-						<p class="text-sm text-muted-foreground">
-							Whole-project split by tracked time per user.
-						</p>
+		<section class="flex flex-col gap-4">
+			<Tabs items={tabItems} bind:value={activeTab} panelId="project-panel" label="Project sections" />
+
+			<div id="project-panel" class="flex flex-col gap-4">
+				{#if activeTab === 'tasks'}
+					<div class="flex flex-col gap-1">
+						<h2 class="text-fc-lg font-semibold text-fc-fg">Tasks</h2>
+						<p class="text-fc-sm text-fc-fg-muted">Every task tracked on this project.</p>
 					</div>
-				</div>
 
-				<div class="mt-4">
-					{#if projectUserSegments.length === 0}
-						<p class="text-sm text-muted-foreground">No tracked time yet.</p>
-					{:else}
-						<UserColorSplitBar segments={projectUserSegments} barClass="h-4" showAvatars showDuration />
-					{/if}
-				</div>
-			</section>
-
-			<section class="mt-6">
-				<div class="mb-4 flex items-start justify-between gap-3">
-					<h2 class="text-lg font-semibold">Tasks</h2>
 					{#if tasksWithStats.length > 0}
-						<div class="relative w-56">
-							<Search class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+						<div class="relative w-full sm:w-64">
+							<iconify-icon
+								icon={icons.search}
+								width="16"
+								height="16"
+								class="pointer-events-none absolute top-1/2 left-3 block -translate-y-1/2 text-fc-fg-muted"
+							></iconify-icon>
 							<Input
 								bind:value={taskSearch}
 								placeholder="Filter tasks…"
-								class="h-8 pl-8 text-sm"
+								aria-label="Filter tasks"
+								class="pl-9"
 							/>
 						</div>
 					{/if}
-				</div>
-				<div>
+
 					{#if taskSaveError}
-						<p class="mb-4 text-sm text-destructive">{taskSaveError}</p>
+						<Alert tone="danger">{taskSaveError}</Alert>
 					{/if}
+
 					{#if tasksWithStats.length === 0}
-						<p class="text-sm text-muted-foreground">No tasks yet.</p>
+						<EmptyState
+							icon={icons.check}
+							title="No tasks yet."
+							description="Tasks appear here as soon as a session is tracked against one."
+						/>
 					{:else if filteredTasks.length === 0}
-						<p class="text-sm text-muted-foreground">No tasks matching "{taskSearch}".</p>
+						<EmptyState
+							icon={icons.search}
+							title={`No tasks matching "${taskSearch}".`}
+							description="Try a different filter."
+						/>
 					{:else}
-						<div class="space-y-3">
-							{#each filteredTasks as task}
-								<div class="rounded-xl border p-4 {task.status === 'done' ? 'opacity-60' : ''}">
-									<div class="flex items-start justify-between gap-3">
-										<div class="flex min-w-0 items-start gap-3">
+						<Table>
+							<thead>
+								<tr>
+									<th aria-label="Toggle status"></th>
+									<th>Task</th>
+									<th>Status</th>
+									<th>Tracked</th>
+									<th aria-label="Assignee"></th>
+									<th aria-label="Actions"></th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each filteredTasks as task (task.id)}
+									<tr class={task.status === 'done' ? 'opacity-60' : ''}>
+										<td>
 											<button
 												type="button"
-												class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {task.status === 'done' ? 'border-green-500 bg-green-500' : task.status === 'in-review' ? 'border-blue-400 bg-blue-400' : task.status === 'in-progress' ? 'border-amber-400 bg-amber-400' : 'border-muted-foreground/40 hover:border-foreground/60'}"
+												class="mt-0.5 block size-4 shrink-0 rounded-fc-pill border transition-colors {statusDotClass(task.status)}"
+												aria-label="Task status: {statusLabel(task.status)} — change"
 												title={statusLabel(task.status)}
 												onclick={() => toggleTaskStatus(task.id)}
-											>
-												{#if task.status === 'done'}
-													<Check class="h-2.5 w-2.5 text-white" />
-												{/if}
-											</button>
-											<div class="min-w-0">
-												{#if editingTaskId === task.id}
-													<div class="flex flex-col gap-2">
-														<Input
-															bind:value={taskDraftName}
-															class="h-8"
-															maxlength={200}
-														/>
-														<div class="flex flex-wrap gap-2">
-															<Button
-																size="sm"
-																onclick={() => saveTaskName(task.id)}
-																disabled={savingTaskId === task.id}
-															>
-																<Check class="h-4 w-4" />
-																{savingTaskId === task.id ? 'Saving…' : 'Save'}
-															</Button>
-															<Button
-																variant="outline"
-																size="sm"
-																onclick={cancelTaskEdit}
-																disabled={savingTaskId === task.id}
-															>
-																<X class="h-4 w-4" />
-																Cancel
-															</Button>
-														</div>
+											></button>
+										</td>
+										<td>
+											{#if editingTaskId === task.id}
+												<div class="flex min-w-56 flex-col gap-2">
+													<Input bind:value={taskDraftName} maxlength={200} aria-label="Task name" />
+													<div class="flex flex-wrap gap-2">
+														<Button
+															size="sm"
+															icon={icons.check}
+															onclick={() => saveTaskName(task.id)}
+															disabled={savingTaskId === task.id}
+														>
+															{savingTaskId === task.id ? 'Saving…' : 'Save'}
+														</Button>
+														<Button
+															variant="outline"
+															size="sm"
+															icon={icons.close}
+															onclick={cancelTaskEdit}
+															disabled={savingTaskId === task.id}
+														>
+															Cancel
+														</Button>
 													</div>
-												{:else}
-													<p class="truncate font-medium {task.status === 'done' ? 'line-through text-muted-foreground' : ''}" title={task.name}>{task.name}</p>
-												{/if}
-											</div>
-										</div>
-										<div class="flex items-center gap-1">
+												</div>
+											{:else}
+												<div class="flex min-w-56 flex-col gap-2">
+													<p
+														class="truncate font-medium {task.status === 'done'
+															? 'text-fc-fg-muted line-through'
+															: 'text-fc-fg'}"
+														title={task.name}
+													>
+														{task.name}
+													</p>
+													{#if task.userSegments.length > 0}
+														<UserColorSplitBar segments={task.userSegments} showLegend={false} />
+													{:else}
+														<div class="h-3 w-full rounded-fc-pill bg-fc-surface"></div>
+													{/if}
+												</div>
+											{/if}
+										</td>
+										<td>
+											<Badge tone={statusTone(task.status)}>{statusLabel(task.status)}</Badge>
+										</td>
+										<td class="font-fc-mono whitespace-nowrap tabular-nums">
+											{formatDuration(task.totalMs)}
+										</td>
+										<td>
 											{#if task.actor_id}
 												{@const actor = usersById.get(task.actor_id)}
 												{#if actor}
-													<UserAvatarBadge name={actor.name} avatarUrl={actor.avatar_url} color={actor.color} class="h-6 w-6 text-[10px]" />
+													<UserAvatarBadge
+														name={actor.name}
+														avatarUrl={actor.avatar_url}
+														color={actor.color}
+														class="size-6 text-fc-xs"
+													/>
 												{/if}
 											{/if}
-											<Badge variant={task.status === 'done' ? 'default' : task.status === 'in-review' ? 'outline' : task.status === 'in-progress' ? 'outline' : 'secondary'} class="tabular-nums text-xs">
-												{statusLabel(task.status)}
-											</Badge>
-											<Badge variant="secondary" class="tabular-nums">
-												{formatDuration(task.totalMs)}
-											</Badge>
-											<Button
-												variant="ghost"
-												size="icon"
-												class="h-7 w-7 text-muted-foreground opacity-50 hover:opacity-100"
-												onclick={() => startTaskEdit(task.id, task.name)}
-												disabled={editingTaskId !== null && editingTaskId !== task.id}
-											>
-												<Pencil class="h-3.5 w-3.5" />
-											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												class="h-7 w-7 text-muted-foreground opacity-50 hover:text-destructive hover:opacity-100"
-												onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
-												disabled={deletingTaskId === task.id || (editingTaskId !== null && editingTaskId !== task.id)}
-											>
-												<Trash2 class="h-3.5 w-3.5" />
-											</Button>
-										</div>
-									</div>
-									<div class="mt-3">
-										{#if task.userSegments.length > 0}
-											<UserColorSplitBar segments={task.userSegments} />
-										{:else}
-											<div class="h-3 w-full rounded-full bg-muted/40"></div>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
+										</td>
+										<td>
+											<div class="flex items-center justify-end gap-1">
+												<Button
+													variant="ghost"
+													size="sm"
+													icon={icons.edit}
+													aria-label="Rename task"
+													onclick={() => startTaskEdit(task.id, task.name)}
+													disabled={editingTaskId !== null && editingTaskId !== task.id}
+												/>
+												<Button
+													variant="ghost-danger"
+													size="sm"
+													icon={icons.remove}
+													aria-label="Delete task"
+													onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
+													disabled={deletingTaskId === task.id ||
+														(editingTaskId !== null && editingTaskId !== task.id)}
+												/>
+											</div>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</Table>
 					{/if}
-				</div>
-			</section>
+				{:else if activeTab === 'sessions'}
+					<div class="flex flex-col gap-1">
+						<h2 class="text-fc-lg font-semibold text-fc-fg">Sessions</h2>
+						<p class="text-fc-sm text-fc-fg-muted">Every tracked session on this project.</p>
+					</div>
 
-			<section class="mt-6">
-				<div class="mb-4">
-					<h2 class="text-lg font-semibold">Sessions</h2>
-				</div>
-				<div>
 					{#if deleteError}
-						<p class="mb-4 text-sm text-destructive">{deleteError}</p>
+						<Alert tone="danger">{deleteError}</Alert>
 					{/if}
 
 					{#if sortedEntries.length === 0}
-						<p class="text-sm text-muted-foreground">No sessions yet.</p>
+						<EmptyState
+							icon={icons.clock}
+							title="No sessions yet."
+							description="Start a timer on this project and its sessions land here."
+						/>
 					{:else}
-						<Table.Root>
-							<Table.Header>
-								<Table.Row>
-									<Table.Head>User</Table.Head>
-									<Table.Head>Task</Table.Head>
-								<Table.Head>Started</Table.Head>
-								<Table.Head>Duration</Table.Head>
-								<Table.Head class="text-right">Actions</Table.Head>
-								</Table.Row>
-							</Table.Header>
-							<Table.Body>
-								{#each sortedEntries as entry}
+						<Table>
+							<thead>
+								<tr>
+									<th>User</th>
+									<th>Task</th>
+									<th>Started</th>
+									<th>Duration</th>
+									<th aria-label="Actions"></th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each sortedEntries as entry (entry.id)}
 									{@const isRunning = entry.stopped_at === null}
 									{@const paused = isTimeEntryPaused(entry)}
 									{@const durationMs = entryMs(entry)}
-									<Table.Row>
-										<Table.Cell class="text-muted-foreground">
-											<div class="flex items-center gap-2">
+									<tr>
+										<td class="text-fc-fg-muted">
+											<div class="flex items-center gap-2 whitespace-nowrap">
 												<UserAvatarBadge
 													name={getEntryUserDisplayName(entry)}
 													avatarUrl={entry.user_avatar_url}
@@ -669,228 +691,176 @@
 												/>
 												<span>{getEntryUserDisplayName(entry)}</span>
 											</div>
-										</Table.Cell>
-										<Table.Cell class="text-muted-foreground">{entry.task_name || '—'}</Table.Cell>
-										<Table.Cell class="text-muted-foreground">{formatDate(entry.started_at)}</Table.Cell>
-										<Table.Cell>
+										</td>
+										<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
+										<td class="whitespace-nowrap text-fc-fg-muted">{formatDate(entry.started_at)}</td>
+										<td>
 											{#if isRunning}
-												<span class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${paused ? 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'}`}>
-													{#if !paused}
-														<span class="relative flex h-2 w-2">
-															<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-															<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-														</span>
-													{/if}
-													{paused ? 'Paused' : 'Running'}
-												</span>
+												{#if paused}
+													<Badge tone="warning">Paused</Badge>
+												{:else}
+													<Badge tone="success">
+														<StatusDot tone="success" pulse />
+														Running
+													</Badge>
+												{/if}
 											{:else}
-												<span class="font-mono text-sm tabular-nums">{formatDuration(durationMs)}</span>
+												<span class="font-fc-mono whitespace-nowrap tabular-nums">
+													{formatDuration(durationMs)}
+												</span>
 											{/if}
-										</Table.Cell>
-										<Table.Cell class="text-right">
+										</td>
+										<td>
 											{#if entry.user_id === Number(ctx.user?.id)}
-												<Button
-													variant="ghost"
-													size="icon"
-													class="h-8 w-8 opacity-50 hover:opacity-100"
-													onclick={() => openEditDrawer(entry)}
-												>
-													<Pencil class="h-4 w-4" />
-												</Button>
-												<Button
-													variant="ghost"
-													size="icon"
-													class="h-8 w-8 text-destructive opacity-50 hover:opacity-100 hover:text-destructive"
-													onclick={() => openEntryDeleteDialog(entry)}
-													disabled={deletingEntryId === entry.id}
-												>
-													<Trash2 class="h-4 w-4 text-destructive" />
-												</Button>
+												<div class="flex items-center justify-end gap-1">
+													<Button
+														variant="ghost"
+														size="sm"
+														icon={icons.edit}
+														aria-label="Edit session"
+														onclick={() => openEditDrawer(entry)}
+													/>
+													<Button
+														variant="ghost-danger"
+														size="sm"
+														icon={icons.remove}
+														aria-label="Delete session"
+														onclick={() => openEntryDeleteDialog(entry)}
+														disabled={deletingEntryId === entry.id}
+													/>
+												</div>
 											{/if}
-										</Table.Cell>
-									</Table.Row>
+										</td>
+									</tr>
 								{/each}
-							</Table.Body>
-						</Table.Root>
+							</tbody>
+						</Table>
 					{/if}
-				</div>
-			</section>
+				{:else}
+					<div class="flex flex-col gap-1">
+						<h2 class="text-fc-lg font-semibold text-fc-fg">User Repartition</h2>
+						<p class="text-fc-sm text-fc-fg-muted">
+							Whole-project split by tracked time per user.
+						</p>
+					</div>
+
+					{#if projectUserSegments.length === 0}
+						<EmptyState
+							icon={icons.usersGroup}
+							title="No tracked time yet."
+							description="The split appears once someone tracks time on this project."
+						/>
+					{:else}
+						<Card>
+							<UserColorSplitBar
+								segments={projectUserSegments}
+								barClass="h-4"
+								showAvatars
+								showDuration
+							/>
+						</Card>
+					{/if}
+				{/if}
+			</div>
+		</section>
+	{/if}
+</div>
+
+<ConfirmModal
+	bind:open={projectDeleteDialogOpen}
+	tone="danger"
+	title="Delete project?"
+	description={project
+		? `${project.name}, its ${tasks.length} task${tasks.length === 1 ? '' : 's'} and its ${entries.length} tracked session${entries.length === 1 ? '' : 's'} are deleted for everyone. This cannot be undone.`
+		: 'This project and everything tracked on it are deleted for everyone. This cannot be undone.'}
+	confirmLabel="Delete project"
+	onConfirm={deleteProject}
+/>
+
+<ConfirmModal
+	bind:open={taskDeleteDialogOpen}
+	tone="danger"
+	title="Delete task?"
+	description={deleteTaskTarget
+		? `${deleteTaskTarget.name} is removed from this project.${
+				deleteTaskTarget.sessionCount > 0
+					? ` Its ${deleteTaskTarget.sessionCount} tracked session${deleteTaskTarget.sessionCount === 1 ? '' : 's'} stay, but become unassigned.`
+					: ''
+			}`
+		: undefined}
+	confirmLabel="Delete task"
+	onConfirm={confirmDeleteTask}
+	onCancel={() => {
+		deleteTaskTarget = null;
+	}}
+>
+	{#if taskDeleteError}
+		<Alert tone="danger">{taskDeleteError}</Alert>
+	{/if}
+</ConfirmModal>
+
+<ConfirmModal
+	bind:open={entryDeleteDialogOpen}
+	tone="danger"
+	title="Delete session?"
+	description={deleteEntryTarget?.task_name
+		? `The tracked time for ${deleteEntryTarget.task_name} is removed from this project's totals. This cannot be undone.`
+		: "This session's tracked time is removed from this project's totals. This cannot be undone."}
+	confirmLabel="Delete session"
+	onConfirm={confirmDeleteEntry}
+	onCancel={() => {
+		deleteEntryTarget = null;
+	}}
+>
+	{#if deleteError}
+		<Alert tone="danger">{deleteError}</Alert>
+	{/if}
+</ConfirmModal>
+
+<Drawer
+	bind:open={projectEditDrawerOpen}
+	title="Edit project"
+	description="Update the project name and description from here."
+	onClose={() => {
+		projectActionError = '';
+	}}
+>
+	<div class="flex flex-col gap-4">
+		{#if projectActionError}
+			<Alert tone="danger">{projectActionError}</Alert>
 		{/if}
+
+		<div class="flex flex-col gap-1.5">
+			<span class="text-fc-sm text-fc-fg">Icon</span>
+			<IconPicker value={editIcon} onSelect={(icon) => (editIcon = icon)} />
+		</div>
+		<Field label="Name">
+			<Input bind:value={editName} />
+		</Field>
+		<Field label="Description">
+			<Input bind:value={editDescription} placeholder="Optional" />
+		</Field>
 	</div>
 
-	<AlertDialog.Root
-		bind:open={projectDeleteDialogOpen}
-		onOpenChange={(open) => {
-			if (!open) {
-				projectDeleteDialogOpen = false;
-			}
-		}}
-	>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>Delete project?</AlertDialog.Title>
-				<AlertDialog.Description>
-					This will permanently delete
-					{#if project}
-						<span class="font-medium text-foreground"> {project.name}</span>
-					{/if}
-					.
-				</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Cancel disabled={deletingProject}>Cancel</AlertDialog.Cancel>
-				<AlertDialog.Action
-					variant="destructive"
-					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-					disabled={deletingProject}
-					onclick={(e) => {
-						e.preventDefault();
-						void deleteProject();
-					}}
-				>
-					<Trash2 class="h-4 w-4" />
-					{deletingProject ? 'Deleting…' : 'Delete'}
-				</AlertDialog.Action>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
+	{#snippet footer()}
+		<div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+			<Button variant="outline" size="lg" icon={icons.close} onclick={cancelProjectEdit} disabled={savingProject}>
+				Cancel
+			</Button>
+			<Button size="lg" icon={icons.check} onclick={saveProject} disabled={savingProject}>
+				{savingProject ? 'Saving…' : 'Save'}
+			</Button>
+		</div>
+	{/snippet}
+</Drawer>
 
-	<Drawer.Root bind:open={projectEditDrawerOpen} direction="bottom">
-		<Drawer.Portal>
-			<Drawer.Overlay class="fixed inset-0 bg-black/40" />
-			<Drawer.Content class="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-background border-t">
-				<div class="mx-auto mt-4 mb-6 h-1.5 w-12 shrink-0 rounded-full bg-muted"></div>
-				<div class="mx-auto flex w-full max-w-lg flex-col gap-6 px-6 pb-8">
-					<Drawer.Header class="p-0">
-						<Drawer.Title>Edit project</Drawer.Title>
-						<Drawer.Description>
-							Update the project name and description from here.
-						</Drawer.Description>
-					</Drawer.Header>
-
-					{#if projectActionError}
-						<p class="text-sm text-destructive">{projectActionError}</p>
-					{/if}
-
-					<div class="flex flex-col gap-4">
-						<div class="flex flex-col gap-1.5">
-							<Label>Icon</Label>
-							<IconPicker value={editIcon} onSelect={(icon) => (editIcon = icon)} />
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<Label for="project-edit-name">Name</Label>
-							<Input id="project-edit-name" bind:value={editName} />
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<Label for="project-edit-description">Description</Label>
-							<Input
-								id="project-edit-description"
-								bind:value={editDescription}
-								placeholder="Optional"
-							/>
-						</div>
-					</div>
-
-					<div class="flex flex-wrap gap-2">
-						<Button onclick={saveProject} disabled={savingProject}>
-							<Save class="h-4 w-4" />
-							{savingProject ? 'Saving…' : 'Save'}
-						</Button>
-						<Button variant="outline" onclick={cancelProjectEdit} disabled={savingProject}>
-							<X class="h-4 w-4" />
-							Cancel
-						</Button>
-					</div>
-				</div>
-			</Drawer.Content>
-		</Drawer.Portal>
-	</Drawer.Root>
-
-	<ManualSessionDrawer
-		projects={project ? [project] : []}
-		editEntry={editingEntry}
-		bind:open={editDrawerOpen}
-		hideTrigger
-		onchange={handleEntryChange}
-		onclose={() => {
-			editingEntry = null;
-		}}
-	/>
-
-	<AlertDialog.Root
-		bind:open={taskDeleteDialogOpen}
-		onOpenChange={(open) => {
-			if (!open) {
-				deleteTaskTarget = null;
-			}
-		}}
-	>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>Delete task?</AlertDialog.Title>
-				<AlertDialog.Description>
-					{#if deleteTaskTarget}
-						This will permanently delete
-						<span class="font-medium text-foreground"> {deleteTaskTarget.name}</span>.
-						{#if deleteTaskTarget.sessionCount > 0}
-							{deleteTaskTarget.sessionCount}
-							{deleteTaskTarget.sessionCount === 1 ? ' session will' : ' sessions will'} become unassigned.
-						{/if}
-					{/if}
-				</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Cancel disabled={deletingTaskId !== null}>Cancel</AlertDialog.Cancel>
-				<AlertDialog.Action
-					variant="destructive"
-					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-					disabled={deletingTaskId !== deleteTaskTarget?.id && deletingTaskId !== null}
-					onclick={(e) => {
-						e.preventDefault();
-						void confirmDeleteTask();
-					}}
-				>
-					<Trash2 class="h-4 w-4" />
-					{deletingTaskId === deleteTaskTarget?.id ? 'Deleting…' : 'Delete'}
-				</AlertDialog.Action>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
-
-	<AlertDialog.Root
-		bind:open={entryDeleteDialogOpen}
-		onOpenChange={(open) => {
-			if (!open) {
-				deleteEntryTarget = null;
-			}
-		}}
-	>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>Delete session?</AlertDialog.Title>
-				<AlertDialog.Description>
-					This will permanently remove the session
-					{#if deleteEntryTarget?.task_name}
-						for <span class="font-medium text-foreground">{deleteEntryTarget.task_name}</span>
-					{/if}
-					.
-				</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Cancel disabled={deletingEntryId !== null}>Cancel</AlertDialog.Cancel>
-				<AlertDialog.Action
-					variant="destructive"
-					class="bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-					disabled={deletingEntryId !== deleteEntryTarget?.id && deletingEntryId !== null}
-					onclick={(e) => {
-						e.preventDefault();
-						void confirmDeleteEntry();
-					}}
-				>
-					<Trash2 class="h-4 w-4" />
-					{deletingEntryId === deleteEntryTarget?.id ? 'Deleting…' : 'Delete'}
-				</AlertDialog.Action>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
-</div>
+<ManualSessionDrawer
+	projects={project ? [project] : []}
+	editEntry={editingEntry}
+	bind:open={editDrawerOpen}
+	hideTrigger
+	onchange={handleEntryChange}
+	onclose={() => {
+		editingEntry = null;
+	}}
+/>
