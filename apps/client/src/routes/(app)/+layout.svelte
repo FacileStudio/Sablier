@@ -78,22 +78,24 @@
 
 {#if loaded}
 	<div class="flex h-dvh w-full overflow-hidden bg-fc-page">
-		<SideBar
-			class="m-2 hidden h-auto shrink-0 md:flex"
-			icon="solar:hourglass-bold-duotone"
-			title="Sablier"
-			bind:collapsed
-			pages={navPages}
-			user={navUser}
-			userHref="/settings"
-			userActive={settingsActive}
-			spaces={userSpaces}
-			activeSpaceId={getActiveSpaceId()}
-			onSpaceSelect={selectSpace}
-			manageSpacesHref="/spaces"
-			personalSpaceLabel="Personnel"
-			manageSpacesLabel="Gérer les espaces"
-		/>
+		<div class="hidden h-full shrink-0 p-3 md:block">
+			<SideBar
+				class="h-full"
+				icon="solar:hourglass-bold-duotone"
+				title="Sablier"
+				bind:collapsed
+				pages={navPages}
+				user={navUser}
+				userHref="/settings"
+				userActive={settingsActive}
+				spaces={userSpaces}
+				activeSpaceId={getActiveSpaceId()}
+				onSpaceSelect={selectSpace}
+				manageSpacesHref="/spaces"
+				personalSpaceLabel="Personnel"
+				manageSpacesLabel="Gérer les espaces"
+			/>
+		</div>
 		<main class="min-w-0 flex-1 overflow-auto overscroll-contain pb-28 md:pb-0">
 			<PageTransition key={page.url.pathname}>
 				{@render children()}

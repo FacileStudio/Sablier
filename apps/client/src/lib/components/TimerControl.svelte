@@ -216,13 +216,15 @@
 </script>
 
 <!-- Desktop timer panel -->
-<div class="fixed top-3 left-1/2 z-50 hidden -translate-x-1/2 md:block">
+<div class="fixed top-3 left-1/2 z-50 hidden -translate-x-1/2 flex-col items-center gap-2 md:flex">
 	<div
-		class="flex flex-col gap-2 rounded-fc-lg border border-fc-border bg-fc-component px-5 py-3 shadow-lg"
+		class="flex items-center rounded-fc-pill bg-fc-bg/70 p-1.5 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 	>
 		{#if running}
 			<div class="flex items-center gap-4">
-				<span class="font-fc-mono text-fc-2xl font-semibold tabular-nums leading-none text-fc-fg">
+				<span
+					class="pl-4 font-fc-mono text-fc-2xl font-semibold tabular-nums leading-none text-fc-fg"
+				>
 					{formatDuration(elapsed, { includeSeconds: true })}
 				</span>
 				<div class="flex items-center gap-2">
@@ -258,10 +260,15 @@
 				</IconButton>
 			</div>
 		{/if}
-		{#if error}
-			<p class="text-fc-sm text-fc-danger" role="alert">{error}</p>
-		{/if}
 	</div>
+	{#if error}
+		<p
+			class="rounded-fc-pill bg-fc-bg/70 px-4 py-1.5 text-fc-sm text-fc-danger shadow-lg backdrop-blur-2xl backdrop-saturate-150"
+			role="alert"
+		>
+			{error}
+		</p>
+	{/if}
 </div>
 
 <!-- Mobile FAB backdrop -->
@@ -281,7 +288,7 @@
 				<Button
 					size="lg"
 					variant="outline"
-					class="bg-fc-component shadow-lg"
+					class="border-transparent bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={icons.edit}
 					onclick={() => {
 						fabOpen = false;
@@ -310,7 +317,7 @@
 				<Button
 					size="lg"
 					variant="danger"
-					class="bg-fc-component shadow-lg"
+					class="border-transparent bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={timerIcons.stop}
 					onclick={() => {
 						fabOpen = false;
@@ -340,7 +347,7 @@
 				<Button
 					size="lg"
 					variant="outline"
-					class="bg-fc-component shadow-lg"
+					class="border-transparent bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={icons.plus}
 					onclick={() => {
 						fabOpen = false;
