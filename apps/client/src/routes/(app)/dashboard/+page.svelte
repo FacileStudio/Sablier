@@ -330,12 +330,9 @@
 <div class="p-4 md:p-6">
 	<div class="flex flex-col gap-10">
 		<section class="flex flex-col gap-4">
-			<div class="flex flex-wrap items-start justify-between gap-4">
-				<div class="flex flex-col gap-1">
-					<h1 class="text-fc-2xl font-semibold text-fc-fg">Dashboard</h1>
-					<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
-				</div>
-				<Button variant="outline" href="/settings" icon={icons.settings}>Settings</Button>
+			<div class="flex flex-col gap-1">
+				<h1 class="text-fc-2xl font-semibold text-fc-fg">Dashboard</h1>
+				<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
 			</div>
 
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
