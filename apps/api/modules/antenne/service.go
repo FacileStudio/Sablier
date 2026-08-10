@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,8 +19,6 @@ import (
 	antenneclient "github.com/FacileStudio/antenne-client/go"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-
-	stderrors "errors"
 
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 )
@@ -47,20 +46,20 @@ func getEnvPoolConfig() (string, string) {
 func (s *Service) AutoConnect(ctx context.Context) {
 	settings, fromEnv, err := s.getSettings(ctx)
 	if err != nil {
-		s.logger.Error("pool: failed to load settings", slog.Any("error", err))
+		s.logger.Error("antenne: failed to load settings", slog.Any("error", err))
 		return
 	}
 	if settings.Enabled && settings.URL != "" && settings.Secret != "" {
 		if err := s.connect(settings.URL, settings.Secret); err != nil {
-			s.logger.Error("pool: auto-connect failed", slog.Any("error", err))
+			s.logger.Error("antenne: auto-connect failed", slog.Any("error", err))
 		}
 		return
 	}
 
 	if fromEnv && settings.URL != "" && settings.Secret != "" {
-		s.logger.Info("pool: using env vars for auto-connect")
+		s.logger.Info("antenne: using env vars for auto-connect")
 		if err := s.connect(settings.URL, settings.Secret); err != nil {
-			s.logger.Error("pool: auto-connect from env failed", slog.Any("error", err))
+			s.logger.Error("antenne: auto-connect from env failed", slog.Any("error", err))
 		}
 	}
 }
@@ -106,7 +105,7 @@ func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*
 	var connectErr string
 	if req.Enabled && req.URL != "" && req.Secret != "" {
 		if err := s.connect(req.URL, req.Secret); err != nil {
-			s.logger.Error("pool: connect failed after settings update", slog.Any("error", err))
+			s.logger.Error("antenne: connect failed after settings update", slog.Any("error", err))
 			connectErr = err.Error()
 		}
 	} else {
@@ -135,13 +134,26 @@ func (s *Service) connect(instanceURL, secret string) error {
 
 	client := antenneclient.NewClient(cfg,
 		antenneclient.WithOnConnect(func() {
-			s.logger.Info("pool: connected")
+			s.logger.Info("antenne: connected")
 		}),
 		antenneclient.WithOnDisconnect(func() {
-			s.logger.Info("pool: disconnected")
+			s.logger.Info("antenne: disconnected")
 		}),
 		antenneclient.WithOnError(func(err error) {
-			s.logger.Error("pool: error", slog.Any("error", err))
+			// A reconnect the client is going to retry is the mechanism
+			// working, not an incident: an Antenne restart takes a few
+			// seconds and produces three of these. Logging them at error
+			// painted the dashboard red on every deploy, which teaches
+			// people to scroll past the colour that is supposed to mean
+			// something. The terminal failure still lands at error.
+			var transient *antenneclient.TransientError
+			if stderrors.As(err, &transient) {
+				s.logger.Warn("antenne: reconnecting",
+					slog.Int("attempt", transient.Attempt),
+					slog.Any("error", transient.Err))
+				return
+			}
+			s.logger.Error("antenne: error", slog.Any("error", err))
 		}),
 	)
 
@@ -157,7 +169,7 @@ func (s *Service) connect(instanceURL, secret string) error {
 	s.mu.Unlock()
 
 	s.setupListeners()
-	s.logger.Info("pool: connected and listeners registered")
+	s.logger.Info("antenne: connected and listeners registered")
 	return nil
 }
 
@@ -261,12 +273,12 @@ func (s *Service) shouldEmit() bool {
 func (s *Service) enqueueOutbox(channel string, evt any) {
 	payload, err := json.Marshal(evt)
 	if err != nil {
-		s.logger.Error("pool: failed to serialize outbox event", slog.Any("error", err), slog.String("channel", channel))
+		s.logger.Error("antenne: failed to serialize outbox event", slog.Any("error", err), slog.String("channel", channel))
 		return
 	}
 	row := schemas.AntenneOutbox{Channel: channel, Payload: string(payload)}
 	if err := s.orm.Create(&row).Error; err != nil {
-		s.logger.Error("pool: failed to enqueue outbox event", slog.Any("error", err), slog.String("channel", channel))
+		s.logger.Error("antenne: failed to enqueue outbox event", slog.Any("error", err), slog.String("channel", channel))
 	}
 }
 
@@ -305,13 +317,13 @@ func (s *Service) drainOutbox() {
 
 	var rows []schemas.AntenneOutbox
 	if err := s.orm.Order("id ASC").Limit(outboxBatchSize).Find(&rows).Error; err != nil {
-		s.logger.Error("pool: failed to read outbox", slog.Any("error", err))
+		s.logger.Error("antenne: failed to read outbox", slog.Any("error", err))
 		return
 	}
 
 	for i := range rows {
 		if err := client.EmitNow(rows[i].Channel, json.RawMessage(rows[i].Payload)); err != nil {
-			s.logger.Error("pool: outbox emit failed", slog.Any("error", err), slog.String("channel", rows[i].Channel))
+			s.logger.Error("antenne: outbox emit failed", slog.Any("error", err), slog.String("channel", rows[i].Channel))
 			s.orm.Model(&rows[i]).Updates(map[string]interface{}{
 				"attempts":   rows[i].Attempts + 1,
 				"last_error": err.Error(),
