@@ -7,7 +7,7 @@ require (
 	github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4
 	github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f
 	github.com/FacileStudio/porte v0.2.10
-	github.com/FacileStudio/tronc v0.11.0
+	github.com/FacileStudio/tronc v0.12.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
