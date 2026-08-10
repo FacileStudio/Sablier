@@ -20,6 +20,7 @@
 	} from '@facile/muse';
 	import { backend, type UserProfile } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
+	import { identify } from '$lib/journal';
 
 	type UploadItem = {
 		id: string;
@@ -162,6 +163,7 @@
 	async function logout() {
 		await backend.logout(ctx.token).catch(() => {});
 		localStorage.removeItem(TOKEN_KEY);
+		identify(null);
 		goto('/login');
 	}
 </script>
