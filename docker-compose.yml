@@ -46,6 +46,7 @@ services:
       traefik.http.services.sablier-svc.loadbalancer.server.port: "4000"
     environment:
       APP_ENV: ${APP_ENV:-production}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/sablier?sslmode=disable}
       PORT: ${PORT:-4000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
