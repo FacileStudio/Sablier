@@ -64,6 +64,11 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
+      # Browser error reporting. Separate from JOURNAL_URL above, which is the
+      # server SDK's and points inside the Docker network — the browser needs a
+      # public address, ending in /api or every report is silently discarded.
+      JOURNAL_BROWSER_URL: ${JOURNAL_BROWSER_URL:-}
+      JOURNAL_BROWSER_KEY: ${JOURNAL_BROWSER_KEY:-}
       # Antenne. These only seed the connection on a database with no
       # app_settings row yet — once the row exists, the value stored there wins
       # and is edited from Sablier's own settings page.
