@@ -4,8 +4,8 @@ github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4 h1:
 github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4/go.mod h1:NOjvg9/8LYsdw7bcNGccqfN4kAWss690I8FqvMX3eT4=
 github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f h1:UW21McK1brLJO2G0/F5d5JENFuWFBzNQATrlSYFyK5o=
 github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f/go.mod h1:OxizkzJhMaBPcuHVba9z1wem5oROgwaEPikYowDQbmo=
-github.com/FacileStudio/porte v0.2.8 h1:/M2wE04nJQetbJ34+a6QScHuBPQCh4RkriUCu7+cScg=
-github.com/FacileStudio/porte v0.2.8/go.mod h1:TwhQS97DMQRMUAX6p+8EuLabJIx5Lc03rc8j5/6R4Tw=
+github.com/FacileStudio/porte v0.2.9 h1:KXYWt486xicMdAtzi5JRQjm7K4YbcqVU693feoOHfmY=
+github.com/FacileStudio/porte v0.2.9/go.mod h1:TwhQS97DMQRMUAX6p+8EuLabJIx5Lc03rc8j5/6R4Tw=
 github.com/FacileStudio/tronc v0.9.0 h1:xfAPypTB4V6bPt7iRl+I7SEedFJzLDRTYfvS/CiyVus=
 github.com/FacileStudio/tronc v0.9.0/go.mod h1:n+msHH6RQLvhcIQfFzeWaAgwqL8UkNuLPTqbu+C02so=
 github.com/SherClockHolmes/webpush-go v1.4.0 h1:ocnzNKWN23T9nvHi6IfyrQjkIc0oJWv1B1pULsf9i3s=
