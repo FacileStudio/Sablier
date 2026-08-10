@@ -8,6 +8,7 @@
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { NotificationService } from '$lib/notifications';
 	import { TOKEN_KEY } from '$lib/constants';
+	import { identify } from '$lib/journal';
 
 	let { children } = $props();
 
@@ -54,6 +55,9 @@
 			const result = await backend.me(stored);
 			token = stored;
 			user = result.user;
+			/* Attribute browser errors to whoever hit them: the first question a
+			   stack trace raises is whether it is everyone or one account. */
+			identify(user);
 			loaded = true;
 			const [p, s] = await Promise.all([
 				backend.listProjects(stored),
@@ -66,11 +70,13 @@
 				if (r.synced) {
 					const fresh = await backend.me(stored);
 					user = fresh.user;
+					identify(user);
 				}
 			}).catch(() => {});
 			NotificationService.init(stored);
 		} catch {
 			localStorage.removeItem(TOKEN_KEY);
+			identify(null);
 			goto('/login');
 		}
 	});

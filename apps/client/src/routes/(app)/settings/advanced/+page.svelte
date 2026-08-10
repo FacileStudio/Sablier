@@ -13,6 +13,7 @@
 	} from '@facile/muse';
 	import { backend, type UserProfile } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
+	import { identify } from '$lib/journal';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -31,6 +32,7 @@
 			if (key.startsWith('sablier.')) localStorage.removeItem(key);
 		}
 		localStorage.removeItem(TOKEN_KEY);
+		identify(null);
 		toast.success('Local data cleared.');
 		goto('/login');
 	}
