@@ -60,6 +60,19 @@ bun run dev
 The client runs on <http://localhost:5173> and proxies `/api` and `/files` to the API on
 `:4000`. Migrations run on API startup, so there is no separate migration step.
 
+## Command line
+
+[`sablier`](https://github.com/FacileStudio/sablier-cli) drives Sablier from a terminal. It
+installs through [facile](https://github.com/FacileStudio/facile), the suite installer,
+which fetches a prebuilt binary and puts `~/.local/bin` on your PATH:
+
+```sh
+curl -fsSL https://get.facile.studio | bash
+facile install sablier
+```
+
+`facile login sablier` signs in through Facile SSO in your browser.
+
 ## Configuration
 
 | Variable | What it does |
