@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba
-	github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4
+	github.com/FacileStudio/antenne-client/go v0.0.0-20260810113516-0458a301c709
 	github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f
 	github.com/FacileStudio/porte v0.2.10
 	github.com/FacileStudio/tronc v0.12.0
