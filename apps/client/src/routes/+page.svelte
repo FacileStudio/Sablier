@@ -53,8 +53,11 @@
 </script>
 
 <svelte:head>
-	<title>Sablier — Time Tracking</title>
-	<meta name="description" content="Simple, fast time tracking for teams." />
+	<title>Sablier — Time tracking</title>
+	<meta
+		name="description"
+		content="Self-hosted time tracking for small teams. A Go API, a SvelteKit frontend, and a single container behind a single router. Boring on purpose."
+	/>
 </svelte:head>
 
 {#if !redirecting}
