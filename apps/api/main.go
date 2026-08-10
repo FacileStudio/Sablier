@@ -304,7 +304,7 @@ func run() error {
 
 	go antenneService.RunOutboxWorker(shutdownSignal)
 
-	appLogger.Info("pool outbox worker started")
+	appLogger.Info("antenne: outbox worker started")
 
 	select {
 	case err := <-serverErrCh:
