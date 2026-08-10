@@ -497,7 +497,7 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 	s.mu.RUnlock()
 
 	if client == nil || !client.IsConnected() {
-		return nil, errors.Failed("pool is not connected")
+		return nil, errors.Failed("antenne is not connected")
 	}
 
 	var unflaggedProjects []schemas.Project
