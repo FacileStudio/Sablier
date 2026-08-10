@@ -76,6 +76,34 @@ func referenceConfig() apiref.Config {
 // somebody's first login — which is a change from what this app did, where a
 // discovery failure at route-registration time silently left SSO 404ing until
 // the next restart.
+// journalConfigExtra hangs the browser's Journal settings off /auth/config.
+//
+// The client is adapter-static served by this binary, so it has no environment
+// of its own and the key has to arrive over HTTP. /auth/config is the endpoint
+// that already exists for exactly this — unauthenticated, rate-limited, read
+// once at boot — and reusing it beats minting a second public route that would
+// carry two fields. Nothing here is secret: a Journal public key is meant to
+// sit in a bundle, and the origin allowlist and daily quota on the key are what
+// bound its abuse.
+//
+// Unset JOURNAL_BROWSER_KEY or JOURNAL_BROWSER_URL omits the block entirely and
+// the client reports nothing, which is what every environment except production
+// wants. The URL is its own variable and not JOURNAL_URL, which the server SDK
+// points at a Docker-internal address no browser can reach.
+func journalConfigExtra(appEnv *env.Config) func() map[string]any {
+	return func() map[string]any {
+		if appEnv.JournalBrowserKey == "" || appEnv.JournalBrowserURL == "" {
+			return nil
+		}
+		return map[string]any{
+			"journal": map[string]any{
+				"url": appEnv.JournalBrowserURL,
+				"key": appEnv.JournalBrowserKey,
+			},
+		}
+	}
+}
+
 func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *local.Kit, *oidc.Kit, error) {
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -95,7 +123,7 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 		Sessions:    sessions,
 		Codes:       store.LoginCodes(),
 		Logger:      appLogger,
-		ConfigExtra: func() map[string]any { return nil },
+		ConfigExtra: journalConfigExtra(appEnv),
 	})
 	if err != nil {
 		return nil, nil, nil, err

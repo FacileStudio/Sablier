@@ -48,6 +48,20 @@ type Config struct {
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	VAPIDSubject    string
+
+	// JournalBrowserURL and JournalBrowserKey configure the browser's error
+	// reporting. Both empty leaves the client reporting nothing.
+	//
+	// The URL is deliberately not JOURNAL_URL. That one is the server SDK's,
+	// and it is documented as http://journal-api:4010 — a Docker-internal
+	// address a browser cannot resolve. Handing it to the client would
+	// produce a page that reports diligently into nowhere.
+	//
+	// The key is a Journal *public* ingest key and is public by
+	// construction: what bounds its abuse is the origin allowlist and the
+	// daily quota carried by the key itself, not its secrecy.
+	JournalBrowserURL string
+	JournalBrowserKey string
 }
 
 func Load() (Config, error) {
@@ -79,6 +93,17 @@ func Load() (Config, error) {
 		VAPIDPrivateKey: troncenv.String("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
 		OIDCClaimsScope: troncenv.String("OIDC_CLAIMS_SCOPE", ""),
+
+		JournalBrowserURL: troncenv.String("JOURNAL_BROWSER_URL", ""),
+		JournalBrowserKey: troncenv.String("JOURNAL_BROWSER_KEY", ""),
+	}
+
+	// A base URL without /api is the documented way to lose every report in
+	// silence: Journal's dashboard answers any unmatched path with 200 and
+	// an HTML document, and a 2xx reads as success. Refuse it at boot rather
+	// than discover it the day someone goes looking for an error.
+	if env.JournalBrowserURL != "" && !strings.HasSuffix(strings.TrimRight(env.JournalBrowserURL, "/"), "/api") {
+		return Config{}, fmt.Errorf("JOURNAL_BROWSER_URL must end in /api, got %q", env.JournalBrowserURL)
 	}
 
 	if issuer := troncenv.String("OIDC_ISSUER", ""); issuer != "" {
