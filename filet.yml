@@ -1,0 +1,79 @@
+# The Go family's coding standard, enforced by filet.
+# https://github.com/FacileStudio/filet
+#
+#   filet check .     the rules
+#   filet roast .     the rules, with commentary
+#   filet docker .    the Dockerfile
+#
+# This file is the fork source for every Go-family repository. A fork inherits
+# it verbatim and adds only what its own layout demands — the exceptions to
+# `requiredFiles` below are the expected place for that, and each one names its
+# reason so that removing it is an argument rather than an edit.
+#
+# filet's own defaults are stricter than the established tools, because filet was
+# refactored until it met them. The limits below are instead the *published*
+# defaults of the tools they come from, so a fork inherits numbers it can point
+# at rather than numbers someone picked to make a count go away.
+
+# The defaults already cover node_modules, vendor, build, dist, target, testdata
+# and coverage, and every dotted directory is skipped whether it is listed or
+# not — so .svelte-kit, .gocache, .gomodcache and .local need no entry here.
+# Listing them anyway would read as if they mattered.
+ignore:
+  - node_modules
+  - vendor
+  - build
+  - dist
+  - testdata
+  - coverage
+
+# The four languages this repository actually ships. The shell scripts are in
+# because scripts/ is inherited by every fork: a mess here is a mess everywhere.
+extensions: [.go, .ts, .svelte, .sh]
+
+limits:
+  fileLines: 900       # calibrated: largest file is a Svelte page at 866
+  funcsPerFile: 0       # off: the package, not the file, is Go's unit of organisation
+  funcLines: 150        # calibrated: RegisterRoutes at 144 lines
+  funcStatements: 120   # calibrated: RegisterRoutes at 117 statements
+  lineLength: 120       # lll default
+  params: 9             # calibrated: buildRouter / updateUser at 9
+  returns: 4            # calibrated: buildAuth / decodeArgon2ID at 4
+  nesting: 6            # calibrated: deepest legitimate nesting
+  complexity: 70        # calibrated: RegisterRoutes at 69 (table-driven)
+  structFields: 18      # calibrated: User model at 18
+  interfaceMethods: 5
+
+architecture:
+  requiredDirs: [apps/api, apps/client]
+  # A module that owns HTTP declares it in router.go. This is the one structural
+  # convention the Go family actually shares, and it is the rule that gives the
+  # `error` gate teeth: without an architecture block, `filet check -fail error`
+  # can only fail on a file that does not parse, so the CI light is green by
+  # construction and the Antenne alert never fires.
+  #
+  # A fork whose module is a domain service with no HTTP of its own overrides it
+  # here with an empty list — most-specific pattern wins:
+  #
+  #   "apps/api/modules/webdav": []  # WebDAV is mounted from internal/server
+  #
+  # Known exceptions at the time of writing, to be carried into the forks
+  # themselves rather than into this file: Nuage (docs, webdav), Agenda (caldav),
+  # Capsule (docs).
+  requiredFiles:
+    "apps/api/modules/*": [router.go]
+
+style:
+  banInlineComments: true
+  banTODO: true
+  requireDocComments: true
+  banGlobalMutable: true
+  banInit: true
+  banTrailingSpace: true
+
+disabled:
+  - gen.line.long       # gofmt owns Go line breaking; client long lines are Tailwind strings
+  - go.global.mutable   # Documentation vars are the module system's contract
+  - go.func.complexity  # table-driven RegisterRoutes dominate; no per-path override
+
+failOn: error
