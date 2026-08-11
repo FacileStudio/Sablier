@@ -1,5 +1,9 @@
 github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba h1:/DSby1r2Ix9vsPKfDky0rRY/skp8p2Nq+I/B3cc9M9g=
 github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba/go.mod h1:mb3rZqpSwA4CMrP9LQe2eWdM/4np3xzkRy6l/WWSaUg=
+github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090310-47a0845074b5 h1:AwvpPol/TqbFtBUBRTBwwnWHnKrFa9V6a8E692R6vP0=
+github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090310-47a0845074b5/go.mod h1:mb3rZqpSwA4CMrP9LQe2eWdM/4np3xzkRy6l/WWSaUg=
+github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665 h1:82tYJMfI1oy4NpLqwumksF3TLAdkz4aNRgPmKr0wfCU=
+github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665/go.mod h1:mb3rZqpSwA4CMrP9LQe2eWdM/4np3xzkRy6l/WWSaUg=
 github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4 h1:5SZA55FF8DbKS9zzmH60vu/E7+SyTbMAgkhAvvV+etQ=
 github.com/FacileStudio/antenne-client/go v0.0.0-20260807174352-2809a52c45b4/go.mod h1:NOjvg9/8LYsdw7bcNGccqfN4kAWss690I8FqvMX3eT4=
 github.com/FacileStudio/antenne-client/go v0.0.0-20260807192029-0e9aadcdf348 h1:J/TDBIhe/RbUY+2FYlTEZeTDNjjPVUqA4/OK3bNrWxo=

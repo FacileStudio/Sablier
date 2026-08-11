@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -144,6 +146,68 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 	return sessions, passwords, kit, nil
 }
 
+// uploadSourceMaps ships this build's maps to Journal so a browser stack trace
+// resolves to real file names instead of a hashed chunk and a column number.
+//
+// It runs from the process that serves the build, because the two ship in the
+// same image and cannot drift apart that way — and because .git is excluded
+// from the Docker context, which rules out reading a commit at build time. The
+// release is read from the client's own version.json, which is the exact string
+// the browser reports, so the two always agree.
+//
+// In a goroutine and never fatal: this is a debugging convenience, and an app
+// that cannot upload its maps must still serve.
+func uploadSourceMaps(appEnv env.Config, appLogger *slog.Logger) {
+	dir := os.Getenv("SOURCEMAP_DIR")
+	if dir == "" || appEnv.JournalURL == "" || appEnv.JournalToken == "" {
+		return
+	}
+
+	release, err := clientRelease(os.Getenv("CLIENT_DIR"))
+	if err != nil {
+		appLogger.Warn("source maps: no release to upload under", slog.Any("error", err))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	result, err := journal.UploadSourceMaps(ctx, journal.Config{URL: appEnv.JournalURL, Token: appEnv.JournalToken}, dir, release)
+	if err != nil {
+		appLogger.Warn("source maps: upload failed",
+			slog.String("release", release), slog.Any("error", err))
+		return
+	}
+	if result.Uploaded > 0 {
+		appLogger.Info("source maps uploaded",
+			slog.String("release", release),
+			slog.Int("uploaded", result.Uploaded),
+			slog.Int("skipped", result.Skipped))
+	}
+}
+
+// clientRelease reads the build identity SvelteKit writes next to the bundle,
+// which is the same value the browser reports as `release`.
+func clientRelease(clientDir string) (string, error) {
+	if clientDir == "" {
+		clientDir = "./client"
+	}
+	raw, err := os.ReadFile(filepath.Join(clientDir, "_app", "version.json"))
+	if err != nil {
+		return "", err
+	}
+	var payload struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return "", err
+	}
+	if payload.Version == "" {
+		return "", fmt.Errorf("client version.json carries no version")
+	}
+	return payload.Version, nil
+}
+
 func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, passwords *local.Kit, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service) chi.Router {
 	authService := auth.NewService(db, sessions, passwords, appLogger)
 	projectService := projects.NewService(db)
@@ -247,6 +311,7 @@ func run() error {
 	if journalClient != nil {
 		defer journalClient.Close()
 	}
+	go uploadSourceMaps(appEnv, appLogger)
 
 	db, err := database.Open(appEnv.DatabaseURL)
 	if err != nil {
