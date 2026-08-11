@@ -78,6 +78,15 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `SSO_ONLY` -- Hide password auth when `true`
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` -- Web push (optional; push stays off while the keys are unset)
 - `JOURNAL_URL`, `JOURNAL_TOKEN` -- Log shipping to Journal (optional; both must be set)
+- `JOURNAL_BROWSER_URL`, `JOURNAL_BROWSER_KEY` -- Browser error reporting. The URL is **not**
+  `JOURNAL_URL`: that one is the server SDK's and points inside the Docker network, which no
+  browser can resolve. It must end in `/api`, and the app refuses to boot otherwise
+- `SOURCEMAP_DIR` -- where the built client's maps live, **outside `CLIENT_DIR`** so nothing
+  serves them. The API uploads them to Journal at boot, keyed on the release in
+  `_app/version.json` — the exact string the browser reports. Set by the Dockerfile, which moves
+  the maps out of `build/` after `vite build`; unset locally, so no upload happens on a laptop.
+  The client emits them with `sourcemap: 'hidden'`, so no `sourceMappingURL` comment ships and no
+  browser fetches one
 
 ## Key Endpoints
 
