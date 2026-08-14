@@ -10,9 +10,6 @@
 	const labelClass = 'text-fc-sm font-medium leading-none text-fc-fg';
 	const primaryButtonClass =
 		'inline-flex h-10 w-full items-center justify-center rounded-fc-md bg-fc-accent px-4 text-fc-sm font-medium text-fc-accent-fg transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring disabled:pointer-events-none disabled:opacity-50';
-	const outlineButtonClass =
-		'inline-flex h-10 w-full items-center justify-center rounded-fc-md border border-fc-border bg-fc-page px-4 text-fc-sm font-medium text-fc-fg transition-colors hover:bg-fc-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring disabled:pointer-events-none disabled:opacity-50';
-
 	let tab = $state<'login' | 'register'>('login');
 	let email = $state('');
 	let password = $state('');
@@ -104,7 +101,7 @@
 					{!ssoOnly && tab === 'register'
 						? 'Sign up to start tracking time.'
 						: ssoOnly
-							? 'Sign in with your organization account to access Sablier.'
+							? 'Sign in with your Facile account to access Sablier.'
 							: 'Log in to your Sablier account.'}
 				</p>
 			</div>
@@ -119,6 +116,20 @@
 					>
 						{message}
 					</p>
+				{/if}
+
+				{#if oidcEnabled}
+					<a href="{backend.baseUrl}/api/auth/oidc" data-sveltekit-reload class={primaryButtonClass}>
+						<iconify-icon icon="solar:key-minimalistic-square-bold-duotone" width="18" class="mr-2"></iconify-icon>
+						Sign in with Facile
+					</a>
+					{#if !ssoOnly}
+						<div class="my-6 flex items-center gap-3">
+							<span class="h-px flex-1 bg-fc-border"></span>
+							<span class="text-fc-xs uppercase tracking-wide text-fc-fg-muted">or</span>
+							<span class="h-px flex-1 bg-fc-border"></span>
+						</div>
+					{/if}
 				{/if}
 
 				{#if !ssoOnly}
@@ -199,18 +210,6 @@
 									: 'Log in'}
 						</button>
 					</form>
-				{/if}
-
-				{#if oidcEnabled}
-					{#if !ssoOnly}
-						<div class="my-5 flex items-center gap-3">
-							<div class="h-px flex-1 bg-fc-border"></div>
-							<span class="text-fc-xs text-fc-fg-muted">or</span>
-							<div class="h-px flex-1 bg-fc-border"></div>
-						</div>
-					{/if}
-
-					<a href="{backend.baseUrl}/api/auth/oidc" class={outlineButtonClass}>Continue with SSO</a>
 				{/if}
 
 				{#if ssoOnly && !oidcEnabled}
