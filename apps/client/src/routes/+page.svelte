@@ -74,9 +74,9 @@
 					<span class="font-fc-title text-fc-xl font-semibold tracking-tight">Sablier</span>
 				</div>
 				<div class="flex items-center gap-2">
-					<Button variant="ghost" href="/login">Log in</Button>
-					<Button href={startHref}>
-						{ssoOnly ? 'Continue with SSO' : 'Get started'}
+					<Button variant="ghost" href="/login" class="rounded-fc-md">Log in</Button>
+					<Button href={startHref} class="rounded-fc-md">
+						{ssoOnly ? 'Sign in with Facile' : 'Get started'}
 					</Button>
 				</div>
 			</div>
@@ -93,10 +93,10 @@
 					see where your time goes, stay accountable.
 				</p>
 				<div class="mt-10 flex flex-wrap justify-center gap-3">
-					<Button size="lg" href={startHref} iconRight={icons.arrow}>
-						{ssoOnly ? 'Continue with SSO' : 'Start tracking'}
+					<Button size="lg" href={startHref} iconRight={icons.arrow} class="rounded-fc-md">
+						{ssoOnly ? 'Sign in with Facile' : 'Start tracking'}
 					</Button>
-					<Button size="lg" variant="outline" href="/login">Log in</Button>
+					<Button size="lg" variant="outline" href="/login" class="rounded-fc-md">Log in</Button>
 				</div>
 			</section>
 
@@ -127,12 +127,12 @@
 				</h2>
 				<p class="mt-4 text-fc-sm text-fc-fg-muted">
 					{ssoOnly
-						? 'Use your organization SSO to access Sablier.'
+						? 'Use your Facile SSO to access Sablier.'
 						: 'Free to use. No credit card required.'}
 				</p>
 				<div class="mt-8 flex justify-center">
-					<Button size="lg" href={startHref}>
-						{ssoOnly ? 'Continue with SSO' : 'Create an account'}
+					<Button size="lg" href={startHref} class="rounded-fc-md">
+						{ssoOnly ? 'Sign in with Facile' : 'Create an account'}
 					</Button>
 				</div>
 			</section>
