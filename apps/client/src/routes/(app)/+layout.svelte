@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SideBar, MobileNav, PageTransition, icons } from '@facile/muse';
-	import { backend, type UserProfile, type Project, type Space } from '$lib/backend';
+	import { ApiError, backend, type UserProfile, type Project, type Space } from '$lib/backend';
 	import { setSpaces, getActiveSpaceId, setActiveSpaceId } from '$lib/space-context.svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { NotificationService } from '$lib/notifications';
@@ -74,10 +74,12 @@
 				}
 			}).catch(() => {});
 			NotificationService.init(stored);
-		} catch {
-			localStorage.removeItem(TOKEN_KEY);
-			identify(null);
-			goto('/login');
+		} catch (err) {
+			if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+				localStorage.removeItem(TOKEN_KEY);
+				identify(null);
+				goto('/login');
+			}
 		}
 	});
 </script>
