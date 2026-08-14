@@ -123,6 +123,15 @@ export type SpaceMember = {
 	joined_at: string;
 };
 
+export class ApiError extends Error {
+	readonly status: number;
+	constructor(status: number, message: string) {
+		super(message);
+		this.name = 'ApiError';
+		this.status = status;
+	}
+}
+
 type ApiErrorPayload = {
 	error?: { message?: string };
 };
@@ -150,7 +159,7 @@ async function requestError(response: Response) {
 	} catch {
 		payload = undefined;
 	}
-	return new Error(payload?.error?.message || `Request failed with status ${response.status}`);
+	throw new ApiError(response.status, payload?.error?.message || `Request failed with status ${response.status}`);
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
