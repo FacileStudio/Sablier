@@ -11,11 +11,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Service implements space and membership persistence.
 type Service struct {
 	orm        *gorm.DB
 	controller *Controller
 }
 
+// NewService wires the spaces service.
 func NewService(orm *gorm.DB) *Service {
 	service := &Service{orm: orm}
 	service.controller = newController(service)

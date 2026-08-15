@@ -10,6 +10,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// RegisterRoutes wires the web-push endpoints. The subscription routes are
+// authenticated; /test-broadcast is not and is TEST ONLY — it must be removed
+// before production.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/notifications", func(r chi.Router) {
 		r.Get("/vapid-public-key", func(w http.ResponseWriter, req *http.Request) {
@@ -39,7 +42,6 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
-		// TEST ONLY — remove before production
 		r.Post("/test-broadcast", func(w http.ResponseWriter, req *http.Request) {
 			var body BroadcastRequest
 			if err := httpjson.DecodeJSON(w, req, &body); err != nil {

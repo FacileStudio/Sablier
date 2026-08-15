@@ -1,5 +1,6 @@
 package schemas
 
+// PushSubscription stores one user's web-push endpoint.
 type PushSubscription struct {
 	ID       int64  `gorm:"column:id;primaryKey"`
 	UserID   int64  `gorm:"column:user_id;uniqueIndex;not null"`

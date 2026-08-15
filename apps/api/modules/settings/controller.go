@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Controller serves the settings routes.
 type Controller struct {
 	service *Service
 }

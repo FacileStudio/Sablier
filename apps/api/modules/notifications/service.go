@@ -16,6 +16,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// Service manages web-push subscriptions and sends notifications.
 type Service struct {
 	orm             *gorm.DB
 	vapidPublicKey  string
@@ -25,6 +26,7 @@ type Service struct {
 	logger          *slog.Logger
 }
 
+// NewService wires the notification service with its VAPID credentials.
 func NewService(orm *gorm.DB, vapidPublicKey, vapidPrivateKey, vapidSubject string, logger *slog.Logger) *Service {
 	s := &Service{
 		orm:             orm,

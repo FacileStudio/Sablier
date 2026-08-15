@@ -2,6 +2,7 @@ package notifications
 
 import "context"
 
+// Controller serves the web-push endpoints for this module.
 type Controller struct {
 	service *Service
 }

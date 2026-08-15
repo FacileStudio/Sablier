@@ -11,6 +11,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// RegisterRoutes wires the authenticated /spaces endpoints and their membership
+// subroutes.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/spaces", func(router chi.Router) {
 		router.Use(middleware.RequireAuth(authService))

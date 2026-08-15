@@ -50,6 +50,9 @@ func Migrate(db *gorm.DB, issuer string) error {
 // avatar_url and avatar_source stay in the table, unread, until the next release drops
 // them. Expanding first means a rollback is redeploying the old binary, not restoring a
 // backup.
+//
+// The empty string, not NULL, is written in the final pass: a NULL would fail to scan
+// into the plain string the model declares.
 func backfillAvatarUploadPath(db *gorm.DB) error {
 	if !db.Migrator().HasColumn(&User{}, "avatar_url") {
 		return nil
@@ -61,7 +64,6 @@ func backfillAvatarUploadPath(db *gorm.DB) error {
 		   AND coalesce(avatar_upload_path, '') = ''`).Error; err != nil {
 		return err
 	}
-	// A NULL here would fail to scan into the plain string the model declares.
 	return db.Exec(`UPDATE users SET avatar_upload_path = '' WHERE avatar_upload_path IS NULL`).Error
 }
 

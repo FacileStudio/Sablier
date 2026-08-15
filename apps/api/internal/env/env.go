@@ -10,6 +10,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// OIDCConfig holds the OIDC settings read from the environment when
+// OIDC_ISSUER is set.
 type OIDCConfig struct {
 	Issuer       string
 	ClientID     string
@@ -39,6 +41,7 @@ func (c Config) Porte() porte.Config {
 	}
 }
 
+// Config is the fully-loaded application configuration produced by Load.
 type Config struct {
 	troncenv.Core
 	StorageDir      string
@@ -64,6 +67,15 @@ type Config struct {
 	JournalBrowserKey string
 }
 
+// Load reads the .env file (if present) and environment variables into a
+// Config, validating PORT, LOG_LEVEL, and, when OIDC_ISSUER is set, the
+// required OIDC_CLIENT_ID/OIDC_CLIENT_SECRET/OIDC_REDIRECT_URL.
+//
+// JOURNAL_BROWSER_URL is rejected unless it ends in /api: Journal's
+// dashboard answers any unmatched path with 200 and an HTML document, so a
+// base URL without /api would silently swallow every browser error report
+// behind a 2xx that reads as success. Load refuses that configuration at
+// boot rather than let it surface later as reports that never arrive.
 func Load() (Config, error) {
 	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
 		return Config{}, fmt.Errorf("failed to parse .env file: %w", err)
@@ -98,10 +110,6 @@ func Load() (Config, error) {
 		JournalBrowserKey: troncenv.String("JOURNAL_BROWSER_KEY", ""),
 	}
 
-	// A base URL without /api is the documented way to lose every report in
-	// silence: Journal's dashboard answers any unmatched path with 200 and
-	// an HTML document, and a 2xx reads as success. Refuse it at boot rather
-	// than discover it the day someone goes looking for an error.
 	if env.JournalBrowserURL != "" && !strings.HasSuffix(strings.TrimRight(env.JournalBrowserURL, "/"), "/api") {
 		return Config{}, fmt.Errorf("JOURNAL_BROWSER_URL must end in /api, got %q", env.JournalBrowserURL)
 	}

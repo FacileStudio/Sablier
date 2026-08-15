@@ -10,6 +10,7 @@ package oidcavatar
 
 import "strings"
 
+// Profile holds the OIDC profile claims Authentik returns at login.
 type Profile struct {
 	Name              string
 	PreferredUsername string
@@ -18,6 +19,9 @@ type Profile struct {
 	Picture           string
 }
 
+// DisplayName returns the best available human-readable name from the
+// profile claims, falling back from Name to PreferredUsername to the
+// combined given/family name, or "" if none are set.
 func (p Profile) DisplayName() string {
 	if p.Name != "" {
 		return p.Name

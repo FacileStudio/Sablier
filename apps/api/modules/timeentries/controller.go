@@ -7,6 +7,7 @@ import (
 	"github.com/FacileStudio/tronc/errors"
 )
 
+// Controller serves the time-entry and timer routes.
 type Controller struct {
 	service *Service
 }

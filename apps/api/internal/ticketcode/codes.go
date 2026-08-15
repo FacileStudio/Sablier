@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 )
 
+// NewCode generates a random 24-byte code and returns it alongside the
+// hex-encoded SHA-256 hash used to store it.
 func NewCode() (code string, codeHash string, err error) {
 	bytes := make([]byte, 24)
 	if _, err := rand.Read(bytes); err != nil {

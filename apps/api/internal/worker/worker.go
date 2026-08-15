@@ -8,6 +8,8 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 )
 
+// RunNotificationWorker runs a ticking loop that sends active-timer
+// reminders once per minute until ctx is canceled.
 func RunNotificationWorker(ctx context.Context, notifService *notifications.Service, appLogger *slog.Logger) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()

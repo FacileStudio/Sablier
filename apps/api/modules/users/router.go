@@ -10,6 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// RegisterRoutes wires the authenticated /users endpoints, including the /me
+// profile, avatar and api-token subroutes.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/users", func(router chi.Router) {
 		router.With(middleware.RequireAuth(authService)).Get("/", func(w http.ResponseWriter, request *http.Request) {

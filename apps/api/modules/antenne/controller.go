@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Controller adapts the antenne Service to HTTP handlers.
 type Controller struct {
 	service *Service
 }

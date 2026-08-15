@@ -13,6 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// RegisterRoutes wires the authenticated /time-entries endpoints, including the
+// timer subroutes for start, stop, pause and resume.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/time-entries", func(router chi.Router) {
 		router.Use(middleware.RequireAuth(authService))
