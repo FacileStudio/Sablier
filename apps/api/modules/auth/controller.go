@@ -7,6 +7,7 @@ import (
 	"github.com/FacileStudio/tronc/errors"
 )
 
+// Controller serves the register and login routes.
 type Controller struct {
 	service *Service
 }

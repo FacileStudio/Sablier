@@ -2,6 +2,7 @@ package schemas
 
 import "time"
 
+// TimeEntry is a recorded interval of work on a task.
 type TimeEntry struct {
 	ID                 int64      `gorm:"column:id;primaryKey"`
 	ProjectID          int64      `gorm:"column:project_id;index"`

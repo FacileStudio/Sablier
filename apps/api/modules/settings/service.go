@@ -14,11 +14,13 @@ import (
 
 const appSettingID = 1
 
+// Service reads and writes the app-level webhook settings.
 type Service struct {
 	orm        *gorm.DB
 	controller *Controller
 }
 
+// NewService wires the settings service.
 func NewService(orm *gorm.DB) *Service {
 	service := &Service{orm: orm}
 	service.controller = newController(service)

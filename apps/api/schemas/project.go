@@ -2,6 +2,7 @@ package schemas
 
 import "time"
 
+// Project is a tracked client engagement.
 type Project struct {
 	ID          int64     `gorm:"column:id;primaryKey"`
 	Name        string    `gorm:"column:name"`

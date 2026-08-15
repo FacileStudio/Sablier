@@ -2,6 +2,7 @@ package authcontext
 
 import "context"
 
+// Identity holds the authenticated user's identifying information carried through a request context.
 type Identity struct {
 	UserID string
 	Email  string
@@ -9,10 +10,13 @@ type Identity struct {
 
 type contextKey struct{}
 
+// WithIdentity returns a copy of parentContext carrying the given Identity.
 func WithIdentity(parentContext context.Context, identity Identity) context.Context {
 	return context.WithValue(parentContext, contextKey{}, identity)
 }
 
+// IdentityFromContext extracts the Identity stored on parentContext, reporting
+// whether one was present.
 func IdentityFromContext(parentContext context.Context) (Identity, bool) {
 	identity, ok := parentContext.Value(contextKey{}).(Identity)
 	return identity, ok

@@ -9,11 +9,14 @@ import (
 	"time"
 )
 
+// Payload is the JSON body sent to a configured webhook URL.
 type Payload struct {
 	Event string `json:"event"`
 	Data  any    `json:"data"`
 }
 
+// Fire asynchronously POSTs payload as JSON to url, optionally setting a
+// secret header for verification, and logs the outcome.
 func Fire(url, secretHeader, secretValue string, payload Payload) {
 	go func() {
 		body, err := json.Marshal(payload)

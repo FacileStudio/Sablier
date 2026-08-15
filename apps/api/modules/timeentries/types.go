@@ -2,12 +2,14 @@ package timeentries
 
 import "time"
 
+// StartTimerRequest is the body for starting the timer.
 type StartTimerRequest struct {
 	ProjectID int64   `json:"project_id"`
 	TaskID    int64   `json:"task_id"`
 	SpaceID   *string `json:"space_id"`
 }
 
+// CreateEntryRequest is the body for creating a manual time entry.
 type CreateEntryRequest struct {
 	ProjectID int64     `json:"project_id"`
 	TaskID    int64     `json:"task_id"`
@@ -16,6 +18,7 @@ type CreateEntryRequest struct {
 	StoppedAt time.Time `json:"stopped_at"`
 }
 
+// UpdateEntryRequest is the body for updating a time entry.
 type UpdateEntryRequest struct {
 	ProjectID int64      `json:"project_id"`
 	TaskID    int64      `json:"task_id"`
@@ -23,6 +26,7 @@ type UpdateEntryRequest struct {
 	StoppedAt *time.Time `json:"stopped_at"`
 }
 
+// TimeEntryResponse is the serialized shape of a time entry.
 type TimeEntryResponse struct {
 	ID             int64      `json:"id"`
 	ProjectID      int64      `json:"project_id"`
@@ -41,6 +45,7 @@ type TimeEntryResponse struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
+// ListEntriesResponse wraps a time-entry list.
 type ListEntriesResponse struct {
 	Entries []TimeEntryResponse `json:"entries"`
 }

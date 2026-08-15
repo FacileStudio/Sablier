@@ -67,6 +67,9 @@ func TestAvatarSelectExprMatchesAvatar(t *testing.T) {
 // reason this test exists: they hold an uploaded avatar with avatar_source empty, because
 // they predate that column, and a backfill keyed on avatar_source = 'upload' drops their
 // picture without a word.
+//
+// The row carrying both an upload and a Porte photo keeps its file on disk while still
+// rendering the Porte photo.
 func TestBackfillAvatarUploadPathKeepsPreSourceUploads(t *testing.T) {
 	orm := openTestDatabase(t)
 	if err := orm.AutoMigrate(&User{}); err != nil {
@@ -107,7 +110,6 @@ func TestBackfillAvatarUploadPathKeepsPreSourceUploads(t *testing.T) {
 		}
 	}
 
-	// The row that carries both keeps its file, and still renders the Porte photo.
 	var both User
 	if err := orm.Where("email = ?", "upload-and-sso@example.com").First(&both).Error; err != nil {
 		t.Fatalf("read both: %v", err)

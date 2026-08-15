@@ -13,6 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// RegisterRoutes wires the authenticated /projects endpoints and their task
+// subroutes.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/projects", func(router chi.Router) {
 		router.Use(middleware.RequireAuth(authService))

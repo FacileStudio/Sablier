@@ -15,12 +15,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// Service implements timer and time-entry persistence, firing webhooks and pool
+// events when records change.
 type Service struct {
 	orm         *gorm.DB
 	controller  *Controller
 	poolService *antenne.Service
 }
 
+// NewService wires the timeentries service.
 func NewService(orm *gorm.DB) *Service {
 	service := &Service{orm: orm}
 	service.controller = newController(service)

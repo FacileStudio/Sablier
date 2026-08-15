@@ -29,6 +29,7 @@ type UserStore struct {
 	orm *gorm.DB
 }
 
+// NewUserStore returns the user store backed by the given database.
 func NewUserStore(orm *gorm.DB) *UserStore {
 	return &UserStore{orm: orm}
 }
@@ -46,6 +47,10 @@ var (
 // links a pre-existing account to a subject signing in for the first time, and
 // it is refused for an unverified address because matching on one is an account
 // takeover primitive.
+//
+// The identity provider is the source of truth for the profile, but an absent
+// claim asserts nothing: a provider that stops sending a name is not allowed
+// to blank the stored one.
 func (s *UserStore) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64, error) {
 	email := strings.ToLower(strings.TrimSpace(claims.Email))
 	if email == "" {
@@ -78,9 +83,6 @@ func (s *UserStore) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (in
 		return 0, errors.Internal("failed to resolve the identity", err)
 	}
 
-	// The identity provider is the source of truth for the profile, but an
-	// absent claim asserts nothing: a provider that stops sending a name
-	// should not blank it here.
 	updates := map[string]any{"email": email, "oidc_picture_url": oidcavatar.PhotoURL(claims.Picture)}
 	if displayName := claims.DisplayName(); displayName != "" {
 		updates["name"] = displayName

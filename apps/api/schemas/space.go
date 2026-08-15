@@ -22,6 +22,7 @@ func newUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
+// Space is a team workspace that projects and time entries belong to.
 type Space struct {
 	ID          string    `gorm:"column:id;primaryKey"`
 	Name        string    `gorm:"column:name;not null"`
@@ -39,6 +40,7 @@ func (s *Space) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// SpaceMember is a user's membership in a space with a role.
 type SpaceMember struct {
 	ID       string    `gorm:"column:id;primaryKey"`
 	SpaceID  string    `gorm:"column:space_id;not null;uniqueIndex:idx_space_user"`

@@ -1,5 +1,6 @@
 package schemas
 
+// AppSetting is the singleton row of app-level configuration.
 type AppSetting struct {
 	ID                  int    `gorm:"primaryKey"`
 	WebhookURL          string `gorm:"not null;default:''"`

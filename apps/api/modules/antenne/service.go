@@ -25,6 +25,8 @@ import (
 
 const appSettingID = 1
 
+// Service manages the Nook/Antenne pool connection, its settings, and the
+// event outbox.
 type Service struct {
 	orm        *gorm.DB
 	client     *antenneclient.Client
@@ -33,6 +35,7 @@ type Service struct {
 	logger     *slog.Logger
 }
 
+// NewService constructs a Service bound to orm and logger.
 func NewService(orm *gorm.DB, logger *slog.Logger) *Service {
 	service := &Service{orm: orm, logger: logger}
 	service.controller = newController(service)
@@ -119,6 +122,16 @@ func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*
 	}, connectErr, nil
 }
 
+// connect establishes (or re-establishes) the Antenne client connection
+// using the given instance URL and secret, wiring up event listeners on
+// success.
+//
+// A reconnect the client is going to retry is the mechanism working, not an
+// incident: an Antenne restart takes a few seconds and produces three of
+// these. Logging them at error painted the dashboard red on every deploy,
+// which teaches people to scroll past the colour that is supposed to mean
+// something, so transient errors are logged at warn and only the terminal
+// failure lands at error.
 func (s *Service) connect(instanceURL, secret string) error {
 	s.disconnect()
 
@@ -140,12 +153,6 @@ func (s *Service) connect(instanceURL, secret string) error {
 			s.logger.Info("antenne: disconnected")
 		}),
 		antenneclient.WithOnError(func(err error) {
-			// A reconnect the client is going to retry is the mechanism
-			// working, not an incident: an Antenne restart takes a few
-			// seconds and produces three of these. Logging them at error
-			// painted the dashboard red on every deploy, which teaches
-			// people to scroll past the colour that is supposed to mean
-			// something. The terminal failure still lands at error.
 			var transient *antenneclient.TransientError
 			if stderrors.As(err, &transient) {
 				s.logger.Warn("antenne: reconnecting",
@@ -558,6 +565,7 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 	}, nil
 }
 
+// GenerateFacileID returns a random "fac_"-prefixed hex identifier.
 func GenerateFacileID() string {
 	b := make([]byte, 10)
 	rand.Read(b)

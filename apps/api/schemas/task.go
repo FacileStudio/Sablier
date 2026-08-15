@@ -20,10 +20,12 @@ var validStatuses = map[string]bool{
 	StatusDone:       true,
 }
 
+// IsValidStatus reports whether s is one of the known task statuses.
 func IsValidStatus(s string) bool {
 	return validStatuses[s]
 }
 
+// NormalizeStatus returns s when it is valid, otherwise the default to-do status.
 func NormalizeStatus(s string) string {
 	if validStatuses[s] {
 		return s
@@ -31,6 +33,7 @@ func NormalizeStatus(s string) string {
 	return StatusTodo
 }
 
+// ValidateStatus returns an error unless s is a known task status.
 func ValidateStatus(s string) error {
 	if validStatuses[s] {
 		return nil
@@ -38,10 +41,12 @@ func ValidateStatus(s string) error {
 	return fmt.Errorf("invalid status %q, valid: %s", s, strings.Join(AllStatuses(), ", "))
 }
 
+// AllStatuses lists every valid task status.
 func AllStatuses() []string {
 	return []string{StatusTodo, StatusInProgress, StatusInReview, StatusDone}
 }
 
+// Task is a unit of work inside a project.
 type Task struct {
 	ID        int64     `gorm:"column:id;primaryKey"`
 	ProjectID int64     `gorm:"column:project_id;index;uniqueIndex:idx_tasks_project_name,priority:1"`

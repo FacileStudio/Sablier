@@ -12,11 +12,12 @@ import "gorm.io/gorm"
 //
 // An empty issuer skips only the identity backfill. The sessions and the API
 // tokens still move, because they are what keeps people signed in.
+//
+// Every statement below is PostgreSQL — a DO block, to_regclass, a partial
+// index. The app's own tests run against in-memory SQLite, and porte/pg is
+// Postgres-only anyway, so on any other dialect there is nothing here worth
+// half-executing and the call returns early.
 func AdoptPorte(db *gorm.DB, issuer string) error {
-	// Every statement below is PostgreSQL — a DO block, to_regclass, a
-	// partial index. This app's own tests run against in-memory SQLite, and
-	// porte/pg is Postgres-only anyway, so on any other dialect there is
-	// nothing here worth half-executing.
 	if db.Dialector.Name() != "postgres" {
 		return nil
 	}

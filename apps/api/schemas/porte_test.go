@@ -65,6 +65,12 @@ func seedPrePorte(t *testing.T, db *gorm.DB) {
 // Nobody may be signed out by this deploy, and the CLI must keep working. Both
 // tables store the SHA-256 hex of a token and nothing else, so the rows move
 // and the credentials already in a browser and in ~/.sablier.yml keep working.
+//
+// last_used_at is asserted to have been stamped rather than copied: carrying
+// created_at over would put the browser session 40 days into the seven-day
+// idle window and sign the user out on the deploy meant to keep them. The API
+// token must become a labelled session with no expiry — the CLI has no login
+// flow, so if that row does not survive there is no way to get another one.
 func TestAdoptPorteKeepsEverybodySignedIn(t *testing.T) {
 	db := openPostgres(t)
 	seedPrePorte(t, db)
@@ -84,9 +90,6 @@ func TestAdoptPorteKeepsEverybodySignedIn(t *testing.T) {
 	if carried.UserID != 1 || carried.Label != "" {
 		t.Fatalf("the browser session did not survive as an unlabelled session: %+v", carried)
 	}
-	// Carrying created_at over would put this session 40 days into the
-	// seven-day idle window and sign the user out on the deploy meant to
-	// keep them.
 	if time.Since(carried.LastUsedAt) > time.Hour {
 		t.Fatalf("last_used_at was copied instead of stamped: %v", carried.LastUsedAt)
 	}
@@ -99,9 +102,6 @@ func TestAdoptPorteKeepsEverybodySignedIn(t *testing.T) {
 		t.Fatal("an already-expired session was carried over")
 	}
 
-	// The API token becomes a labelled session with no expiry, which is
-	// what porte.Session.Label exists for. The CLI has no login flow, so if
-	// this row does not survive there is no way to get another one.
 	var token struct {
 		UserID    int64
 		Label     string
@@ -135,7 +135,9 @@ func TestAdoptPorteKeepsEverybodySignedIn(t *testing.T) {
 // The federated identity moves off the user row. Without it porte finds no
 // identity, falls back to matching the verified email and relinks on the next
 // login — which works, but leans the whole existing user base on the weaker of
-// the two matching paths, on the one deploy where nobody would notice.
+// the two matching paths, on the one deploy where nobody would notice. The
+// user seeded without a subject must not gain one, so exactly one identity row
+// is expected.
 func TestAdoptPorteMovesTheOIDCSubject(t *testing.T) {
 	db := openPostgres(t)
 	seedPrePorte(t, db)
@@ -167,7 +169,6 @@ func TestAdoptPorteMovesTheOIDCSubject(t *testing.T) {
 		t.Fatal("profile_synced_at did not come across, so the next request refreshes needlessly")
 	}
 
-	// The user with no subject must not gain one.
 	var rows int64
 	if err := db.Raw(`SELECT count(*) FROM porte_identities`).Scan(&rows).Error; err != nil {
 		t.Fatalf("count: %v", err)

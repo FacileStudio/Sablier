@@ -10,6 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// RegisterRoutes mounts the /antenne routes for reading and updating Nook
+// Pool settings and events on router, requiring authentication.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/antenne", func(r chi.Router) {
 		r.Use(middleware.RequireAuth(authService))

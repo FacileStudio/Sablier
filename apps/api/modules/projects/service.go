@@ -13,12 +13,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// Service implements project and task persistence and emits pool events when
+// records change.
 type Service struct {
 	orm         *gorm.DB
 	controller  *Controller
 	poolService *antenne.Service
 }
 
+// NewService wires the projects service.
 func NewService(orm *gorm.DB) *Service {
 	service := &Service{orm: orm}
 	service.controller = newController(service)

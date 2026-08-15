@@ -8,6 +8,7 @@ import (
 	"github.com/FacileStudio/tronc/errors"
 )
 
+// Controller serves the space and membership routes.
 type Controller struct {
 	service *Service
 }

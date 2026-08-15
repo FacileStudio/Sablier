@@ -106,6 +106,13 @@ func journalConfigExtra(appEnv *env.Config) func() map[string]any {
 	}
 }
 
+// buildAuth wires up the session manager and the local-password and OIDC
+// auth kits.
+//
+// MinPasswordLength is pinned at 8 rather than porte's default of twelve:
+// Sablier's floor has always been eight characters, and raising it here
+// would reject a password this app accepted yesterday, which is a product
+// decision and not a migration.
 func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *local.Kit, *oidc.Kit, error) {
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -130,9 +137,6 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	// Sablier's floor has always been eight characters. porte defaults to
-	// twelve; raising it here would reject a password this app accepted
-	// yesterday, which is a product decision and not a migration.
 	passwords, err := local.New(local.Config{AllowRegistration: !appEnv.SSOOnly, MinPasswordLength: 8}, local.Deps{
 		Users:      users,
 		Identities: store.Identities(),
@@ -208,6 +212,13 @@ func clientRelease(clientDir string) (string, error) {
 	return payload.Version, nil
 }
 
+// buildRouter assembles the chi router with all app middleware and module
+// routes mounted.
+//
+// TrustedProxies matters behind Traefik and Cloudflare: RemoteAddr is only
+// the real visitor address if both are trusted, since Traefik replaces the
+// forwarded chain rather than extending it, so the visitor survives only in
+// Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
 func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, passwords *local.Kit, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service) chi.Router {
 	authService := auth.NewService(db, sessions, passwords, appLogger)
 	projectService := projects.NewService(db)
@@ -219,11 +230,6 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	timeEntryService.SetPoolService(antenneService)
 
 	router := httpx.NewRouter(httpx.Config{
-		// Behind Traefik and Cloudflare, RemoteAddr is only the
-		// visitor if both are trusted: Traefik replaces the forwarded
-		// chain rather than extending it, so the visitor survives in
-		// Cf-Connecting-Ip alone. TRUSTED_PROXIES=private,cloudflare
-		// fills all three.
 		TrustedProxies: appEnv.TrustedProxies,
 		CDNProxies:     appEnv.CDNProxies,
 		CDNHeader:      appEnv.CDNHeader,

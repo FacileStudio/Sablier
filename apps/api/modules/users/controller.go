@@ -14,6 +14,7 @@ import (
 	"github.com/FacileStudio/tronc/errors"
 )
 
+// Controller serves the user, profile and api-token routes.
 type Controller struct {
 	service *Service
 }
