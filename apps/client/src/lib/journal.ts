@@ -31,7 +31,13 @@ export const journal = createDeferredJournal(async () => {
 		// stack trace to the deploy that produced it — which is the whole
 		// question you ask when an error starts appearing.
 		release: version,
-		environment: dev ? 'development' : 'production'
+		environment: dev ? 'development' : 'production',
+		// This client is served by the same Go binary as the API it calls, so
+		// tracing costs no preflight — the header rides on a same-origin
+		// request. That API runs tronc's RequestID, which echoes the id back, so
+		// a failed call is reported under the id the server logged it under, and
+		// the explorer's request_id pivot reaches the handler that produced it.
+		trace: true
 	};
 });
 

@@ -76,7 +76,7 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.27.4", "", { "os": "win32", "cpu": "x64" }, "sha512-+knoa0BDoeXgkNvvV1vvbZX4+hizelrkwmGJBdT17t8FNPwG2lKemmuMZlmaNQ3ws3DKKCxpb4zRZEIp3UxFCg=="],
 
-    "@facile/journal": ["@facile/journal@github:FacileStudio/Journal#853aa11", {}, "FacileStudio-Journal-853aa11", "sha512-Z2hMiwUp0iNkelzYon1CeSnMrWGnDnmRH3K/WT0FJ8kV/79+w3NiQnihfhVKnyNFNuTK9FMLWiI5BMfvd37knw=="],
+    "@facile/journal": ["@facile/journal@github:FacileStudio/Journal#b211454", {}, "FacileStudio-Journal-b211454", "sha512-5zdWQy8EoKC4K7fyVoFSnB1wzVyOn3Rv+AkUjxebhug2uaw0ge7Pm2fqT7qu0bz7tDBFserMOQoh98QoCRmcyg=="],
 
     "@facile/muse": ["@facile/muse@github:FacileStudio/muse#bda8af7", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-bda8af7", "sha512-PyQLJa66dmG+NtGJhdMfjEPhdt1zcIi27b0V5SviQ9L99BTUqUAUvgP2qDL0P1jsS9x3Hc+OYgzL/baow5OgYQ=="],
 
