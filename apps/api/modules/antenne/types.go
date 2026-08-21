@@ -1,6 +1,6 @@
 package antenne
 
-// PoolSettings holds the stored Nook Pool connection configuration.
+// PoolSettings holds the stored Antenne Pool connection configuration.
 type PoolSettings struct {
 	URL     string `json:"antenne_url"`
 	Secret  string `json:"antenne_secret"`

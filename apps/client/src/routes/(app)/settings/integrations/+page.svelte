@@ -215,7 +215,7 @@
 			bind:value={poolUrl}
 			editable
 			sensitive={false}
-			placeholder="https://nook.example.com"
+			placeholder="https://antenne.example.com"
 			helper={poolFromEnv ? 'Pre-filled from an environment variable.' : undefined}
 		/>
 	</SettingsRow>
