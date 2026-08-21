@@ -25,7 +25,7 @@ import (
 
 const appSettingID = 1
 
-// Service manages the Nook/Antenne pool connection, its settings, and the
+// Service manages the Antenne pool connection, its settings, and the
 // event outbox.
 type Service struct {
 	orm        *gorm.DB
