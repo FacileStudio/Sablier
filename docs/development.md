@@ -15,14 +15,19 @@ before every push.
 ## Setup
 
 ```sh
-mise run hooks
+mise install
 mise run install
 docker compose up db -d
 ```
 
-`mise run hooks` points `core.hooksPath` at `.githooks`, which is what wires up the
-pre-push quality gate. `mise run install` runs `bun install --frozen-lockfile` in
-`apps/client`.
+`mise install` installs the pinned tools and then wires the git hooks through lefthook,
+so a fresh clone needs no separate hook step. `mise run install` runs
+`bun install --frozen-lockfile` in `apps/client`.
+
+Two hooks get installed. `commit-msg` enforces Conventional Commits and comes from the
+shared config in `FacileStudio/hooks`, pinned by tag in `lefthook.yml`, so every suite
+repo applies the same rule and it changes in one place. `pre-push` runs the quality gate
+below.
 
 ## Running
 
@@ -57,16 +62,15 @@ do the work.
 | `mise run check` | `sh ./scripts/check.sh` | The full quality gate: Go, then the client |
 | `mise run check-go` | `sh ./scripts/check.sh --go-only` | Go half only |
 | `mise run format` | `sh ./scripts/check.sh --format` | `go fmt ./...`, rewriting files in place |
-| `mise run hooks` | `git config core.hooksPath .githooks` | Enables the tracked hooks in this clone |
 
 Client scripts, run from `apps/client`: `bun run dev`, `bun run build`, `bun run preview`,
 `bun run check` (`svelte-check` against `tsconfig.json`).
 
 ## The quality gate
 
-`scripts/check.sh` is the gate, and `.githooks/pre-push` does nothing but exec it. It
-reports and never rewrites, except under `--format`. Three steps per Go module, then the
-client:
+`scripts/check.sh` is the gate, and the lefthook `pre-push` job does nothing but exec it.
+The script itself is unchanged by the move to lefthook. It reports and never rewrites,
+except under `--format`. Three steps per Go module, then the client:
 
 1. `gofmt -l .`, ignoring `vendor/`. Any listed file fails the gate.
 2. `go vet ./...`
@@ -77,7 +81,7 @@ Two deliberate details worth knowing before you "fix" the script:
 
 - **It is not invoked through mise.** `mise run` resolves every tool in the merged config
   before running any task body, so one broken tool in your global mise config would take
-  the gate down with it. The hook calls `sh` directly.
+  the gate down with it. The lefthook job calls `sh` directly.
 - **It resolves the toolchain from `GOROOT`.** mise exports `GOROOT` for the pinned
   version but can leave an unrelated `go` earlier on `PATH`; mixing them produces
   `compile: version "X" does not match go tool version "Y"`. The script prefers
