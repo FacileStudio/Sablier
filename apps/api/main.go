@@ -287,7 +287,16 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	return server, nil
 }
 
+// Stamped at Docker build time with git describe (leading v stripped),
+// matching goreleaser's {{.Version}} so `/api version` reads the same shape
+// as the suite's CLI binaries.
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Println(version)
+		return
+	}
 	if healthcheck.Handle(os.Args) {
 		return
 	}
