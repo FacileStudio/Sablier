@@ -35,11 +35,11 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: dokploy-network
-      traefik.http.routers.sablier-web.rule: "Host(`sablier.facile.studio`)"
+      traefik.http.routers.sablier-web.rule: "Host(`${SABLIER_HOST:-sablier.facile.studio}`)"
       traefik.http.routers.sablier-web.entrypoints: web
       traefik.http.routers.sablier-web.middlewares: redirect-to-https@file
       traefik.http.routers.sablier-web.service: sablier-svc
-      traefik.http.routers.sablier-secure.rule: "Host(`sablier.facile.studio`)"
+      traefik.http.routers.sablier-secure.rule: "Host(`${SABLIER_HOST:-sablier.facile.studio}`)"
       traefik.http.routers.sablier-secure.entrypoints: websecure
       traefik.http.routers.sablier-secure.tls.certresolver: letsencrypt
       traefik.http.routers.sablier-secure.service: sablier-svc

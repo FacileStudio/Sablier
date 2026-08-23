@@ -25,8 +25,13 @@ COPY apps/api/vendor ./vendor
 
 COPY apps/api ./
 
+# git describe --tags needs the tag; CI checks out with fetch-depth: 0. A clone
+# without tags (Dokploy) answers with a bare short sha — correct, not broken.
+RUN VERSION="$(git --git-dir=/.git describe --tags --always | sed 's/^v//')" \
+    && rm -rf /.git
+
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} \
-    go build -mod=vendor -trimpath -ldflags="-s -w" -o bin/api .
+    go build -mod=vendor -trimpath -ldflags="-s -w -X main.version=$VERSION" -o bin/api .
 
 FROM api-build AS dirs
 RUN mkdir -p /data/avatars
