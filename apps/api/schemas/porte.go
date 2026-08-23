@@ -41,6 +41,14 @@ func AdoptPorte(db *gorm.DB, issuer string) error {
 // is referenced across the whole codebase; moving it would be a rewrite of
 // everything except authentication. The other three stores come from porte/pg
 // unchanged — they only ever touch the tables below.
+//
+// The one UPDATE is porte v0.3.0's, copied along with the rest: a password
+// identity is keyed on the account id now, not on the address it can move away
+// from. It is idempotent, since the predicate is false for every row once it
+// has run, it leaves federated subjects alone, and it is allowed to fail — the
+// only way it can is an account holding two password identities, which is
+// exactly the state the old key let this app reach and which nothing should
+// paper over by picking one.
 const porteSchema = `
 CREATE TABLE IF NOT EXISTS porte_identities (
 	user_id         bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -59,6 +67,9 @@ CREATE TABLE IF NOT EXISTS porte_identities (
 CREATE INDEX IF NOT EXISTS porte_identities_user_idx ON porte_identities (user_id);
 ALTER TABLE porte_identities ADD COLUMN IF NOT EXISTS created_at timestamptz;
 ALTER TABLE porte_identities ALTER COLUMN created_at SET DEFAULT now();
+
+UPDATE porte_identities SET subject = user_id::text
+ WHERE provider = 'local' AND subject <> user_id::text;
 
 CREATE TABLE IF NOT EXISTS porte_sessions (
 	id           bigserial PRIMARY KEY,

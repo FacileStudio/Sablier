@@ -171,7 +171,7 @@ logs in through SSO, end customers (an e-commerce site's buyers, who will never 
 Authentik account) through email/password or a second OIDC provider. `porte_identities` is
 designed for that from v0.1 even though v0.1 wires only one provider.
 
-### v0.3 — `porte/espace`
+### v0.4 — `porte/espace`
 
 A **subpackage**, same repo, same tags. `Space` / `SpaceMember` models, membership queries and
 `RequireRole(spaceID, role)`. Apps without spaces (Journal, Comptoir) simply do not import it —
@@ -189,7 +189,7 @@ drift is a security bug rather than cosmetics. If spaces ever grow a real produc
 email invitations, quotas, per-space billing — that is when it earns its own repo.
 
 `FacileID` carries a unique index, which only makes sense if the same space is meant to exist
-in several apps. Confirmed intent: **sync via Nook later**, so the whole park's spaces work
+in several apps. Confirmed intent: **sync via Antenne later**, so the whole park's spaces work
 together. Treat `FacileID` as the sync key from the start, even though the sync comes later.
 Check first: the `enveloppe` contract keys on `actor_email` and will need to carry a *space*
 identity — that is a change to `enveloppe`, to make before `porte/espace`, not during.
@@ -343,7 +343,7 @@ Three mechanisms, and v0.1 ships the first two:
    deletes that user's sessions. This is the security-critical case — deactivation, admin
    session termination — and per authentik's own documentation it is the only mechanism that
    covers it. One endpoint here, one URL per application there.
-3. **Nook**, later. A group-change event invalidating cached claims is the suite-native version
+3. **Antenne**, later. A group-change event invalidating cached claims is the suite-native version
    and composes with P4, but 1 and 2 cover the need; do not build it for this.
 
 Because sessions are opaque and claims are stored server-side (`porte_identities.claims`, JSONB),
@@ -361,7 +361,7 @@ No `RequireRole` middleware for IdP roles, and no policy engine. The app writes 
 five lines, which is the smaller of the two options §7 Q4 posed and the one that keeps all three
 production role models working untouched.
 
-**Do not confuse this with `porte/espace` (v0.3).** Space membership is app-local data — the
+**Do not confuse this with `porte/espace` (v0.4).** Space membership is app-local data — the
 spaces live in the app's own database — so `espace.RequireRole(spaceID, role)` resolves
 membership, not IdP claims. Two different axes that must not be merged: a claim says what
 Authentik thinks of you globally; a membership says what this app's data says about you in one
@@ -517,8 +517,39 @@ unacceptable.
 1. ~~**CLI token flow.**~~ **Settled 2026-08-07** — read Plume's implementation: the callback
    parks a one-time code in a `sync.Map`, the CLI exchanges it. Right flow, wrong store (dies on
    redeploy, breaks at two replicas). v0.1 owns it, DB-backed. See §5b.
-2. **`/auth/me` and `/auth/password`** — v0.2 of `porte`, or permanently app-side? They touch
-   the app's user columns, which argues app-side. Still open; it blocks nothing in v0.1.
+2. ~~**`/auth/me` and `/auth/password`**~~ **Settled 2026-08-10 — split, and the split is not where
+   the question assumed.** Read from all eight adopters in production rather than argued.
+
+   **`/auth/me` and profile editing are app-side, permanently.** There is nothing to share. The
+   path disagrees (`/users/me` in five, `/auth/me` in three), the verb disagrees (`PATCH` in five,
+   `PUT` in three), and the payload has no intersection beyond id/email/name: Sablier carries
+   `rate`, `rate_type` and `workday_hours`, Nuage and Sablier a `color`, Boutique a `role`, Plume a
+   `reminder_interval_days`, Journal an `is_admin`. `porte` has no idea what a user looks like,
+   which was always the reason, and the measurement agrees with it.
+
+   **The credential half is `porte`'s, and it was missing.** Three security properties, eight apps,
+   eight different subsets, and **no app had all three**:
+
+   | | current password required | re-keys the identity on an address change | ends sessions after a change |
+   |---|---|---|---|
+   | Journal | n/a — no update route | n/a | n/a |
+   | Sablier | no | **no** | no |
+   | Boutique | no | yes | yes |
+   | Courrier | no | yes | no |
+   | Agenda | no | yes | no |
+   | Nuage | yes | yes | no |
+   | Vision | yes | yes | no |
+   | Plume | yes | yes | no |
+
+   That is not eight teams being careless. Column two was impossible to get right through the
+   contract — there is no delete and no update on `IdentityStore` — so five apps wrote raw SQL
+   against `porte_identities` and two did not. Column one was optional because one method served
+   both "add a first password" and "replace one". Both are `porte` bugs wearing app clothing, and
+   v0.3.0 closes them: the address stops being a credential key (§5), and `ChangePassword` is a
+   separate method from `SetPassword`.
+
+   So the answer to the original question is neither of its two options. `/auth/password` as a
+   *route* stays app-side with `/auth/me`; the *operation* behind it belongs here.
 3. ~~**Journal's bcrypt.**~~ **Settled 2026-08-07** — the only bcrypt hit in Journal is the
    fixture string `"$2y$n$nope"` in `authcrypto/crypto_test.go`. Argon2-only. Non-issue.
 4. ~~**Role hook shape.**~~ **Settled 2026-08-07 — the smaller option.** Claims ride typed but
@@ -547,7 +578,7 @@ porte/oidc      the engine: the flow, the six OIDC routes, the avatar guard
 porte/local     email and password: argon2id, register, login, set-password
 porte/pg        the identity tables and the four stores. database/sql only, no ORM
 porte/avatarfs  a filesystem AvatarStore and the handler that serves it
-porte/espace    v0.3. Space/SpaceMember, membership, RequireRole
+porte/espace    v0.4. Space/SpaceMember, membership, RequireRole
 ```
 
 **`porte/session` extracted 2026-08-09, and it is the decision this section got most wrong.**
@@ -889,6 +920,6 @@ which is still what a manual revocation goes through when the IdP is not the tri
    per-space authorization.
 4. **The e-commerce demo**, greenfield and outside the suite, which forces the non-Authentik
    issuer test on day one.
-5. **v0.3 `porte/espace`** — still gated on `enveloppe` learning to carry a space identity, as
+5. **v0.4 `porte/espace`** — still gated on `enveloppe` learning to carry a space identity, as
    §4 records. Do not start it before Nuage: Nuage is the app whose spaces should decide the
    shape, and building the package first would buy a v0.4 that breaks it.

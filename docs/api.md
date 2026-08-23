@@ -59,12 +59,19 @@ All routes require authentication.
 | GET | `/api/users` | — | `{"users":[User]}` |
 | GET | `/api/users/me` | — | `{"user":User}` |
 | GET | `/api/users/{id}` | — | `{"user":User}` |
-| PATCH | `/api/users/me` | any of `name`, `email`, `password`, `color`, `rate`, `rate_type`, `workday_hours` | `{"user":User}` |
+| PATCH | `/api/users/me` | any of `name`, `email`, `password`, `current_password`, `color`, `rate`, `rate_type`, `workday_hours` | `{"user":User}`, plus `token` when the session was rotated |
 | POST | `/api/users/me/avatar` | `multipart/form-data`, 6 MiB maximum | `{"user":User}` |
 | DELETE | `/api/users/me/avatar` | — | `{"user":User}` |
 | GET | `/api/users/me/api-token` | — | `{"has_token", "name"?, "created_at"?}` |
 | POST | `/api/users/me/api-token` | `{"name"}` | 201 `{"token","name","created_at"}` — the only time the token is returned |
 | DELETE | `/api/users/me/api-token` | — | `{"deleted":true}` |
+
+`password` replaces the account's password and needs `current_password` alongside it.
+Sending it alone is only valid for an account that has no password yet — a single sign-on
+user adding a first one — and anything else is a `400`. A wrong `current_password` is a
+`401`. A confirmed change ends the account's other logins, leaves named API tokens alone,
+and rotates the caller's own session: the new cookie is set on the response and the same
+credential comes back as `token` for clients holding a bearer instead.
 
 `User` is `{id, email, name, avatar_url, avatar_source, color, rate, rate_type,
 workday_hours, created_at}`. `avatar_source` is `oidc` for a picture pulled from the

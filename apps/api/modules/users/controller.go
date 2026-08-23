@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"time"
@@ -62,7 +63,13 @@ func (controller *Controller) me(context context.Context) (*MeResponse, error) {
 	return &MeResponse{User: *user}, nil
 }
 
-func (controller *Controller) updateMe(context context.Context, req *UpdateRequest) (*MeResponse, error) {
+// updateMe applies a subset of the profile, and the password with it.
+//
+// It takes the writer and the request rather than a context because a password
+// change rotates the caller's session and porte sets the replacement cookie
+// itself. Nothing else on this route needs them.
+func (controller *Controller) updateMe(w http.ResponseWriter, r *http.Request, req *UpdateRequest) (*MeResponse, error) {
+	context := r.Context()
 	identity, ok := authcontext.IdentityFromContext(context)
 	if !ok {
 		return nil, errors.Unauthorized("missing auth")
@@ -134,12 +141,28 @@ func (controller *Controller) updateMe(context context.Context, req *UpdateReque
 		return nil, errors.Invalid("at least one field must be provided")
 	}
 
-	user, err := controller.service.updateUser(context, identity.UserID, name, email, password, color, rate, rateType, workdayHours)
+	rotated := ""
+	if password != nil {
+		id, err := strconv.ParseInt(identity.UserID, 10, 64)
+		if err != nil {
+			return nil, errors.Internal("failed to parse user id", err)
+		}
+		current := ""
+		if req.CurrentPassword != nil {
+			current = *req.CurrentPassword
+		}
+		rotated, err = controller.service.applyPassword(context, w, r, id, current, *password)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	user, err := controller.service.updateUser(context, identity.UserID, name, email, color, rate, rateType, workdayHours)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MeResponse{User: *user}, nil
+	return &MeResponse{User: *user, Token: rotated}, nil
 }
 
 func (controller *Controller) deleteAvatar(context context.Context) (*MeResponse, error) {
