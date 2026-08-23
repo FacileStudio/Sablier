@@ -22,6 +22,7 @@ export type UserProfile = {
 
 export type MeResponse = {
 	user: UserProfile;
+	token?: string;
 };
 
 export type UsersResponse = {
@@ -234,12 +235,13 @@ export const backend = {
 			user: normalizeUser(result.user)
 		}));
 	},
-	updateMe(token: string, payload: { name?: string; email?: string; password?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly'; workday_hours?: number }) {
+	updateMe(token: string, payload: { name?: string; email?: string; password?: string; current_password?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly'; workday_hours?: number }) {
 		return apiFetch<MeResponse>('/api/users/me', {
 			method: 'PATCH',
 			body: JSON.stringify(payload)
 		}, token).then((result) => ({
-			user: normalizeUser(result.user)
+			user: normalizeUser(result.user),
+			token: result.token
 		}));
 	},
 	deleteAvatar(token: string) {

@@ -203,3 +203,49 @@ func TestAdoptPorteWithoutAnIssuerStillMovesTheCredentials(t *testing.T) {
 		t.Fatalf("an identity was keyed against no provider: %d rows", identities)
 	}
 }
+
+// A password identity created under porte v0.2 was keyed on the email address,
+// which is the mutable half of the account: changing an address left the
+// credential behind on the old one, and setting a password afterwards inserted
+// a *second* identity rather than replacing the first, because Save upserts on
+// (provider, subject). The re-key is part of the schema, so a second AdoptPorte
+// is the production path and not a contrivance.
+//
+// The federated subject must not move with it. That one belongs to the identity
+// provider, and re-keying it would unmatch every SSO account on the same deploy.
+func TestAdoptPorteRekeysPasswordIdentitiesOntoTheAccountID(t *testing.T) {
+	db := openPostgres(t)
+	seedPrePorte(t, db)
+
+	if err := AdoptPorte(db, testIssuer); err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO porte_identities (user_id, provider, subject, password_hash)
+		 VALUES (2, 'local', 'noah@facile.studio', '$argon2id$fake')`).Error; err != nil {
+		t.Fatalf("seed the v0.2 password identity: %v", err)
+	}
+
+	if err := AdoptPorte(db, testIssuer); err != nil {
+		t.Fatalf("re-adopt: %v", err)
+	}
+
+	var local struct {
+		Subject string
+		UserID  int64
+	}
+	if err := db.Raw(`SELECT subject, user_id FROM porte_identities WHERE provider = 'local'`).Scan(&local).Error; err != nil {
+		t.Fatalf("read the password identity: %v", err)
+	}
+	if local.Subject != "2" || local.UserID != 2 {
+		t.Fatalf("the password identity is keyed on %q, not on the account id: %+v", local.Subject, local)
+	}
+
+	var federated string
+	if err := db.Raw(`SELECT subject FROM porte_identities WHERE provider = ?`, testIssuer).Scan(&federated).Error; err != nil {
+		t.Fatalf("read the federated identity: %v", err)
+	}
+	if federated != "sub-1" {
+		t.Fatalf("the federated subject was re-keyed too, unmatching the SSO account: %q", federated)
+	}
+}

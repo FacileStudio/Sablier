@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,7 +101,7 @@ func TestUpdateUserPersistsChosenColor(t *testing.T) {
 	user := seedUser(t, service.orm, "color@example.com", "AD9EF0")
 	color := "7EEEDB"
 
-	updated, err := service.updateUser(context.Background(), fmt.Sprintf("%d", user.ID), nil, nil, nil, &color, nil, nil, nil)
+	updated, err := service.updateUser(context.Background(), fmt.Sprintf("%d", user.ID), nil, nil, &color, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("update user: %v", err)
 	}
@@ -134,12 +136,13 @@ func TestUpdateMeRejectsInvalidColor(t *testing.T) {
 	controller := &Controller{}
 	color := "FFFFFF"
 	req := &UpdateRequest{Color: &color}
-	ctx := authcontext.WithIdentity(context.Background(), authcontext.Identity{
+	request := httptest.NewRequest(http.MethodPatch, "/api/users/me", nil)
+	ctx := authcontext.WithIdentity(request.Context(), authcontext.Identity{
 		UserID: "1",
 		Email:  "user@example.com",
 	})
 
-	_, err := controller.updateMe(ctx, req)
+	_, err := controller.updateMe(httptest.NewRecorder(), request.WithContext(ctx), req)
 	if err == nil || err.Error() != "color must be one of: AD9EF0, F09ED6, EE7E89, EEB47E, A9EE7E, 7EEEDB" {
 		t.Fatalf("expected invalid color error, got %v", err)
 	}

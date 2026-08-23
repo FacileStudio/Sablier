@@ -6,7 +6,7 @@ require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665
 	github.com/FacileStudio/antenne-client/go v0.0.0-20260810113516-0458a301c709
 	github.com/FacileStudio/enveloppe/go v0.0.0-20260804090730-02b0f4b20c6f
-	github.com/FacileStudio/porte v0.2.10
+	github.com/FacileStudio/porte v0.3.1
 	github.com/FacileStudio/tronc v0.14.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi/v5 v5.3.1

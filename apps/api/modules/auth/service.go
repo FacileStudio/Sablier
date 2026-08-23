@@ -87,9 +87,25 @@ func (service *Service) Login(ctx context.Context, w http.ResponseWriter, r *htt
 	return strconv.FormatInt(userID, 10), token, nil
 }
 
-// SetPassword is what PATCH /users/me calls when the body carries one.
-func (service *Service) SetPassword(ctx context.Context, userID int64, email, password string) error {
-	return service.passwords.SetPassword(ctx, userID, email, password)
+// SetPassword gives a first password to an account that has none, and answers
+// porte.ErrPasswordSet rather than overwriting one that is already there.
+//
+// It no longer takes an address: a password identity is keyed on the account
+// id since porte v0.3.0, so there is nothing about the mailbox left in the key.
+func (service *Service) SetPassword(ctx context.Context, userID int64, password string) error {
+	return service.passwords.SetPassword(ctx, userID, password)
+}
+
+// ChangePassword replaces an existing password after confirming the current
+// one, ends the account's other logins and rotates the caller's own session.
+//
+// It takes the writer and the request because porte sets the rotated cookie
+// itself, which is why this cannot be reached from a service method holding
+// only a context. The returned token is the bearer half of the same rotation,
+// for the clients that hold one instead of a cookie, and the count is how many
+// other logins were ended. Named API tokens deliberately survive.
+func (service *Service) ChangePassword(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int64, current, next string) (string, int64, error) {
+	return service.passwords.ChangePassword(ctx, w, r, userID, current, next)
 }
 
 // Issue mints a named API token: a porte session with a label and no
