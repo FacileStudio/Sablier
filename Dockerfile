@@ -25,8 +25,11 @@ COPY apps/api/vendor ./vendor
 
 COPY apps/api ./
 
-# git describe --tags needs the tag; CI checks out with fetch-depth: 0. A clone
-# without tags (Dokploy) answers with a bare short sha — correct, not broken.
+# The stamp needs history. The .dockerignore re-includes /.git (last rule
+# wins); without this copy git describe fails silently inside the assignment
+# below and the binary ships an empty version string.
+COPY .git /.git
+
 RUN VERSION="$(git --git-dir=/.git describe --tags --always | sed 's/^v//')" \
     && rm -rf /.git
 
