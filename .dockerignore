@@ -9,8 +9,3 @@
 **/dist
 **/build
 **/bin
-
-# Last rule wins: re-include the root .git so the api-build stage can stamp
-# the binary version with git describe. It is rm -rf'd there and never
-# reaches the final distroless image.
-!/.git
