@@ -9,7 +9,7 @@ const (
 	AppPlume    App = "Plume"
 	AppGlouton  App = "Glouton"
 	AppVision   App = "Vision"
-	AppMycelium   App = "Mycelium"
+	AppMycelium App = "Mycelium"
 )
 
 type Action string
