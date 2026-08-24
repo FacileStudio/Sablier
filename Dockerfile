@@ -22,19 +22,16 @@ WORKDIR /repo/apps/api
 
 COPY apps/api/go.mod apps/api/go.sum ./
 COPY apps/api/vendor ./vendor
-
 COPY apps/api ./
 
-# The stamp needs history. The .dockerignore re-includes /.git (last rule
-# wins); without this copy git describe fails silently inside the assignment
-# below and the binary ships an empty version string.
-COPY .git /.git
-
-RUN VERSION="$(git --git-dir=/.git describe --tags --always | sed 's/^v//')" \
-    && rm -rf /.git
-
+# The version arrives as a build arg (CI passes the git tag); no .git in the
+# build context. A git-based stamp failed silently here twice: the failure
+# hides inside a command substitution and ships an empty main.version.
+ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} \
-    go build -mod=vendor -trimpath -ldflags="-s -w -X main.version=$VERSION" -o bin/api .
+    go build -mod=vendor -trimpath \
+    -ldflags="-s -w -X main.version=$(echo "$VERSION" | sed 's/^v//')" \
+    -o bin/api .
 
 FROM api-build AS dirs
 RUN mkdir -p /data/avatars
