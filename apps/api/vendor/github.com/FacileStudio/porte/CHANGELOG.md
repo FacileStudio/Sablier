@@ -3,6 +3,112 @@
 Decisions are recorded with their reasoning. The reasoning is the part that stops a future
 session from undoing a deliberate choice.
 
+## Unreleased
+
+**One CLI login for the suite: `POST /auth/oidc/device/exchange`.** A CLI trades the access
+token it holds from the provider's device grant (RFC 8628) for this app's own session token.
+`{"access_token": …}` goes in, `{"user_id", "token"}` comes out. It is the last missing piece of
+`facile login`, which until now ran the device grant against Registre, held a valid token, and
+had nowhere to spend it: every tool answered 404, so the CLI fell back to the loopback browser
+flow, the one flow that cannot work when the browser is on another machine. Writing the
+provider's token into the slot where a CLI keeps its own session was never an option; that is a
+login that 401s when the token expires an hour later.
+
+The handler adds no verification of its own. It composes the bearer verifier the Authorization
+header path already uses, the same `(issuer, sub)` lookup the login callback matches on, and the
+same `Manager.Issue` that mints every other session. All that is new is that the token arrives in
+a request body rather than a header, so `Cache-Control: no-store` applies (OAuth 2.1 §7.1) and no
+CSRF header is required, because there is no ambient credential to abuse when the caller has to
+put a token it holds into the body.
+
+**Two audiences, because they are two token populations.** The exchange has its own setting,
+`Config.CLIAudience` (env `OIDC_CLI_AUDIENCE`), which an app sets to the CLI's client id,
+`facile-cli` for the suite. `OIDC_MACHINE_AUDIENCE` keeps its old meaning and its old value:
+this app's own client id, which is what a service account's token is addressed to. Registre's
+`suite-ci` account declares `audiences: [courrier]`, so courrier checks `courrier` there and the
+CLI's `aud: ["facile-cli"]` never matches it. Folding the two into one variable would have made
+an app choose between service accounts and CLI login, and an app that chose CLI login would have
+started rejecting every service-account token it had been accepting, silently, with nothing in
+its own configuration having changed meaning.
+
+**The second audience builds a second verifier, and it never reaches the session manager.**
+`OIDC_CLI_AUDIENCE` arms this route alone; it does not put a `facile-cli` token on the
+`Authorization` header path. So the exchange is a real boundary rather than a formality: the
+token traded in cannot already open every `RequireAuth` route on its own, and what comes back is
+a session row the app can list, expire and revoke, where a verified bearer JWT leaves no row at
+all. The cost is one extra discovery and JWKS fetch at boot, paid once per process, because
+`porte/oidc/jwt` bakes the audience in at construction.
+
+**An empty `OIDC_CLI_AUDIENCE` does not mount the route, and its 404 is load-bearing.** An app
+with no CLI audience cannot tell a Registre token from a forgery and must not pretend to serve
+the exchange; 404 is exactly what `facile login` reads as "not shipped" before falling back. The
+corollary binds an app that does mount it: the CLI probes with a POST carrying an empty body, so
+a mounted route refuses on the merits (400 or 401) and never with a 404. `OIDC_MACHINE_AUDIENCE`
+does not mount it, so an app can run service accounts with no exchange, the exchange with no
+service accounts, or both, and the two never interfere.
+
+Refusals are one status and one message. Bad signature, wrong issuer, wrong audience, expired,
+not yet valid, unknown kid, no subject, and a subject with no row in `porte_identities` are
+indistinguishable to the caller, and a token addressed to the machine audience is refused here
+exactly like any other wrong audience. The identity store is consulted only after every
+cryptographic and claim check has passed, so refusal latency does not answer "does this subject
+have an account here" either. No account is created here: provisioning from a bearer would let
+anyone the provider will mint a token for materialise an account in every app at once, and the
+callback owns account creation because it is the path holding a verified email.
+
+**What the split does not close, stated plainly:** a stolen or phished `facile-cli` token can
+still be exchanged for a durable session at every app that trusts it. `facile-cli` is a public
+client, so anyone can start its device grant; the human approving the code and the requirement
+of an existing local account are what stand in the way. Bounding the rest is back-channel
+logout's job, and `backchannel_logout_uri` appears zero times in Registre's `seed.yaml` today,
+so that bound is not in place yet.
+
+**A verified bearer whose identity row names account zero is now refused** on both paths. No
+account has that id, so the row is a store bug, and both callers spend the `UserID` directly,
+one to authorize a request and one to mint a session. Zero would be the identity of everybody at
+once.
+
+**Offline verification of bearer JWTs.** `Config.MachineAudience` (env
+`OIDC_MACHINE_AUDIENCE`) gives the session manager a second bearer verifier: a bearer that parses
+as three dot-separated segments is verified against the provider's JWKS — signature, `iss`, `aud`,
+`exp`, and `nbf`/`iat` when present — and never reaches the hashed-session lookup. Keys cache for
+an hour and refetch once on an unknown kid, so a rotation does not wait out the TTL. The engine is
+the new stdlib-only `porte/oidc/jwt`; the manager learns of it through the `session.JWTVerifier`
+interface so the credential package still compiles without any OIDC dependency. Introspection
+stays out: offline verification is the point.
+
+**A verified bearer resolves to a local account.** This is what turns one login per app into one
+login for the suite: a user who has signed in here through the browser can afterwards present a
+Registre-issued token to the same app, and porte authenticates them as themselves. `sub` is
+matched against `porte_identities` on `(issuer, subject)` — the same key the callback and
+back-channel logout already use, and never the email address, because matching on a mutable
+address is the account-takeover primitive v0.3.0 removed from the callback. A subject with no row
+is refused rather than provisioned: account creation stays in the callback, which is the path
+that holds a verified email.
+
+That lookup is also the whole of the deactivation story on this path, and the reason it is
+mandatory. A JWT carries no session row, so revoking sessions — all back-channel logout can do —
+does not reach one, and `SessionID` is zero. What does reach one is `IdentityStore.Find`: an app
+that deactivates an account by making `Find` answer `ErrNotFound` locks it out on the next
+request. An app that leaves the row readable keeps admitting the token until it expires, so the
+issuer's access-token lifetime is the real bound. Registre SPEC §10 question 6 chose offline
+verification knowing this and named short lifetimes as the mitigation.
+
+The behaviour change lands on an unreleased, unadopted surface: `MachineAudience` was empty in
+every app, and a service account that previously authenticated as an all-but-empty identity now
+needs a row like anybody else. Registre's SPEC asks for exactly that — "the app-side identity is
+`(issuer, sub)` exactly as it is for a human, a service account is a principal, not a special
+case". Roles are taken from the verified token rather than from the cached row, so a provider
+that emits no roles claim leaves a bearer caller with none rather than with yesterday's.
+
+**The unknown-kid refetch is rate limited.** The previous entry claimed forged kids could not
+cause a fetch storm and the code did not deliver it: `kid` is read off the header before any
+signature is checked, and a fresh one on every request bought one outbound JWKS fetch each,
+serialized under the mutex every real verification waits on and aimed at the one provider all
+eleven apps share. It is now one refetch per `minRefetchInterval` (30s). A rotation the provider
+published before signing with the new key is already cached and unaffected; the floor costs at
+most half a minute of refusals on a rotation that skipped that step.
+
 ## v0.3.1 — 2026-08-22
 
 **`SPEC.md` calls the event bus Antenne.** Two forward-looking passages still named Nook: §4's
@@ -396,7 +502,7 @@ decide.
 
 - **`Mount` owned `/auth/config` outright, so an app could not keep its own key there.** Every
   Facile app serves a superset of `sso_only` and `oidc_enabled` at that path — Journal adds
-  `allow_registration`, Jardin a legacy `password_auth` — and registering the route a second
+  `allow_registration`, Mycelium a legacy `password_auth` — and registering the route a second
   time makes chi panic at boot. `Deps.ConfigExtra func() map[string]any` merges the app's fields
   in, and `porte` writes its own two keys over the result: the frontend decides whether to draw
   a password form on those two, so they answer to the configuration and nothing else. Nil is

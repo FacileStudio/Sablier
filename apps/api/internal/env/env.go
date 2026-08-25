@@ -18,6 +18,18 @@ type OIDCConfig struct {
 	ClientSecret string
 	RedirectURL  string
 	SuccessURL   string
+
+	// CLIAudience is the client id the suite's CLI holds its device-grant
+	// token under, and setting it is what mounts porte's device exchange, so
+	// one `facile login` signs a terminal into Sablier too. Empty leaves the
+	// route unmounted and answering 404, which is what the CLI reads as "not
+	// shipped" before falling back to its loopback browser flow.
+	//
+	// It is deliberately not OIDC_CLIENT_ID: the token being traded was
+	// minted for the CLI, not for Sablier. It is deliberately not the
+	// machine audience either, which names this app and arms the
+	// Authorization header path for service accounts.
+	CLIAudience string
 }
 
 // Porte returns the shared auth kit's configuration. The environment variable
@@ -38,6 +50,7 @@ func (c Config) Porte() porte.Config {
 		SuccessURL:   c.OIDC.SuccessURL,
 		SSOOnly:      c.SSOOnly,
 		ClaimsScope:  c.OIDCClaimsScope,
+		CLIAudience:  c.OIDC.CLIAudience,
 	}
 }
 
@@ -131,6 +144,7 @@ func Load() (Config, error) {
 			ClientSecret: clientSecret,
 			RedirectURL:  redirectURL,
 			SuccessURL:   successURL,
+			CLIAudience:  troncenv.String("OIDC_CLI_AUDIENCE", ""),
 		}
 	}
 

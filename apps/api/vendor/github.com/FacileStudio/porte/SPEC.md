@@ -212,6 +212,8 @@ Authentik → in-house IdP swap a config change rather than a rewrite.
 | `OIDC_REDIRECT_URL` | with issuer | Must match the Authentik application |
 | `OIDC_SUCCESS_URL` | with issuer | Where the browser lands after a successful callback |
 | `OIDC_CLAIMS_SCOPE` | no | The scope carrying the `roles` claim (§5c). Its presence enables claims handling |
+| `OIDC_MACHINE_AUDIENCE` | no | This app's own client id. Its presence enables bearer-JWT verification on the header path |
+| `OIDC_CLI_AUDIENCE` | no | The CLI's client id. Its presence mounts `POST /auth/oidc/device/exchange`, and nothing else does |
 | `SSO_ONLY` | no | When true, local password routes are not registered at all |
 
 Authentik application slug convention, unchanged: `sso.facile.studio/application/o/<app>/`.
@@ -223,6 +225,7 @@ GET  /auth/config          {"sso_only": bool, "oidc_enabled": bool}   no auth
 GET  /auth/oidc            302 to the IdP                             no auth
 GET  /auth/oidc/callback   sets session cookie, 302 to OIDC_SUCCESS_URL   no auth
 POST /auth/oidc/exchange   one-time code → bearer token (CLI path)    no auth, code required
+POST /auth/oidc/device/exchange  issuer access token → this app's session   no auth, token required
 POST /auth/logout          {"logged_out": true}, clears the cookie    session required
 POST /auth/sync-profile    refresh profile from the IdP               session required
 POST /auth/backchannel-logout   IdP-initiated session kill            logout token, no session
@@ -291,6 +294,23 @@ and the full RFC 8628 device flow delegated to Authentik, which supports it nati
 upgrade replaces the copy-paste UX with `gh`-style `user_code` entry and belongs in v1.x.
 Store refresh material in the OS keychain, never a JSON file — a CLI-side concern, documented
 here because six CLIs will read this spec.
+
+**The device half landed 2026-08-25, and it is not the deferred item above.** Registre runs the
+RFC 8628 grant; `porte` never speaks it. What `porte` added is the last hop, `POST
+/auth/oidc/device/exchange`: the CLI runs the grant once against the provider, gets one access
+token, and trades it at each tool for that tool's own session. Writing the provider's token into
+the slot where a CLI keeps its session is a login that stops working when that token expires, so
+the trade is not optional. The handler verifies the token through the same JWKS verifier the
+Authorization header path uses, resolves `sub` through `porte_identities`, and calls
+`Manager.Issue`. It mounts only when `OIDC_CLI_AUDIENCE` is set, a **second** audience holding
+the CLI's client id, distinct from `OIDC_MACHINE_AUDIENCE`, which holds this app's own and
+arms the header path for service accounts. One variable could not serve both: a service-account
+token is addressed to one app (`suite-ci` declares `audiences: [courrier]`) while the CLI's is
+addressed to the CLI and presented at all of them. The CLI audience builds its own verifier and
+never reaches `session.Manager.WithJWT`, so a CLI token is not a credential on every route and
+the exchange stays a boundary. Its 404 when unset is the signal `facile login` reads as
+"not shipped". The client half lives in `facile`, which probes the route before running the
+grant so a tool without it never makes a human read a code off one screen for nothing.
 
 ### 5c. Claims, roles, and freshness
 
@@ -665,11 +685,12 @@ Same as `tronc` and `caisse`:
 
 - `scripts/check.sh` — gofmt, vet, `go test -race`, golangci-lint. Depends on nothing but a
   `go`, and is not invoked through mise on purpose.
-- `.githooks/pre-push` runs it. Enable with `mise run hooks`.
+- lefthook runs it as a `pre-push` job, and `mise install` installs the hooks. `lefthook.yml`
+  also pulls the shared conventional-commit check from `FacileStudio/hooks`, pinned by tag.
 - CI on Go 1.25 exactly — the floor the module documents — plus the PostgreSQL 16 service that
   `porte/pg`'s tests need. Both live in `.github/workflows/ci.yml`, with
   `PORTE_TEST_DATABASE_URL` set so the pg tests never skip there.
-- Docs follow `~/Projects/Facile/Wiki/DOCS-STANDARD.md`: `README.md` plus `docs/` with
+- Docs follow `~/.mycelium/memory/standards/docs.md`: `README.md` plus `docs/` with
   `architecture.md`, `configuration.md`, `development.md`, `api.md`. English, no badges, no
   emoji.
 - Semver from `main`. While on `v0`, a breaking change bumps the minor.
