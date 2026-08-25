@@ -396,7 +396,7 @@ decide.
 
 - **`Mount` owned `/auth/config` outright, so an app could not keep its own key there.** Every
   Facile app serves a superset of `sso_only` and `oidc_enabled` at that path — Journal adds
-  `allow_registration`, Mycelium a legacy `password_auth` — and registering the route a second
+  `allow_registration`, Jardin a legacy `password_auth` — and registering the route a second
   time makes chi panic at boot. `Deps.ConfigExtra func() map[string]any` merges the app's fields
   in, and `porte` writes its own two keys over the result: the frontend decides whether to draw
   a password form on those two, so they answer to the configuration and nothing else. Nil is
