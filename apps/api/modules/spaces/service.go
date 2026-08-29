@@ -6,20 +6,23 @@ import (
 	"strconv"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	porteSpaces "github.com/FacileStudio/porte/spaces"
 	"github.com/FacileStudio/tronc/errors"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Service implements space and membership persistence.
 type Service struct {
 	orm        *gorm.DB
+	guard      porteSpaces.Guard
 	controller *Controller
 }
 
-// NewService wires the spaces service.
+// NewService wires the spaces service and the membership guard over it.
 func NewService(orm *gorm.DB) *Service {
-	service := &Service{orm: orm}
+	service := &Service{orm: orm, guard: porteSpaces.Guard{Store: NewStore(orm)}}
 	service.controller = newController(service)
 	return service
 }
@@ -95,22 +98,6 @@ func (s *Service) getSpace(ctx context.Context, spaceID string) (*schemas.Space,
 		return nil, errors.Internal("failed to get space", err)
 	}
 	return &space, nil
-}
-
-func (s *Service) getMembership(ctx context.Context, spaceID string, userID string) (*schemas.SpaceMember, error) {
-	uid, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return nil, errors.Invalid("invalid user id")
-	}
-	var member schemas.SpaceMember
-	err = s.orm.WithContext(ctx).Where("space_id = ? AND user_id = ?", spaceID, uid).First(&member).Error
-	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.Forbidden("not a member of this space")
-	}
-	if err != nil {
-		return nil, errors.Internal("failed to check membership", err)
-	}
-	return &member, nil
 }
 
 func (s *Service) updateSpace(ctx context.Context, spaceID string, name, description string) (*schemas.Space, error) {
@@ -232,32 +219,41 @@ func (s *Service) updateMemberRole(ctx context.Context, spaceID string, memberID
 	return &member, nil
 }
 
+// lockMembers takes the space's membership rows for update, so that the count
+// CanLeave reads and the delete that follows it see the same set. Without it,
+// two owners leaving at the same instant both count two owners, both pass, and
+// the space ends with none. SQLite has no row locks and serializes writes
+// anyway, so the clause is Postgres-only.
+func lockMembers(tx *gorm.DB, spaceID string) error {
+	if tx.Dialector.Name() != "postgres" {
+		return nil
+	}
+	var ids []string
+	return tx.Model(&schemas.SpaceMember{}).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("space_id = ?", spaceID).
+		Pluck("id", &ids).Error
+}
+
 func (s *Service) leaveSpace(ctx context.Context, spaceID string, userID string) error {
-	uid, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		return errors.Invalid("invalid user id")
-	}
-
-	var member schemas.SpaceMember
-	err = s.orm.WithContext(ctx).Where("space_id = ? AND user_id = ?", spaceID, uid).First(&member).Error
-	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return errors.NotFound("not a member of this space")
-	}
-	if err != nil {
-		return errors.Internal("failed to check membership", err)
-	}
-
-	if member.Role == schemas.RoleOwner {
-		var ownerCount int64
-		s.orm.WithContext(ctx).Model(&schemas.SpaceMember{}).Where("space_id = ? AND role = ?", spaceID, schemas.RoleOwner).Count(&ownerCount)
-		if ownerCount <= 1 {
-			return errors.Failed("cannot leave space as the only owner; transfer ownership or delete the space")
+	return s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockMembers(tx, spaceID); err != nil {
+			return errors.Internal("failed to check membership", err)
 		}
-	}
 
-	result := s.orm.WithContext(ctx).Where("id = ?", member.ID).Delete(&schemas.SpaceMember{})
-	if result.Error != nil {
-		return errors.Internal("failed to leave space", result.Error)
-	}
-	return nil
+		guard := porteSpaces.Guard{Store: NewStore(tx)}
+		if err := guard.CanLeave(ctx, userID, spaceID); err != nil {
+			return guardError(err)
+		}
+
+		uid, err := strconv.ParseInt(userID, 10, 64)
+		if err != nil {
+			return errors.Invalid("invalid user id")
+		}
+		result := tx.Where("space_id = ? AND user_id = ?", spaceID, uid).Delete(&schemas.SpaceMember{})
+		if result.Error != nil {
+			return errors.Internal("failed to leave space", result.Error)
+		}
+		return nil
+	})
 }
