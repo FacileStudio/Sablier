@@ -275,3 +275,32 @@ func TestStopTimerWhilePausedFinalizesPausedDuration(t *testing.T) {
 func ptrTime(value time.Time) *time.Time {
 	return &value
 }
+
+func TestPersonalScopeKeepsEntriesOutOfEverySpace(t *testing.T) {
+	service := newTestService(t)
+	ctx := context.Background()
+	seedUser(t, service.orm, 1, "solo@example.com", "Solo", "AD9EF0")
+	project := seedProject(t, service.orm, 1)
+	task := seedTask(t, service.orm, project.ID)
+
+	personal, _, err := service.startTimer(ctx, "1", project.ID, task.ID, nil)
+	if err != nil {
+		t.Fatalf("start a personal timer: %v", err)
+	}
+	if personal.SpaceID != nil {
+		t.Fatalf("personal entry space id = %v, want nil", *personal.SpaceID)
+	}
+
+	entries, err := service.listEntries(ctx, project.ID, 1, nil)
+	if err != nil {
+		t.Fatalf("list personal entries: %v", err)
+	}
+	if len(entries) != 1 || entries[0].ID != personal.ID {
+		t.Fatalf("personal listing returned %d entries, want the one just started", len(entries))
+	}
+
+	spaceID := "11111111-1111-4111-8111-111111111111"
+	if entries, err = service.listEntries(ctx, project.ID, 1, &spaceID); err != nil || len(entries) != 0 {
+		t.Fatalf("space listing returned %d entries, %v, want 0, nil", len(entries), err)
+	}
+}

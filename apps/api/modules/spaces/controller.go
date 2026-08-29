@@ -2,9 +2,11 @@ package spaces
 
 import (
 	"context"
+	stderrors "errors"
 	"strings"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	porteSpaces "github.com/FacileStudio/porte/spaces"
 	"github.com/FacileStudio/tronc/errors"
 )
 
@@ -15,6 +17,34 @@ type Controller struct {
 
 func newController(service *Service) *Controller {
 	return &Controller{service: service}
+}
+
+func guardError(err error) error {
+	switch {
+	case stderrors.Is(err, porteSpaces.ErrNotMember):
+		return errors.New("permission_denied", "not a member of this space", err)
+	case stderrors.Is(err, porteSpaces.ErrForbidden):
+		return errors.New("permission_denied", "insufficient role in this space", err)
+	case stderrors.Is(err, porteSpaces.ErrSoleOwner):
+		return errors.New("failed_precondition",
+			"cannot leave space as the only owner; transfer ownership or delete the space", err)
+	case stderrors.Is(err, porteSpaces.ErrUnknownRole):
+		return errors.Internal("unknown space role", err)
+	}
+	return errors.Internal("failed to check membership", err)
+}
+
+func (c *Controller) require(
+	ctx context.Context, spaceID, userID string, min porteSpaces.Role, denied string,
+) (porteSpaces.Scope, error) {
+	scope, err := c.service.guard.Require(ctx, userID, spaceID, min)
+	if err == nil {
+		return scope, nil
+	}
+	if stderrors.Is(err, porteSpaces.ErrForbidden) {
+		return porteSpaces.Scope{}, errors.New("permission_denied", denied, err)
+	}
+	return porteSpaces.Scope{}, guardError(err)
 }
 
 func validRole(role string) bool {
@@ -70,7 +100,7 @@ func (c *Controller) list(ctx context.Context, userID string) (*ListSpacesRespon
 }
 
 func (c *Controller) get(ctx context.Context, spaceID string, userID string) (*SpaceResponse, error) {
-	membership, err := c.service.getMembership(ctx, spaceID, userID)
+	scope, err := c.require(ctx, spaceID, userID, porteSpaces.RoleMember, "not a member of this space")
 	if err != nil {
 		return nil, err
 	}
@@ -78,17 +108,14 @@ func (c *Controller) get(ctx context.Context, spaceID string, userID string) (*S
 	if err != nil {
 		return nil, err
 	}
-	resp := toSpaceResponse(space, membership.Role)
+	resp := toSpaceResponse(space, string(scope.Role))
 	return &resp, nil
 }
 
 func (c *Controller) update(ctx context.Context, spaceID string, userID string, req *UpdateSpaceRequest) (*SpaceResponse, error) {
-	membership, err := c.service.getMembership(ctx, spaceID, userID)
+	scope, err := c.require(ctx, spaceID, userID, porteSpaces.RoleAdmin, "only owners and admins can update a space")
 	if err != nil {
 		return nil, err
-	}
-	if membership.Role != schemas.RoleOwner && membership.Role != schemas.RoleAdmin {
-		return nil, errors.Forbidden("only owners and admins can update a space")
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
@@ -98,23 +125,19 @@ func (c *Controller) update(ctx context.Context, spaceID string, userID string, 
 	if err != nil {
 		return nil, err
 	}
-	resp := toSpaceResponse(space, membership.Role)
+	resp := toSpaceResponse(space, string(scope.Role))
 	return &resp, nil
 }
 
 func (c *Controller) delete(ctx context.Context, spaceID string, userID string) error {
-	membership, err := c.service.getMembership(ctx, spaceID, userID)
-	if err != nil {
+	if _, err := c.require(ctx, spaceID, userID, porteSpaces.RoleOwner, "only owners can delete a space"); err != nil {
 		return err
-	}
-	if membership.Role != schemas.RoleOwner {
-		return errors.Forbidden("only owners can delete a space")
 	}
 	return c.service.deleteSpace(ctx, spaceID)
 }
 
 func (c *Controller) listMembers(ctx context.Context, spaceID string, userID string) (*ListMembersResponse, error) {
-	_, err := c.service.getMembership(ctx, spaceID, userID)
+	_, err := c.require(ctx, spaceID, userID, porteSpaces.RoleMember, "not a member of this space")
 	if err != nil {
 		return nil, err
 	}
@@ -130,12 +153,9 @@ func (c *Controller) listMembers(ctx context.Context, spaceID string, userID str
 }
 
 func (c *Controller) addMember(ctx context.Context, spaceID string, userID string, req *AddMemberRequest) (*MemberResponse, error) {
-	membership, err := c.service.getMembership(ctx, spaceID, userID)
+	scope, err := c.require(ctx, spaceID, userID, porteSpaces.RoleAdmin, "only owners and admins can add members")
 	if err != nil {
 		return nil, err
-	}
-	if membership.Role != schemas.RoleOwner && membership.Role != schemas.RoleAdmin {
-		return nil, errors.Forbidden("only owners and admins can add members")
 	}
 	role := strings.TrimSpace(req.Role)
 	if role == "" {
@@ -144,7 +164,7 @@ func (c *Controller) addMember(ctx context.Context, spaceID string, userID strin
 	if !validRole(role) {
 		return nil, errors.Invalid("role must be owner, admin, or member")
 	}
-	if role == schemas.RoleOwner && membership.Role != schemas.RoleOwner {
+	if !c.service.guard.AssignableBy(scope, porteSpaces.Role(role)) {
 		return nil, errors.Forbidden("only owners can assign the owner role")
 	}
 	member, err := c.service.addMember(ctx, spaceID, req.UserID, role)
@@ -161,23 +181,17 @@ func (c *Controller) addMember(ctx context.Context, spaceID string, userID strin
 }
 
 func (c *Controller) removeMember(ctx context.Context, spaceID string, userID string, memberID string) error {
-	membership, err := c.service.getMembership(ctx, spaceID, userID)
+	_, err := c.require(ctx, spaceID, userID, porteSpaces.RoleAdmin, "only owners and admins can remove members")
 	if err != nil {
 		return err
-	}
-	if membership.Role != schemas.RoleOwner && membership.Role != schemas.RoleAdmin {
-		return errors.Forbidden("only owners and admins can remove members")
 	}
 	return c.service.removeMember(ctx, spaceID, memberID)
 }
 
 func (c *Controller) updateMemberRole(ctx context.Context, spaceID string, userID string, memberID string, req *UpdateMemberRoleRequest) (*MemberResponse, error) {
-	membership, err := c.service.getMembership(ctx, spaceID, userID)
+	_, err := c.require(ctx, spaceID, userID, porteSpaces.RoleOwner, "only owners can change member roles")
 	if err != nil {
 		return nil, err
-	}
-	if membership.Role != schemas.RoleOwner {
-		return nil, errors.Forbidden("only owners can change member roles")
 	}
 	role := strings.TrimSpace(req.Role)
 	if !validRole(role) {
