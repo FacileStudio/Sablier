@@ -181,15 +181,15 @@ func (c *Controller) addMember(ctx context.Context, spaceID string, userID strin
 }
 
 func (c *Controller) removeMember(ctx context.Context, spaceID string, userID string, memberID string) error {
-	_, err := c.require(ctx, spaceID, userID, porteSpaces.RoleAdmin, "only owners and admins can remove members")
+	scope, err := c.require(ctx, spaceID, userID, porteSpaces.RoleAdmin, "only owners and admins can remove members")
 	if err != nil {
 		return err
 	}
-	return c.service.removeMember(ctx, spaceID, memberID)
+	return c.service.removeMember(ctx, scope, spaceID, memberID)
 }
 
 func (c *Controller) updateMemberRole(ctx context.Context, spaceID string, userID string, memberID string, req *UpdateMemberRoleRequest) (*MemberResponse, error) {
-	_, err := c.require(ctx, spaceID, userID, porteSpaces.RoleOwner, "only owners can change member roles")
+	scope, err := c.require(ctx, spaceID, userID, porteSpaces.RoleOwner, "only owners can change member roles")
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (c *Controller) updateMemberRole(ctx context.Context, spaceID string, userI
 	if !validRole(role) {
 		return nil, errors.Invalid("role must be owner, admin, or member")
 	}
-	member, err := c.service.updateMemberRole(ctx, spaceID, memberID, role)
+	member, err := c.service.updateMemberRole(ctx, scope, spaceID, memberID, role)
 	if err != nil {
 		return nil, err
 	}
