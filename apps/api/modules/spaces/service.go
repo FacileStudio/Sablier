@@ -55,30 +55,35 @@ func (s *Service) createSpace(ctx context.Context, userID string, name, descript
 }
 
 func (s *Service) listSpaces(ctx context.Context, userID string) ([]spaceWithRole, error) {
-	uid, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
+	if _, err := strconv.ParseInt(userID, 10, 64); err != nil {
 		return nil, errors.Invalid("invalid user id")
 	}
 
-	type row struct {
-		schemas.Space
-		Role string
-	}
-	var rows []row
-	err = s.orm.WithContext(ctx).
-		Model(&schemas.Space{}).
-		Select("spaces.*, space_members.role as role").
-		Joins("JOIN space_members ON space_members.space_id = spaces.id").
-		Where("space_members.user_id = ?", uid).
-		Order("spaces.created_at desc").
-		Find(&rows).Error
+	members, err := s.guard.Spaces(ctx, userID)
 	if err != nil {
-		return nil, errors.Internal("failed to list spaces", err)
+		return nil, guardError(err)
+	}
+	roles := make(map[string]string, len(members))
+	ids := make([]string, 0, len(members))
+	for _, member := range members {
+		roles[member.SpaceID] = string(member.Role)
+		ids = append(ids, member.SpaceID)
+	}
+
+	var rows []schemas.Space
+	if len(ids) > 0 {
+		err = s.orm.WithContext(ctx).
+			Where("id IN ?", ids).
+			Order("created_at desc").
+			Find(&rows).Error
+		if err != nil {
+			return nil, errors.Internal("failed to list spaces", err)
+		}
 	}
 
 	result := make([]spaceWithRole, len(rows))
-	for i, r := range rows {
-		result[i] = spaceWithRole{Space: r.Space, Role: r.Role}
+	for i, row := range rows {
+		result[i] = spaceWithRole{Space: row, Role: roles[row.ID]}
 	}
 	return result, nil
 }
@@ -192,29 +197,95 @@ func (s *Service) addMember(ctx context.Context, spaceID string, targetUserID in
 	return member, nil
 }
 
-func (s *Service) removeMember(ctx context.Context, spaceID string, memberID string) error {
-	result := s.orm.WithContext(ctx).Where("id = ? AND space_id = ?", memberID, spaceID).Delete(&schemas.SpaceMember{})
-	if result.Error != nil {
-		return errors.Internal("failed to remove member", result.Error)
+func loadMember(tx *gorm.DB, spaceID, memberID string) (schemas.SpaceMember, error) {
+	var member schemas.SpaceMember
+	err := tx.Where("id = ? AND space_id = ?", memberID, spaceID).First(&member).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return member, errors.NotFound("member not found")
 	}
-	if result.RowsAffected == 0 {
-		return errors.NotFound("member not found")
+	if err != nil {
+		return member, errors.Internal("failed to get member", err)
+	}
+	return member, nil
+}
+
+func (s *Service) mayActOn(actor porteSpaces.Scope, member schemas.SpaceMember, denied string) error {
+	if !s.guard.AssignableBy(actor, porteSpaces.Role(member.Role)) {
+		return errors.Forbidden(denied)
 	}
 	return nil
 }
 
-func (s *Service) updateMemberRole(ctx context.Context, spaceID string, memberID string, role string) (*schemas.SpaceMember, error) {
-	var member schemas.SpaceMember
-	err := s.orm.WithContext(ctx).Where("id = ? AND space_id = ?", memberID, spaceID).First(&member).Error
-	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.NotFound("member not found")
+func keepsAnOwner(ctx context.Context, tx *gorm.DB, spaceID string, member schemas.SpaceMember) error {
+	guard := porteSpaces.Guard{Store: NewStore(tx)}
+	err := guard.CanLeave(ctx, strconv.FormatInt(member.UserID, 10), spaceID)
+	if stderrors.Is(err, porteSpaces.ErrSoleOwner) {
+		return errors.New("failed_precondition",
+			"cannot remove the last owner; promote another owner first", err)
 	}
 	if err != nil {
-		return nil, errors.Internal("failed to get member", err)
+		return guardError(err)
 	}
-	member.Role = role
-	if err := s.orm.WithContext(ctx).Save(&member).Error; err != nil {
-		return nil, errors.Internal("failed to update member role", err)
+	return nil
+}
+
+func (s *Service) removeMember(
+	ctx context.Context, actor porteSpaces.Scope, spaceID string, memberID string,
+) error {
+	return s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockMembers(tx, spaceID); err != nil {
+			return errors.Internal("failed to check membership", err)
+		}
+
+		member, err := loadMember(tx, spaceID, memberID)
+		if err != nil {
+			return err
+		}
+		if err := s.mayActOn(actor, member, "cannot remove a member who outranks you"); err != nil {
+			return err
+		}
+		if err := keepsAnOwner(ctx, tx, spaceID, member); err != nil {
+			return err
+		}
+
+		if err := tx.Delete(&member).Error; err != nil {
+			return errors.Internal("failed to remove member", err)
+		}
+		return nil
+	})
+}
+
+func (s *Service) updateMemberRole(
+	ctx context.Context, actor porteSpaces.Scope, spaceID string, memberID string, role string,
+) (*schemas.SpaceMember, error) {
+	var member schemas.SpaceMember
+	err := s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockMembers(tx, spaceID); err != nil {
+			return errors.Internal("failed to check membership", err)
+		}
+
+		loaded, err := loadMember(tx, spaceID, memberID)
+		if err != nil {
+			return err
+		}
+		if err := s.mayActOn(actor, loaded, "cannot change the role of a member who outranks you"); err != nil {
+			return err
+		}
+		if loaded.Role != role {
+			if err := keepsAnOwner(ctx, tx, spaceID, loaded); err != nil {
+				return err
+			}
+		}
+
+		loaded.Role = role
+		if err := tx.Save(&loaded).Error; err != nil {
+			return errors.Internal("failed to update member role", err)
+		}
+		member = loaded
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return &member, nil
 }
