@@ -59,3 +59,14 @@ type TaskResponse struct {
 type ListTasksResponse struct {
 	Tasks []TaskResponse `json:"tasks"`
 }
+
+// DeleteProjectResponse reports whether a project was deleted.
+type DeleteProjectResponse struct {
+	Deleted bool `json:"deleted"`
+}
+
+// DeleteTaskResponse reports whether a task was deleted and unlinked sessions.
+type DeleteTaskResponse struct {
+	Deleted          bool  `json:"deleted"`
+	SessionsUnlinked int64 `json:"sessions_unlinked"`
+}

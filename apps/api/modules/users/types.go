@@ -64,3 +64,8 @@ type ApiTokenStatusResponse struct {
 type CreateApiTokenRequest struct {
 	Name string `json:"name"`
 }
+
+// DeleteTokenResponse reports whether an API token was deleted.
+type DeleteTokenResponse struct {
+	Deleted bool `json:"deleted"`
+}

@@ -1,6 +1,9 @@
 package auth
 
-import documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
+import (
+	documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
+	"github.com/FacileStudio/porte"
+)
 
 var Documentation = documentation.Module{
 	Name:        "auth",
@@ -12,7 +15,7 @@ var Documentation = documentation.Module{
 			Summary:      "End the current session",
 			Description:  "Served by porte. Revokes the one session this request authenticated with, by id, so it cannot end somebody else's, and clears the session cookie.",
 			Auth:         "bearer",
-			ResponseBody: `{"logged_out":true}`,
+			ResponseBody: porte.LogoutResponse{},
 		},
 		{
 			Method:      "GET",
@@ -34,8 +37,8 @@ var Documentation = documentation.Module{
 			Summary:      "Trade a CLI login code for a session token",
 			Description:  "The other half of ?flow=cli. The code is single use, hashed at rest and valid for 60 seconds.",
 			Auth:         "public",
-			RequestBody:  `{"code":string}`,
-			ResponseBody: `{"user_id":string,"token":string}`,
+			RequestBody:  porte.ExchangeRequest{},
+			ResponseBody: porte.ExchangeResponse{},
 		},
 		{
 			Method:       "POST",
@@ -43,21 +46,23 @@ var Documentation = documentation.Module{
 			Summary:      "Revoke every session for a user, on the provider's instruction",
 			Description:  "OpenID Connect Back-Channel Logout 1.0, called by the identity provider rather than by a client. Note the deployed Authentik is 2025.6.3, which has no field to configure this, so nothing calls it yet.",
 			Auth:         "public",
-			ResponseBody: `{"logged_out":true}`,
+			ResponseBody: porte.LogoutResponse{},
 		},
 		{
-			Method:      "POST",
-			Path:        "/auth/sync-profile",
-			Summary:     "Refresh the profile from the identity provider",
-			Description: "Rate limited to one call per user per five minutes; synced is false when the window had not elapsed.",
-			Auth:        "bearer",
+			Method:       "POST",
+			Path:         "/auth/sync-profile",
+			Summary:      "Refresh the profile from the identity provider",
+			Description:  "Rate limited to one call per user per five minutes; synced is false when the window had not elapsed.",
+			Auth:         "bearer",
+			ResponseBody: porte.SyncProfileResponse{},
 		},
 		{
-			Method:      "GET",
-			Path:        "/auth/config",
-			Summary:     "Describe the auth methods on offer",
-			Description: "Returns sso_only and oidc_enabled, so the client knows whether to show the password form.",
-			Auth:        "public",
+			Method:       "GET",
+			Path:         "/auth/config",
+			Summary:      "Describe the auth methods on offer",
+			Description:  "Returns sso_only and oidc_enabled, so the client knows whether to show the password form.",
+			Auth:         "public",
+			ResponseBody: porte.ConfigResponse{},
 		},
 		{
 			Method:       "POST",
@@ -65,8 +70,8 @@ var Documentation = documentation.Module{
 			Summary:      "Register a new user",
 			Description:  "Creates a user account and returns an auth token.",
 			Auth:         "public",
-			RequestBody:  "RegisterRequest",
-			ResponseBody: "AuthResponse",
+			RequestBody:  RegisterRequest{},
+			ResponseBody: AuthResponse{},
 			Errors: []documentation.Error{
 				{Status: 400, Code: "invalid_argument", Description: "Invalid JSON body or invalid registration input."},
 				{Status: 409, Code: "already_exists", Description: "A user with the same email already exists."},
@@ -79,8 +84,8 @@ var Documentation = documentation.Module{
 			Summary:      "Authenticate a user",
 			Description:  "Authenticates credentials and returns an auth token.",
 			Auth:         "public",
-			RequestBody:  "LoginRequest",
-			ResponseBody: "AuthResponse",
+			RequestBody:  LoginRequest{},
+			ResponseBody: AuthResponse{},
 			Errors: []documentation.Error{
 				{Status: 400, Code: "invalid_argument", Description: "Invalid JSON body or invalid login input."},
 				{Status: 401, Code: "unauthenticated", Description: "Email or password is invalid."},

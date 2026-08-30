@@ -49,3 +49,13 @@ type TimeEntryResponse struct {
 type ListEntriesResponse struct {
 	Entries []TimeEntryResponse `json:"entries"`
 }
+
+// RunningEntryResponse wraps the currently running time entry if any.
+type RunningEntryResponse struct {
+	Entry *TimeEntryResponse `json:"entry"`
+}
+
+// DeleteEntryResponse reports whether a time entry was deleted.
+type DeleteEntryResponse struct {
+	Deleted bool `json:"deleted"`
+}

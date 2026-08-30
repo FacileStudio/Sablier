@@ -18,7 +18,7 @@ github.com/FacileStudio/porte/pg
 github.com/FacileStudio/porte/session
 github.com/FacileStudio/porte/spaces
 github.com/FacileStudio/porte/spaces/spacestest
-# github.com/FacileStudio/tronc v0.14.0
+# github.com/FacileStudio/tronc v0.16.0
 ## explicit; go 1.24.0
 github.com/FacileStudio/tronc/apiref
 github.com/FacileStudio/tronc/env

@@ -6,8 +6,8 @@ github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee h1:xEfz6
 github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee/go.mod h1:OxizkzJhMaBPcuHVba9z1wem5oROgwaEPikYowDQbmo=
 github.com/FacileStudio/porte v0.5.2 h1:uB/KeI38IjOoJJz6Fm/wfkmfHW1Q/SjsOE+KQh0dH7w=
 github.com/FacileStudio/porte v0.5.2/go.mod h1:dXC79PY1VUB8mpirq2IBA0/8/hpEAWH4+ZhsJ1D57h0=
-github.com/FacileStudio/tronc v0.14.0 h1:fhE8QpryUumuiUcJujwBCVLE9/aLskgWtZbeUZBbJvI=
-github.com/FacileStudio/tronc v0.14.0/go.mod h1:n+msHH6RQLvhcIQfFzeWaAgwqL8UkNuLPTqbu+C02so=
+github.com/FacileStudio/tronc v0.16.0 h1:vfZIBTKrKMTx3hOFxSc2jO4LCZcOBI2sB7XVAjL4b60=
+github.com/FacileStudio/tronc v0.16.0/go.mod h1:n+msHH6RQLvhcIQfFzeWaAgwqL8UkNuLPTqbu+C02so=
 github.com/SherClockHolmes/webpush-go v1.4.0 h1:ocnzNKWN23T9nvHi6IfyrQjkIc0oJWv1B1pULsf9i3s=
 github.com/SherClockHolmes/webpush-go v1.4.0/go.mod h1:XSq8pKX11vNV8MJEMwjrlTkxhAj1zKfxmyhdV7Pd6UA=
 github.com/coreos/go-oidc/v3 v3.20.0 h1:EtE0WIBHk03N+DqGkY4+UONzzZHk7amKt6IyNd7OsZE=

@@ -55,3 +55,18 @@ type MemberResponse struct {
 type ListMembersResponse struct {
 	Members []MemberResponse `json:"members"`
 }
+
+// DeleteSpaceResponse reports whether a space was deleted.
+type DeleteSpaceResponse struct {
+	Deleted bool `json:"deleted"`
+}
+
+// LeaveSpaceResponse reports whether a user left a space.
+type LeaveSpaceResponse struct {
+	Left bool `json:"left"`
+}
+
+// RemoveMemberResponse reports whether a member was removed from a space.
+type RemoveMemberResponse struct {
+	Removed bool `json:"removed"`
+}
