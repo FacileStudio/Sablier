@@ -1,6 +1,6 @@
 module github.com/FacileStudio/Sablier/apps/api
 
-go 1.26.0
+go 1.26
 
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665
