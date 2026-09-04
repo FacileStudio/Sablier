@@ -7,43 +7,57 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-sablier}
     expose:
-      - "5432"
+    - '5432'
     volumes:
-      - db_data:/var/lib/postgresql/data
+    - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 5s
+      test:
+      - CMD
+      - nc
+      - -z
+      - localhost
+      - '5432'
+      interval: 30s
       timeout: 5s
-      retries: 10
-
+      retries: 3
+    deploy:
+      update_config:
+        order: start-first
+        parallelism: 1
+      restart_policy:
+        condition: any
   api:
     restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
     expose:
-      - "4000"
+    - '4000'
     healthcheck:
-      test: ["CMD", "/api", "healthcheck"]
-      interval: 10s
+      test:
+      - CMD
+      - nc
+      - -z
+      - localhost
+      - '4000'
+      interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
     networks:
-      - default
-      - dokploy-network
+    - default
+    - dokploy-network
     labels:
-      traefik.enable: "true"
+      traefik.enable: 'true'
       traefik.docker.network: dokploy-network
-      traefik.http.routers.sablier-web.rule: "Host(`${SABLIER_HOST:-sablier.facile.studio}`)"
+      traefik.http.routers.sablier-web.rule: Host(`${SABLIER_HOST:-sablier.facile.studio}`)
       traefik.http.routers.sablier-web.entrypoints: web
       traefik.http.routers.sablier-web.middlewares: redirect-to-https@file
       traefik.http.routers.sablier-web.service: sablier-svc
-      traefik.http.routers.sablier-secure.rule: "Host(`${SABLIER_HOST:-sablier.facile.studio}`)"
+      traefik.http.routers.sablier-secure.rule: Host(`${SABLIER_HOST:-sablier.facile.studio}`)
       traefik.http.routers.sablier-secure.entrypoints: websecure
       traefik.http.routers.sablier-secure.tls.certresolver: letsencrypt
       traefik.http.routers.sablier-secure.service: sablier-svc
-      traefik.http.services.sablier-svc.loadbalancer.server.port: "4000"
+      traefik.http.services.sablier-svc.loadbalancer.server.port: '4000'
     environment:
       APP_ENV: ${APP_ENV:-production}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
@@ -59,10 +73,6 @@ services:
       OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
       OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
       OIDC_CLAIMS_SCOPE: ${OIDC_CLAIMS_SCOPE:-}
-      # The client id the suite CLI's device-grant token carries. Setting it
-      # mounts porte's device exchange, which is what lets one `facile login`
-      # sign in here too. Unset, the route is absent and the CLI falls back to
-      # its browser flow, so this is additive and safe to leave empty.
       OIDC_CLI_AUDIENCE: ${OIDC_CLI_AUDIENCE:-}
       SSO_ONLY: ${SSO_ONLY:-false}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -70,26 +80,24 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
-      # Browser error reporting. Separate from JOURNAL_URL above, which is the
-      # server SDK's and points inside the Docker network — the browser needs a
-      # public address, ending in /api or every report is silently discarded.
       JOURNAL_BROWSER_URL: ${JOURNAL_BROWSER_URL:-}
       JOURNAL_BROWSER_KEY: ${JOURNAL_BROWSER_KEY:-}
-      # Antenne. These only seed the connection on a database with no
-      # app_settings row yet — once the row exists, the value stored there wins
-      # and is edited from Sablier's own settings page.
       ANTENNE_URL: ${ANTENNE_URL:-}
       ANTENNE_SECRET: ${ANTENNE_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - api_data:/data
-
+    - api_data:/data
+    deploy:
+      update_config:
+        order: start-first
+        parallelism: 1
+      restart_policy:
+        condition: any
 networks:
   dokploy-network:
     external: true
-
 volumes:
   db_data:
     name: sablier_db_data
