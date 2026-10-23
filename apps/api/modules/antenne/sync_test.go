@@ -13,6 +13,11 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 )
 
+const (
+	testProjectID = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	testTaskID    = "ZYXWVUTSRQPONMLKJIHGFEDCBA"
+)
+
 func wireEvent(t *testing.T, app enveloppe.App, object enveloppe.ObjectType, action enveloppe.Action, key string, payload map[string]any) json.RawMessage {
 	t.Helper()
 	data, err := json.Marshal(map[string]any{
@@ -33,13 +38,13 @@ func wireEvent(t *testing.T, app enveloppe.App, object enveloppe.ObjectType, act
 
 func opusProject(t *testing.T, action enveloppe.Action, key, name string) json.RawMessage {
 	return wireEvent(t, enveloppe.AppOpus, enveloppe.ObjectProject, action, key, map[string]any{
-		"id": 7, "facile_id": "fac_p1", "workspace_id": 3, "name": name, "slug": "alpha",
+		"id": 7, "facile_id": testProjectID, "workspace_id": 3, "name": name, "slug": "alpha",
 	})
 }
 
 func opusTask(t *testing.T, action enveloppe.Action, key string, extra map[string]any) json.RawMessage {
 	payload := map[string]any{
-		"id": 9, "facile_id": "fac_t1", "project_id": 7, "project_facile_id": "fac_p1",
+		"id": 9, "facile_id": testTaskID, "project_id": 7, "project_facile_id": testProjectID,
 		"workspace_id": 3, "priority": "high", "due_date": "2026-11-01T00:00:00Z", "actor_id": 4,
 	}
 	for k, v := range extra {
@@ -59,7 +64,7 @@ func TestInboundProjectLifecycle(t *testing.T) {
 
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	var p schemas.Project
-	if err := s.orm.Where("facile_id = ?", "fac_p1").First(&p).Error; err != nil || p.Name != "Alpha" {
+	if err := s.orm.Where("facile_id = ?", testProjectID).First(&p).Error; err != nil || p.Name != "Alpha" {
 		t.Fatalf("project not created: %v %+v", err, p)
 	}
 
@@ -75,11 +80,78 @@ func TestInboundProjectLifecycle(t *testing.T) {
 	}
 }
 
-func TestInboundProjectUpdateCreatesMissing(t *testing.T) {
+func TestInboundProjectUpdateForUnknownIsDropped(t *testing.T) {
 	s := newTestService(t)
 	s.handleProjectUpdated(opusProject(t, enveloppe.ActionUpdated, "k1", "Alpha"), testMeta)
-	if countOf(s, &schemas.Project{}) != 1 {
-		t.Fatal("update of unknown project must create it")
+	if countOf(s, &schemas.Project{}) != 0 || s.alreadyProcessed("k1") {
+		t.Fatal("update of unknown project must not create or consume the event")
+	}
+}
+
+func TestInboundLegacyIDsNeverCreateRows(t *testing.T) {
+	s := newTestService(t)
+	for _, id := range []string{"2", "my-slug", "clx1abcdefghijklmnopqrst", "fac_p1"} {
+		payload := map[string]any{"facile_id": id, "name": "Junk"}
+		s.handleProjectCreated(wireEvent(t, enveloppe.AppOpus, enveloppe.ObjectProject, enveloppe.ActionCreated, "p"+id, payload), testMeta)
+		s.handleProjectUpdated(wireEvent(t, enveloppe.AppOpus, enveloppe.ObjectProject, enveloppe.ActionUpdated, "u"+id, payload), testMeta)
+	}
+	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
+	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"facile_id": "26", "name": "Old", "status": "open"}), testMeta)
+	if countOf(s, &schemas.Project{}) != 1 || countOf(s, &schemas.Task{}) != 0 {
+		t.Fatal("legacy facile_id created a row")
+	}
+}
+
+func TestInboundIgnoresNonOpusApps(t *testing.T) {
+	s := newTestService(t)
+	data := wireEvent(t, enveloppe.App("Agenda"), enveloppe.ObjectProject, enveloppe.ActionCreated, "k1", map[string]any{"facile_id": testProjectID, "name": "Agenda"})
+	s.handleProjectCreated(data, testMeta)
+	if countOf(s, &schemas.Project{}) != 0 {
+		t.Fatal("non-Opus event applied")
+	}
+}
+
+func TestInboundTaskNameCollisionKeepsBothTasks(t *testing.T) {
+	s := newTestService(t)
+	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
+	var project schemas.Project
+	s.orm.First(&project)
+	s.orm.Create(&schemas.Task{ProjectID: project.ID, Name: "Write docs"})
+
+	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "write DOCS", "status": "open"}), testMeta)
+	var task schemas.Task
+	if err := s.orm.Where("facile_id = ?", testTaskID).First(&task).Error; err != nil {
+		t.Fatalf("colliding task lost: %v", err)
+	}
+	if task.Name != "write DOCS (2)" {
+		t.Fatalf("got %q", task.Name)
+	}
+	if !s.alreadyProcessed("k2") {
+		t.Fatal("applied event not recorded")
+	}
+
+	s.orm.Create(&schemas.Task{ProjectID: project.ID, Name: "Other"})
+	s.handleTaskUpdated(opusTask(t, enveloppe.ActionUpdated, "k3", map[string]any{"name": "Other"}), testMeta)
+	s.orm.First(&task, task.ID)
+	if task.Name != "Other (2)" {
+		t.Fatalf("rename collision: got %q", task.Name)
+	}
+}
+
+func TestInboundDeletesKeepTimeEntries(t *testing.T) {
+	s := newTestService(t)
+	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
+	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "T", "status": "open"}), testMeta)
+	var project schemas.Project
+	var task schemas.Task
+	s.orm.First(&project)
+	s.orm.First(&task)
+	s.orm.Create(&schemas.TimeEntry{ProjectID: project.ID, TaskID: task.ID, UserID: 1})
+
+	s.handleProjectDeleted(opusProject(t, enveloppe.ActionDeleted, "k3", "Alpha"), testMeta)
+	var entry schemas.TimeEntry
+	if err := s.orm.First(&entry).Error; err != nil || entry.TaskID != 0 {
+		t.Fatalf("time entry must survive unlinked: %v %+v", err, entry)
 	}
 }
 
@@ -89,7 +161,7 @@ func TestInboundTaskLifecycleWithOpusExtras(t *testing.T) {
 
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"title": "Write docs", "name": "", "status": "open"}), testMeta)
 	var task schemas.Task
-	if err := s.orm.Where("facile_id = ?", "fac_t1").First(&task).Error; err != nil {
+	if err := s.orm.Where("facile_id = ?", testTaskID).First(&task).Error; err != nil {
 		t.Fatalf("task not created: %v", err)
 	}
 	if task.Name != "Write docs" || task.Status != schemas.StatusTodo {
@@ -119,7 +191,7 @@ func TestInboundTaskUnknownStatusOnCreateDefaultsToTodo(t *testing.T) {
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "X", "status": "icebox"}), testMeta)
 	var task schemas.Task
-	s.orm.Where("facile_id = ?", "fac_t1").First(&task)
+	s.orm.Where("facile_id = ?", testTaskID).First(&task)
 	if task.Status != schemas.StatusTodo {
 		t.Fatalf("got %q", task.Status)
 	}

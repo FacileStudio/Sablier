@@ -57,7 +57,7 @@ func (s *Service) handleAgentSession(payload json.RawMessage, meta antenneclient
 		return
 	}
 
-	userID := s.resolveActorByEmail(p.UserEmail)
+	userID := s.resolveActorByEmail(s.orm, p.UserEmail)
 	if userID == nil {
 		s.logger.Warn("antenne: no user for agent session email",
 			slog.String("email", p.UserEmail), slog.String("facile_id", p.FacileID))

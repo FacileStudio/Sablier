@@ -119,3 +119,24 @@ func TestMigrateRenamesPoolTablesKeepingRows(t *testing.T) {
 		t.Fatal("legacy table still present")
 	}
 }
+
+func TestBackfillTimeEntryTasksSkipsUnlinkedEntriesWithoutDescription(t *testing.T) {
+	orm := openTestDatabase(t)
+	if err := orm.AutoMigrate(&Project{}, &Task{}, &TimeEntry{}); err != nil {
+		t.Fatal(err)
+	}
+	project := Project{Name: "P"}
+	orm.Create(&project)
+	orm.Create(&TimeEntry{ProjectID: project.ID, UserID: 1})
+	orm.Create(&TimeEntry{ProjectID: 999, UserID: 1, LegacyDescription: "ghost"})
+	orm.Create(&TimeEntry{ProjectID: project.ID, UserID: 1, LegacyDescription: "legacy"})
+
+	if err := backfillTimeEntryTasks(orm); err != nil {
+		t.Fatal(err)
+	}
+	var tasks []Task
+	orm.Find(&tasks)
+	if len(tasks) != 1 || tasks[0].Name != "legacy" {
+		t.Fatalf("unexpected tasks: %+v", tasks)
+	}
+}

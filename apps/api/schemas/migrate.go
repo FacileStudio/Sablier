@@ -126,7 +126,7 @@ func backfillTimeEntryTasks(db *gorm.DB) error {
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		var entries []legacyEntry
-		if err := tx.Table("time_entries").Where("task_id IS NULL OR task_id = 0").Order("id asc").Find(&entries).Error; err != nil {
+		if err := tx.Table("time_entries").Where("(task_id IS NULL OR task_id = 0) AND coalesce(description, '') <> '' AND project_id IN (SELECT id FROM projects)").Order("id asc").Find(&entries).Error; err != nil {
 			return err
 		}
 
@@ -134,7 +134,7 @@ func backfillTimeEntryTasks(db *gorm.DB) error {
 		for _, entry := range entries {
 			taskName := strings.TrimSpace(entry.Description)
 			if taskName == "" {
-				taskName = "Untitled task"
+				continue
 			}
 
 			projectTasks, ok := taskIDs[entry.ProjectID]
