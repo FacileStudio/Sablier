@@ -30,7 +30,10 @@ func Migrate(db *gorm.DB, issuer string) error {
 	if err := usercolor.BackfillMissing(context.Background(), db); err != nil {
 		return err
 	}
-	return backfillTimeEntryTasks(db)
+	if err := backfillTimeEntryTasks(db); err != nil {
+		return err
+	}
+	return backfillFacileIDs(db)
 }
 
 // backfillAvatarUploadPath moves the uploaded avatars onto the column that now owns them.

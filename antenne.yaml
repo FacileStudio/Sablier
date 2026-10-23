@@ -1,5 +1,5 @@
-# Documents the pool events Sablier uses. The API builds its pool config
-# inline (modules/antenne/service.go) — keep this file in sync with it.
+# Documents the pool events Sablier uses. The API registers EmitEvents and
+# ListenEvents from modules/antenne/service.go; a test fails on drift.
 app: Sablier
 events:
   emit:

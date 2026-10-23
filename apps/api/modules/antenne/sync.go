@@ -2,8 +2,8 @@ package antenne
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
-	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	antenneclient "github.com/FacileStudio/antenne-client/go"
@@ -29,176 +29,217 @@ func (s *Service) markProcessed(key string) {
 	s.orm.Clauses(clause.OnConflict{DoNothing: true}).Create(&schemas.AntenneProcessedEvent{IdempotencyKey: key})
 }
 
-func (s *Service) handleProjectCreated(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.Project]
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		s.logger.Error("antenne: failed to decode project.created", slog.Any("error", err))
-		return
-	}
-	if s.alreadyProcessed(evt.IdempotencyKey) {
-		return
-	}
-
-	if s.createSyncedProject(&evt) {
-		s.markProcessed(evt.IdempotencyKey)
-	}
+type projectWire struct {
+	enveloppe.Project
+	Title string `json:"title"`
 }
 
-func (s *Service) createSyncedProject(evt *enveloppe.Event[enveloppe.Project]) bool {
-	var existing schemas.Project
-	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&existing).Error; err == nil {
-		return true
-	}
+type taskWire struct {
+	enveloppe.Task
+	Title string `json:"title"`
+}
 
-	desc := ""
-	if evt.Payload.Description != nil {
-		desc = *evt.Payload.Description
+func (p projectWire) name() string {
+	if p.Name != "" {
+		return p.Name
 	}
+	return p.Title
+}
 
-	facileID := evt.Payload.FacileID
-	record := schemas.Project{
-		Name:        evt.Payload.Name,
-		Description: desc,
-		Icon:        normalizeIcon(evt.Payload.Icon),
-		OwnerID:     1,
-		FacileID:    &facileID,
+func (t taskWire) name() string {
+	if t.Name != "" {
+		return t.Name
 	}
-	if err := s.orm.Create(&record).Error; err != nil {
-		s.logger.Error("antenne: failed to create synced project", slog.Any("error", err))
-		return false
+	return t.Title
+}
+
+func decodeInbound[T any](s *Service, channel string, payload json.RawMessage, facileID func(*T) string) (*enveloppe.Event[T], string, bool) {
+	var evt enveloppe.Event[T]
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		s.logger.Error("antenne: failed to decode "+channel, slog.Any("error", err))
+		return nil, "", false
 	}
-	s.logger.Info("antenne: synced project created", slog.String("facile_id", facileID))
-	return true
+	if evt.App == enveloppe.AppSablier {
+		return nil, "", false
+	}
+	if !s.IsPoolEventEnabled(channel) {
+		return nil, "", false
+	}
+	if s.alreadyProcessed(evt.IdempotencyKey) {
+		return nil, "", false
+	}
+	id := facileID(&evt.Payload)
+	if id == "" {
+		id = evt.FacileID
+	}
+	if id == "" {
+		s.logger.Warn("antenne: event without facile_id dropped", slog.String("channel", channel))
+		return nil, "", false
+	}
+	return &evt, id, true
+}
+
+func (s *Service) handleProjectCreated(payload json.RawMessage, meta antenneclient.EventMeta) {
+	s.applyProject("project.created", payload)
 }
 
 func (s *Service) handleProjectUpdated(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.Project]
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		s.logger.Error("antenne: failed to decode project.updated", slog.Any("error", err))
+	s.applyProject("project.updated", payload)
+}
+
+func (s *Service) applyProject(channel string, payload json.RawMessage) {
+	evt, facileID, ok := decodeInbound(s, channel, payload, func(p *projectWire) string { return p.FacileID })
+	if !ok {
 		return
 	}
-	if s.alreadyProcessed(evt.IdempotencyKey) {
-		return
-	}
+	p := evt.Payload
 
 	var record schemas.Project
-	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&record).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			s.logger.Info("antenne: project not found for update, creating it", slog.String("facile_id", evt.Payload.FacileID))
-			if s.createSyncedProject(&evt) {
-				s.markProcessed(evt.IdempotencyKey)
-			}
-			return
-		}
-		s.logger.Error("antenne: failed to find project for update", slog.Any("error", err))
+	err := s.orm.Where("facile_id = ?", facileID).First(&record).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		s.logger.Error("antenne: failed to find project", slog.Any("error", err))
 		return
 	}
 
-	record.Name = evt.Payload.Name
-	if evt.Payload.Description != nil {
-		record.Description = *evt.Payload.Description
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if p.name() == "" {
+			s.logger.Warn("antenne: project without name dropped", slog.String("facile_id", facileID))
+			return
+		}
+		desc := ""
+		if p.Description != nil {
+			desc = *p.Description
+		}
+		record = schemas.Project{
+			Name:        p.name(),
+			Description: desc,
+			Icon:        normalizeIcon(p.Icon),
+			OwnerID:     1,
+			FacileID:    &facileID,
+		}
+		if err := s.orm.Create(&record).Error; err != nil {
+			s.logger.Error("antenne: failed to create synced project", slog.Any("error", err))
+			return
+		}
+		s.markProcessed(evt.IdempotencyKey)
+		s.logger.Info("antenne: synced project created", slog.String("facile_id", facileID))
+		return
 	}
-	if evt.Payload.Icon != nil {
-		record.Icon = normalizeIcon(evt.Payload.Icon)
+
+	if p.name() != "" {
+		record.Name = p.name()
+	}
+	if p.Description != nil {
+		record.Description = *p.Description
+	}
+	if p.Icon != nil {
+		record.Icon = normalizeIcon(p.Icon)
 	}
 	if err := s.orm.Save(&record).Error; err != nil {
 		s.logger.Error("antenne: failed to update synced project", slog.Any("error", err))
 		return
 	}
 	s.markProcessed(evt.IdempotencyKey)
-	s.logger.Info("antenne: synced project updated", slog.String("facile_id", evt.Payload.FacileID))
+	s.logger.Info("antenne: synced project updated", slog.String("facile_id", facileID))
 }
 
 func (s *Service) handleProjectDeleted(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.Project]
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		s.logger.Error("antenne: failed to decode project.deleted", slog.Any("error", err))
+	evt, facileID, ok := decodeInbound(s, "project.deleted", payload, func(p *projectWire) string { return p.FacileID })
+	if !ok {
 		return
 	}
-	if s.alreadyProcessed(evt.IdempotencyKey) {
-		return
-	}
-
-	result := s.orm.Where("facile_id = ?", evt.Payload.FacileID).Delete(&schemas.Project{})
-	if result.Error != nil {
-		s.logger.Error("antenne: failed to delete synced project", slog.Any("error", result.Error))
+	err := s.orm.Transaction(func(tx *gorm.DB) error {
+		var project schemas.Project
+		if err := tx.Where("facile_id = ?", facileID).First(&project).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		taskIDs := tx.Model(&schemas.Task{}).Select("id").Where("project_id = ?", project.ID)
+		if err := tx.Model(&schemas.TimeEntry{}).Where("task_id IN (?)", taskIDs).Update("task_id", 0).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("project_id = ?", project.ID).Delete(&schemas.Task{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&project).Error
+	})
+	if err != nil {
+		s.logger.Error("antenne: failed to delete synced project", slog.Any("error", err))
 		return
 	}
 	s.markProcessed(evt.IdempotencyKey)
-	s.logger.Info("antenne: synced project deleted", slog.String("facile_id", evt.Payload.FacileID))
+	s.logger.Info("antenne: synced project deleted", slog.String("facile_id", facileID))
 }
 
 func (s *Service) handleTaskCreated(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.Task]
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		s.logger.Error("antenne: failed to decode task.created", slog.Any("error", err))
-		return
-	}
-	if s.alreadyProcessed(evt.IdempotencyKey) {
-		return
-	}
-
-	s.upsertSyncedTask(&evt, 0)
+	s.applyTask("task.created", payload)
 }
 
-const maxTaskParentRetries = 5
+func (s *Service) handleTaskUpdated(payload json.RawMessage, meta antenneclient.EventMeta) {
+	s.applyTask("task.updated", payload)
+}
 
-// upsertSyncedTask creates or updates a task from a pool event. When the
-// parent project has not been synced yet, it reschedules itself with
-// time.AfterFunc instead of sleeping: handlers run on the pool client's read
-// loop, so a blocking wait here would also block the project.created event
-// it is waiting for.
-func (s *Service) upsertSyncedTask(evt *enveloppe.Event[enveloppe.Task], attempt int) {
+func (s *Service) applyTask(channel string, payload json.RawMessage) {
+	evt, facileID, ok := decodeInbound(s, channel, payload, func(t *taskWire) string { return t.FacileID })
+	if !ok {
+		return
+	}
+	t := evt.Payload
+	status, known := mapRemoteStatus(t.Status)
+
 	var existing schemas.Task
-	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&existing).Error; err == nil {
+	err := s.orm.Where("facile_id = ?", facileID).First(&existing).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		s.logger.Error("antenne: failed to find task", slog.Any("error", err))
+		return
+	}
+
+	if err == nil {
 		updates := map[string]interface{}{}
-		if evt.Payload.Name != "" && evt.Payload.Name != existing.Name {
-			updates["name"] = evt.Payload.Name
+		if name := t.name(); name != "" && name != existing.Name {
+			updates["name"] = name
 		}
-		if evt.Payload.Status != "" {
-			normalized := schemas.NormalizeStatus(evt.Payload.Status)
-			if normalized != existing.Status {
-				updates["status"] = normalized
-			}
+		if known && status != existing.Status {
+			updates["status"] = status
 		}
-		if actorID := s.resolveActorByEmail(evt.Payload.ActorEmail); actorID != nil {
+		if actorID := s.resolveActorByEmail(t.ActorEmail); actorID != nil {
 			if existing.ActorID == nil || *existing.ActorID != *actorID {
 				updates["actor_id"] = *actorID
 			}
 		}
 		if len(updates) > 0 {
 			if err := s.orm.Model(&existing).Updates(updates).Error; err != nil {
-				s.logger.Error("antenne: failed to upsert synced task", slog.Any("error", err))
+				s.logger.Error("antenne: failed to update synced task", slog.Any("error", err))
 				return
 			}
-			s.logger.Info("antenne: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
+			s.logger.Info("antenne: synced task updated", slog.String("facile_id", facileID))
 		}
 		s.markProcessed(evt.IdempotencyKey)
 		return
 	}
 
 	var project schemas.Project
-	if err := s.orm.Where("facile_id = ?", evt.Payload.ProjectFacileID).First(&project).Error; err != nil {
-		if attempt < maxTaskParentRetries {
-			time.AfterFunc(1*time.Second, func() {
-				s.upsertSyncedTask(evt, attempt+1)
-			})
-			return
-		}
-		s.logger.Warn("antenne: parent project not found for task sync after retries",
-			slog.String("project_facile_id", evt.Payload.ProjectFacileID),
-			slog.String("task_facile_id", evt.Payload.FacileID))
+	if err := s.orm.Where("facile_id = ?", t.ProjectFacileID).First(&project).Error; err != nil {
+		s.logger.Warn("antenne: parent project unknown, task dropped",
+			slog.String("project_facile_id", t.ProjectFacileID),
+			slog.String("task_facile_id", facileID))
 		return
 	}
-
-	facileID := evt.Payload.FacileID
-	status := schemas.NormalizeStatus(evt.Payload.Status)
+	if t.name() == "" {
+		s.logger.Warn("antenne: task without name dropped", slog.String("facile_id", facileID))
+		return
+	}
+	if !known {
+		status = schemas.StatusTodo
+	}
 	record := schemas.Task{
 		ProjectID: project.ID,
-		Name:      evt.Payload.Name,
+		Name:      t.name(),
 		Status:    status,
 		FacileID:  &facileID,
-		ActorID:   s.resolveActorByEmail(evt.Payload.ActorEmail),
+		ActorID:   s.resolveActorByEmail(t.ActorEmail),
 	}
 	if err := s.orm.Create(&record).Error; err != nil {
 		s.logger.Error("antenne: failed to create synced task", slog.Any("error", err))
@@ -219,56 +260,28 @@ func (s *Service) resolveActorByEmail(email string) *int64 {
 	return &user.ID
 }
 
-func (s *Service) handleTaskUpdated(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.Task]
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		s.logger.Error("antenne: failed to decode task.updated", slog.Any("error", err))
-		return
-	}
-	if s.alreadyProcessed(evt.IdempotencyKey) {
-		return
-	}
-
-	var record schemas.Task
-	if err := s.orm.Where("facile_id = ?", evt.Payload.FacileID).First(&record).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			s.logger.Info("antenne: task not found for update, creating it", slog.String("facile_id", evt.Payload.FacileID))
-			s.upsertSyncedTask(&evt, 0)
-			return
-		}
-		s.logger.Error("antenne: failed to find task for update", slog.Any("error", err))
-		return
-	}
-
-	if evt.Payload.Name != "" {
-		record.Name = evt.Payload.Name
-	}
-	if evt.Payload.Status != "" {
-		record.Status = schemas.NormalizeStatus(evt.Payload.Status)
-	}
-	if err := s.orm.Save(&record).Error; err != nil {
-		s.logger.Error("antenne: failed to update synced task", slog.Any("error", err))
-		return
-	}
-	s.markProcessed(evt.IdempotencyKey)
-	s.logger.Info("antenne: synced task updated", slog.String("facile_id", evt.Payload.FacileID))
-}
-
 func (s *Service) handleTaskDeleted(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.Task]
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		s.logger.Error("antenne: failed to decode task.deleted", slog.Any("error", err))
+	evt, facileID, ok := decodeInbound(s, "task.deleted", payload, func(t *taskWire) string { return t.FacileID })
+	if !ok {
 		return
 	}
-	if s.alreadyProcessed(evt.IdempotencyKey) {
-		return
-	}
-
-	result := s.orm.Where("facile_id = ?", evt.Payload.FacileID).Delete(&schemas.Task{})
-	if result.Error != nil {
-		s.logger.Error("antenne: failed to delete synced task", slog.Any("error", result.Error))
+	err := s.orm.Transaction(func(tx *gorm.DB) error {
+		var task schemas.Task
+		if err := tx.Where("facile_id = ?", facileID).First(&task).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		if err := tx.Model(&schemas.TimeEntry{}).Where("task_id = ?", task.ID).Update("task_id", 0).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&task).Error
+	})
+	if err != nil {
+		s.logger.Error("antenne: failed to delete synced task", slog.Any("error", err))
 		return
 	}
 	s.markProcessed(evt.IdempotencyKey)
-	s.logger.Info("antenne: synced task deleted", slog.String("facile_id", evt.Payload.FacileID))
+	s.logger.Info("antenne: synced task deleted", slog.String("facile_id", facileID))
 }

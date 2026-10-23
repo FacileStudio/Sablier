@@ -2,8 +2,6 @@ package antenne
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
@@ -24,6 +22,16 @@ import (
 )
 
 const appSettingID = 1
+
+// EmitEvents and ListenEvents are the pool registration lists; antenne.yaml
+// documents them and a test keeps both in step.
+func EmitEvents() []string {
+	return []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated"}
+}
+
+func ListenEvents() []string {
+	return []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "agent_session.created", "agent_session.updated"}
+}
 
 // Service manages the Antenne pool connection, its settings, and the
 // event outbox.
@@ -140,8 +148,8 @@ func (s *Service) connect(instanceURL, secret string) error {
 		Instance: instanceURL,
 		Secret:   secret,
 		Events: antenneclient.EventConfig{
-			Emit:   []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated"},
-			Listen: []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "agent_session.created", "agent_session.updated"},
+			Emit:   EmitEvents(),
+			Listen: ListenEvents(),
 		},
 	}
 
@@ -567,9 +575,7 @@ func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
 
 // GenerateFacileID returns a random "fac_"-prefixed hex identifier.
 func GenerateFacileID() string {
-	b := make([]byte, 10)
-	rand.Read(b)
-	return "fac_" + hex.EncodeToString(b)
+	return schemas.NewFacileID()
 }
 
 var iconTypoMap = map[string]string{
