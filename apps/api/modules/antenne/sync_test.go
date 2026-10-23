@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 
@@ -27,7 +28,7 @@ func wireEvent(t *testing.T, app enveloppe.App, object enveloppe.ObjectType, act
 		"action":          action,
 		"facile_id":       payload["facile_id"],
 		"payload":         payload,
-		"timestamp":       "2026-10-23T10:00:00Z",
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
 		"idempotency_key": key,
 	})
 	if err != nil {
@@ -223,6 +224,29 @@ func TestInboundIdempotentReplay(t *testing.T) {
 	s.orm.First(&row)
 	if row.Name != "Renamed" {
 		t.Fatalf("replayed key must be ignored, got %q", row.Name)
+	}
+}
+
+func TestInboundStaleReplayCannotOverwriteNewerState(t *testing.T) {
+	s := newTestService(t)
+	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
+	s.handleProjectUpdated(opusProject(t, enveloppe.ActionUpdated, "k2", "Newest"), testMeta)
+
+	old := map[string]any{}
+	if err := json.Unmarshal(opusProject(t, enveloppe.ActionUpdated, "ancient", "Older"), &old); err != nil {
+		t.Fatal(err)
+	}
+	old["timestamp"] = time.Now().Add(-40 * 24 * time.Hour).UTC().Format(time.RFC3339)
+	raw, err := json.Marshal(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.handleProjectUpdated(raw, testMeta)
+
+	var row schemas.Project
+	s.orm.First(&row)
+	if row.Name != "Newest" {
+		t.Fatalf("stale replay overwrote state, got %q", row.Name)
 	}
 }
 

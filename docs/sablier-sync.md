@@ -15,7 +15,9 @@ for local user changes and apply the same events from the other app.
   straight to the database and never queues an outbound event.
 - **Idempotency.** Each applied event's `idempotency_key` is claimed in the ledger
   (`AntenneProcessedEvent`, pruned after 35 days) inside the same transaction as the change. A
-  replay does nothing. A dropped event rolls the claim back, so it can be replayed.
+  replay does nothing. A dropped event rolls the claim back, so it can be replayed. An event whose envelope
+  `timestamp` is missing or older than the ledger retention is dropped, so a replay after the
+  ledger is pruned cannot overwrite newer state.
 - **Tasks need their project.** A task event whose `project_facile_id` matches no local project
   is dropped with a warning. No orphan task is created.
 - **Updates for unknown rows.** `project.updated` for an unknown project is dropped; only

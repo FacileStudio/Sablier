@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	antenneclient "github.com/FacileStudio/antenne-client/go"
@@ -58,6 +59,13 @@ func (t taskWire) name() string {
 var stableFacileID = regexp.MustCompile(`^(fac_[0-9a-f]{20}|[A-Z2-7]{26}|[0-9a-f]{32})$`)
 
 var errDropped = errors.New("antenne: event dropped")
+
+const ledgerRetention = 35 * 24 * time.Hour
+
+func isStale(timestamp string) bool {
+	at, err := time.Parse(time.RFC3339, timestamp)
+	return err != nil || time.Since(at) > ledgerRetention
+}
 
 func isStableFacileID(id string) bool {
 	return stableFacileID.MatchString(id)
@@ -116,6 +124,10 @@ func decodeInbound[T any](s *Service, channel string, payload json.RawMessage, f
 		return nil, "", false
 	}
 	if !s.IsPoolEventEnabled(channel) {
+		return nil, "", false
+	}
+	if isStale(evt.Timestamp) {
+		s.logger.Warn("antenne: stale event dropped", slog.String("channel", channel), slog.String("timestamp", evt.Timestamp))
 		return nil, "", false
 	}
 	id := facileID(&evt.Payload)

@@ -312,7 +312,7 @@ func (s *Service) RunOutboxWorker(ctx context.Context) {
 		case <-ticker.C:
 			s.drainOutbox()
 			if time.Since(lastPrune) > 24*time.Hour {
-				s.orm.Where("processed_at < ?", time.Now().Add(-35*24*time.Hour)).Delete(&schemas.AntenneProcessedEvent{})
+				s.orm.Where("processed_at < ?", time.Now().Add(-ledgerRetention)).Delete(&schemas.AntenneProcessedEvent{})
 				lastPrune = time.Now()
 			}
 		case <-ctx.Done():
