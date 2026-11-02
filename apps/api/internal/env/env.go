@@ -30,6 +30,16 @@ type OIDCConfig struct {
 	// machine audience either, which names this app and arms the
 	// Authorization header path for service accounts.
 	CLIAudience string
+
+	// MachineAudience is this app's own Registre client id. Setting it lets
+	// porte verify a bearer JWT minted for Sablier, such as the short-lived
+	// delegated token Bulle obtains on a user's behalf. Empty disables it.
+	MachineAudience string
+
+	// ScopePrefix gates those JWTs by method: GET needs sablier.read or
+	// sablier.write, anything else needs sablier.write. It requires
+	// MachineAudience.
+	ScopePrefix string
 }
 
 // Porte returns the shared auth kit's configuration. The environment variable
@@ -51,6 +61,9 @@ func (c Config) Porte() porte.Config {
 		SSOOnly:      c.SSOOnly,
 		ClaimsScope:  c.OIDCClaimsScope,
 		CLIAudience:  c.OIDC.CLIAudience,
+
+		MachineAudience: c.OIDC.MachineAudience,
+		ScopePrefix:     c.OIDC.ScopePrefix,
 	}
 }
 
@@ -145,6 +158,9 @@ func Load() (Config, error) {
 			RedirectURL:  redirectURL,
 			SuccessURL:   successURL,
 			CLIAudience:  troncenv.String("OIDC_CLI_AUDIENCE", ""),
+
+			MachineAudience: troncenv.String("OIDC_MACHINE_AUDIENCE", ""),
+			ScopePrefix:     troncenv.String("OIDC_SCOPE_PREFIX", ""),
 		}
 	}
 
