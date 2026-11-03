@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.10.0] - 2026-11-03
+
+### Added
+- Opus sync v2: projects follow their space both ways (Registre space id, or the owner's personal space), task description, due date and priority from Opus show read-only on the project page, and time entries on synced tasks go to Opus as created, updated and deleted events.
+- Reconcile at boot and on `POST /api/antenne/sync`: same-named projects and tasks in the same space merge onto the smaller facile id.
+
+### Fixed
+- Projects created in Opus no longer all land in the personal view of user 1.
+- Task moves between projects in Opus now apply in Sablier, and the local " (2)" name suffix is never sent back to Opus.
+- Outbound events keep their order, and an older update can no longer overwrite a newer one.
+
 ## [1.9.0] - 2026-11-03
 
 ### Added
