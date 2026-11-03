@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { backend } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
+	import { landingTarget } from '$lib/onboarding/steps';
+	import { isNative } from '$lib/platform';
 	import { Button, Divider, TextElevate, icons } from '@facile/muse';
 
 	let redirecting = $state(true);
@@ -10,17 +12,23 @@
 
 	const startHref = $derived(ssoOnly ? '/login' : '/login?tab=register');
 
-	onMount(async () => {
-		if (localStorage.getItem(TOKEN_KEY)) {
-			goto('/dashboard');
-			return;
-		}
-
+	async function signedIn(): Promise<boolean> {
+		if (localStorage.getItem(TOKEN_KEY)) return true;
 		try {
 			await backend.me();
-			goto('/dashboard');
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	onMount(async () => {
+		const native = isNative();
+		const target = landingTarget({ native, signedIn: await signedIn() });
+		if (target) {
+			goto(target, { replaceState: native });
 			return;
-		} catch {}
+		}
 
 		try {
 			const cfg = await fetch(`${backend.baseUrl}/api/auth/config`).then((r) => r.json());
