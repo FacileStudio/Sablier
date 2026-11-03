@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Sablier",
   "mainBinaryName": "sablier-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "studio.facile.sablier",
   "build": {
     "frontendDist": "ui"
@@ -50,6 +50,15 @@
     ],
     "macOS": {
       "minimumSystemVersion": "11.0"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERGRjRFRUNFRUE5RTNCMzYKUldRMk81N3F6dTcwMzYwekptdnBvU1ZEL0tPVmxSdWgwaVZlUjJYSGhjSzdyTGc0NDRvdGZTMDUK",
+      "endpoints": [
+        "https://github.com/FacileStudio/Sablier/releases/latest/download/latest.json"
+      ]
     }
   }
 }

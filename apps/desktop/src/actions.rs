@@ -1,5 +1,6 @@
 use crate::idle::{self, Span};
 use crate::popup::{self, Action, Command, Prompt};
+use crate::update;
 use crate::window;
 use crate::worker::{Pending, Target, Worker, open_tasks};
 use chrono::{Local, Utc};
@@ -61,6 +62,8 @@ impl Worker {
             ("review", server) => self.show_window(server, "/dashboard"),
             ("open", server) => self.show_window(server, "/"),
             ("autostart", _) => self.toggle_open_at_login(),
+            ("update", _) => update::install(&self.app),
+            ("check-update", _) => update::check_now(&self.app),
             ("stop" | "pause" | "resume", _) => {
                 if let Some(api) = &self.api {
                     report(api.timer(id));

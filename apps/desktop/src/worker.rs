@@ -11,7 +11,7 @@ use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager as _};
 
 const POLL: Duration = Duration::from_secs(30);
 const PROJECTS: Duration = Duration::from_secs(300);
@@ -303,12 +303,15 @@ impl Worker {
         if self.idle_source.is_none() {
             notices.push("Idle detection unavailable on this desktop");
         }
+        let updates = self.app.state::<crate::update::Updates>();
         MenuShape {
             signed_in: self.api.is_some(),
             running: self.running.as_ref().map(|entry| entry.paused_at.is_some()),
             starts,
             notices,
             open_at_login: self.open_at_login,
+            update: updates.available_version(),
+            updating: updates.installing(),
         }
     }
 }

@@ -18,6 +18,8 @@ pub struct MenuShape {
     pub starts: Vec<StartTarget>,
     pub notices: Vec<&'static str>,
     pub open_at_login: bool,
+    pub update: Option<String>,
+    pub updating: bool,
 }
 
 /// What the clock shows: the menu-bar title and the first menu line.
@@ -124,6 +126,20 @@ fn start_menu(app: &AppHandle, starts: &[StartTarget]) -> tauri::Result<Submenu<
     Ok(menu)
 }
 
+fn update_item(app: &AppHandle, shape: &MenuShape) -> tauri::Result<MenuItem<Wry>> {
+    match (&shape.update, shape.updating) {
+        (Some(version), true) => {
+            MenuItem::new(app, format!("Installing {version}…"), false, None::<&str>)
+        }
+        (Some(version), false) => item(
+            app,
+            "update",
+            &format!("Install update {version} and restart"),
+        ),
+        (None, _) => item(app, "check-update", "Check for updates"),
+    }
+}
+
 fn build(
     app: &AppHandle,
     shape: &MenuShape,
@@ -151,6 +167,7 @@ fn build(
     for notice in &shape.notices {
         menu.append(&MenuItem::new(app, *notice, false, None::<&str>)?)?;
     }
+    menu.append(&update_item(app, shape)?)?;
     menu.append(&CheckMenuItem::with_id(
         app,
         "autostart",

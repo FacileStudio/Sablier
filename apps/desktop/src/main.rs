@@ -10,6 +10,7 @@ mod popup;
 mod rules;
 mod suggest;
 mod tray;
+mod update;
 mod window;
 mod worker;
 
@@ -52,6 +53,7 @@ fn setup(
     #[cfg(target_os = "macos")]
     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
     offer_open_at_login(app);
+    update::spawn_checks(app.handle().clone());
     let icon = TrayIconBuilder::with_id("sablier")
         .icon(tray_icon()?)
         .icon_as_template(cfg!(target_os = "macos"))
@@ -83,6 +85,8 @@ fn main() {
         ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(update::Updates::default())
         .manage(Popup::new(commands))
         .invoke_handler(tauri::generate_handler![
             popup::current_prompt,
