@@ -9,6 +9,7 @@
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
+	import TaskOpusMeta from '$lib/components/TaskOpusMeta.svelte';
 	import {
 		Alert,
 		Badge,
@@ -599,6 +600,7 @@
 													>
 														{task.name}
 													</p>
+													<TaskOpusMeta {task} />
 													{#if task.userSegments.length > 0}
 														<UserColorSplitBar segments={task.userSegments} showLegend={false} />
 													{:else}

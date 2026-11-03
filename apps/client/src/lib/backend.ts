@@ -50,6 +50,9 @@ export type Task = {
 	actor_id: number | null;
 	created_at: string;
 	updated_at: string;
+	description?: string;
+	due_date?: string | null;
+	priority?: string;
 };
 
 export type VAPIDPublicKeyResponse = {
