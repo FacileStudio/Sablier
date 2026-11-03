@@ -49,6 +49,7 @@ type MemberResponse struct {
 	UserName      string    `json:"user_name"`
 	UserColor     string    `json:"user_color"`
 	UserAvatarURL string    `json:"user_avatar_url"`
+	UserKind      string    `json:"user_kind"`
 	Role          string    `json:"role"`
 	JoinedAt      time.Time `json:"joined_at"`
 }

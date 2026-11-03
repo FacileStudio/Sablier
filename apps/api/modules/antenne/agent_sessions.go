@@ -2,7 +2,6 @@ package antenne
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,24 +9,16 @@ import (
 	antenneclient "github.com/FacileStudio/antenne-client/go"
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
-
-	"gorm.io/gorm"
-)
-
-const (
-	agentSessionsTaskName    = "Agent sessions"
-	agentCatchAllProject     = "Agent work"
-	agentCatchAllOwnerID     = 1
-	agentCatchAllProjectDesc = "Agent sessions from Mycelium without a matching Sablier project"
 )
 
 // handleAgentSession materializes a Mycelium agent_session event as a time
-// entry. A project whose name matches the session's project gets the entry
-// under its "Agent sessions" task; anything else is parked in the shared
-// "Agent work" project under a task named after the source project, so no
-// session is ever dropped. Entries upsert by facile_id, making re-emitted
-// history idempotent even without the processed-events ledger.
+// entry booked to the agent user of the human named by user_email, keyed on
+// the agent's name. agentwork.Record picks the project, parking unmatched
+// sessions in the shared "Agent work" project so none is ever dropped.
+// Entries upsert by facile_id, making re-emitted history idempotent even
+// without the processed-events ledger.
 func (s *Service) handleAgentSession(payload json.RawMessage, meta antenneclient.EventMeta) {
 	var evt enveloppe.Event[enveloppe.AgentSession]
 	if err := json.Unmarshal(payload, &evt); err != nil {
@@ -64,115 +55,30 @@ func (s *Service) handleAgentSession(payload json.RawMessage, meta antenneclient
 		return
 	}
 
-	project, taskName := s.agentSessionTarget(p.Project)
-	if project == nil {
-		s.logger.Error("antenne: failed to resolve target project for agent session",
-			slog.String("project", p.Project))
-		return
-	}
-	task, err := s.ensureAgentTask(project.ID, taskName)
-	if err != nil {
-		s.logger.Error("antenne: failed to ensure agent session task", slog.Any("error", err))
-		return
-	}
-
-	description := fmt.Sprintf("mycelium: %s@%s", p.Agent, p.Machine)
+	description := fmt.Sprintf("%s%s@%s", schemas.MyceliumDescriptionPrefix, p.Agent, p.Machine)
 	if p.Branch != "" {
 		description += " branch=" + p.Branch
 	}
 
-	var existing schemas.TimeEntry
-	err = s.orm.Where("facile_id = ?", p.FacileID).First(&existing).Error
-	switch {
-	case err == nil:
-		updates := map[string]interface{}{
-			"project_id": project.ID,
-			"task_id":    task.ID,
-			"user_id":    *userID,
-			"started_at": started.UTC(),
-			"stopped_at": stopped.UTC(),
-		}
-		if err := s.orm.Model(&existing).Updates(updates).Error; err != nil {
-			s.logger.Error("antenne: failed to update agent session entry", slog.Any("error", err))
-			return
-		}
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		facileID := p.FacileID
-		stoppedAt := stopped.UTC()
-		record := schemas.TimeEntry{
-			ProjectID:         project.ID,
-			TaskID:            task.ID,
-			UserID:            *userID,
-			FacileID:          &facileID,
-			LegacyDescription: description,
-			StartedAt:         started.UTC(),
-			StoppedAt:         &stoppedAt,
-		}
-		if err := s.orm.Create(&record).Error; err != nil {
-			s.logger.Error("antenne: failed to create agent session entry", slog.Any("error", err))
-			return
-		}
-	default:
-		s.logger.Error("antenne: failed to look up agent session entry", slog.Any("error", err))
+	result, err := agentwork.Record(s.orm, agentwork.Session{
+		OwnerID:     *userID,
+		Agent:       schemas.AgentFromName(p.Agent),
+		FacileID:    p.FacileID,
+		ProjectHint: p.Project,
+		StartedAt:   started,
+		StoppedAt:   stopped,
+		Description: description,
+	})
+	if err != nil {
+		s.logger.Error("antenne: failed to record agent session",
+			slog.String("facile_id", p.FacileID), slog.Any("error", err))
 		return
 	}
 
 	s.markProcessed(evt.IdempotencyKey)
 	s.logger.Info("antenne: synced agent session",
 		slog.String("facile_id", p.FacileID),
-		slog.String("project", project.Name),
-		slog.String("task", task.Name))
-}
-
-func (s *Service) agentSessionTarget(name string) (*schemas.Project, string) {
-	var project schemas.Project
-	err := s.orm.Where("lower(name) = lower(?)", name).First(&project).Error
-	if err == nil {
-		return &project, agentSessionsTaskName
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ""
-	}
-
-	err = s.orm.Where("lower(name) = lower(?)", agentCatchAllProject).First(&project).Error
-	if err == nil {
-		return &project, name
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ""
-	}
-
-	facileID := GenerateFacileID()
-	record := schemas.Project{
-		Name:        agentCatchAllProject,
-		Description: agentCatchAllProjectDesc,
-		OwnerID:     agentCatchAllOwnerID,
-		FacileID:    &facileID,
-	}
-	if err := s.orm.Create(&record).Error; err != nil {
-		if err := s.orm.Where("lower(name) = lower(?)", agentCatchAllProject).First(&record).Error; err != nil {
-			return nil, ""
-		}
-	}
-	return &record, name
-}
-
-func (s *Service) ensureAgentTask(projectID int64, name string) (*schemas.Task, error) {
-	var task schemas.Task
-	err := s.orm.Where("project_id = ? AND lower(name) = lower(?)", projectID, name).First(&task).Error
-	if err == nil {
-		return &task, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
-	facileID := GenerateFacileID()
-	task = schemas.Task{ProjectID: projectID, Name: name, FacileID: &facileID}
-	if err := s.orm.Create(&task).Error; err != nil {
-		if retryErr := s.orm.Where("project_id = ? AND lower(name) = lower(?)", projectID, name).First(&task).Error; retryErr != nil {
-			return nil, err
-		}
-	}
-	return &task, nil
+		slog.String("agent", result.Agent.Name),
+		slog.String("project", result.Target.Project.Name),
+		slog.String("task", result.Target.Task.Name))
 }

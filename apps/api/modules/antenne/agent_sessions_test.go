@@ -11,6 +11,7 @@ import (
 	antenneclient "github.com/FacileStudio/antenne-client/go"
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/driver/sqlite"
@@ -26,7 +27,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open test database: %v", err)
 	}
 	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.AppSetting{}, &schemas.AntenneOutbox{}, &schemas.AntenneProcessedEvent{})
+		&schemas.AppSetting{}, &schemas.AntenneOutbox{}, &schemas.AntenneProcessedEvent{}, &schemas.SpaceMember{})
 	if err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
@@ -94,8 +95,15 @@ func TestAgentSessionCreatesEntryInMatchingProject(t *testing.T) {
 	if err := s.orm.Where("facile_id = ?", "fac_abc").First(&entry).Error; err != nil {
 		t.Fatalf("entry not created: %v", err)
 	}
-	if entry.ProjectID != project.ID || entry.UserID != user.ID {
-		t.Fatalf("bad attribution: %+v", entry)
+	var agent schemas.User
+	if err := s.orm.First(&agent, entry.UserID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if entry.ProjectID != project.ID || !agent.IsAgent() || agent.OwnerUserID == nil || *agent.OwnerUserID != user.ID {
+		t.Fatalf("bad attribution: entry %+v agent %+v", entry, agent)
+	}
+	if agent.Name != "Claude" || agent.Avatar() != "https://blobatar.dev/avatar/Claude?gen=2" || agent.Rate != 0 {
+		t.Fatalf("agent identity: %+v", agent)
 	}
 	if entry.StoppedAt == nil {
 		t.Fatal("entry must be stopped, not running")
@@ -104,7 +112,7 @@ func TestAgentSessionCreatesEntryInMatchingProject(t *testing.T) {
 	if err := s.orm.First(&task, entry.TaskID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if task.Name != agentSessionsTaskName || task.ProjectID != project.ID {
+	if task.Name != agentwork.SessionsTaskName || task.ProjectID != project.ID {
 		t.Fatalf("expected auto-created 'Agent sessions' task, got %+v", task)
 	}
 	if !strings.Contains(entry.LegacyDescription, "claude@lucy") {
@@ -150,7 +158,7 @@ func TestAgentSessionParksUnmatchedProject(t *testing.T) {
 	s.handleAgentSession(sessionEvent(t, "fac_xyz", "SomeRepo", "sara@example.com", "key_1"), testMeta)
 
 	var project schemas.Project
-	if err := s.orm.Where("name = ?", agentCatchAllProject).First(&project).Error; err != nil {
+	if err := s.orm.Where("name = ?", agentwork.CatchAllProject).First(&project).Error; err != nil {
 		t.Fatalf("catch-all project not created: %v", err)
 	}
 	var task schemas.Task

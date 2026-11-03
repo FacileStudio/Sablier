@@ -71,6 +71,7 @@ func toMemberResponse(m *memberRow) MemberResponse {
 		UserName:      m.UserName,
 		UserColor:     m.UserColor,
 		UserAvatarURL: m.UserAvatarURL,
+		UserKind:      m.UserKind,
 		Role:          m.Role,
 		JoinedAt:      m.JoinedAt,
 	}

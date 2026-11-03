@@ -12,6 +12,8 @@ type User struct {
 	RateType     string  `json:"rate_type"`
 	WorkdayHours float64 `json:"workday_hours"`
 	CreatedAt    string  `json:"created_at"`
+	Kind         string  `json:"kind"`
+	OwnerUserID  *int64  `json:"owner_user_id,omitempty"`
 }
 
 // MeResponse wraps the requesting user's profile. Token carries a replacement

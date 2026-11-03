@@ -48,7 +48,8 @@ func (service *Service) RequireAuth(next http.Handler) http.Handler {
 //
 // A user id that resolves to no row means the session outlived the user
 // (porte's foreign key cascades a delete, so this is a race) and is treated as
-// unauthenticated.
+// unauthenticated. An agent user resolves to no row either: whatever credential
+// names one, no request is ever served as an agent.
 func (service *Service) IdentityForUser(ctx context.Context, userID int64) (string, string, error) {
 	var out struct {
 		ID    int64
@@ -57,7 +58,7 @@ func (service *Service) IdentityForUser(ctx context.Context, userID int64) (stri
 	err := service.orm.WithContext(ctx).
 		Model(&schemas.User{}).
 		Select("id", "email").
-		Where("id = ?", userID).
+		Where("id = ? AND kind <> ?", userID, schemas.UserKindAgent).
 		Scan(&out).Error
 	if err != nil {
 		return "", "", errors.Internal("failed to load the account", err)

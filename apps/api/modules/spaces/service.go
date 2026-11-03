@@ -141,7 +141,7 @@ func (s *Service) listMembers(ctx context.Context, spaceID string) ([]memberRow,
 	var rows []memberRow
 	err := s.orm.WithContext(ctx).
 		Model(&schemas.SpaceMember{}).
-		Select("space_members.*, users.email as user_email, users.name as user_name, users.color as user_color, "+schemas.AvatarSelectExpr+" as user_avatar_url").
+		Select("space_members.*, users.email as user_email, users.name as user_name, users.color as user_color, users.kind as user_kind, "+schemas.AvatarSelectExpr+" as user_avatar_url").
 		Joins("JOIN users ON users.id = space_members.user_id").
 		Where("space_members.space_id = ?", spaceID).
 		Order("space_members.joined_at asc").
@@ -158,6 +158,7 @@ type memberRow struct {
 	UserName      string
 	UserColor     string
 	UserAvatarURL string
+	UserKind      string
 }
 
 func (s *Service) addMember(ctx context.Context, spaceID string, targetUserID int64, role string) (*schemas.SpaceMember, error) {

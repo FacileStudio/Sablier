@@ -42,6 +42,7 @@ func TestAvatarSelectExprMatchesAvatar(t *testing.T) {
 		{Email: "upload@example.com", AvatarUploadPath: "avatars/user-2-1.png"},
 		{Email: "oidc@example.com", OIDCPictureURL: "https://porte.facile.studio/media/user-avatars/b.png"},
 		{Email: "neither@example.com"},
+		{Email: "agent@agents.invalid", Kind: UserKindAgent, OIDCPictureURL: "https://porte.facile.studio/x.png", AgentAvatarURL: "https://blobatar.dev/avatar/Claude?gen=2"},
 	}
 	for i := range users {
 		if err := orm.Create(&users[i]).Error; err != nil {
