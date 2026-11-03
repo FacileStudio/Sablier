@@ -100,7 +100,7 @@ router entirely — they 404 rather than 403.
 | `users` | `id`, `email` unique, `name`, `color`, `password_hash`, `rate`, `rate_type`, `workday_hours` | Also holds `avatar_url`, `avatar_source`, `oidc_picture_url`, the OIDC tokens, and `profile_synced_at` |
 | `sessions` | `token` PK (hashed), `user_id`, `expires_at` | 30-day browser sessions |
 | `api_tokens` | `token` PK (hashed), `user_id`, `name` | One long-lived token per user |
-| `spaces` | `id` UUID PK, `name`, `description` | UUID generated in `BeforeCreate` |
+| `spaces` | `id` UUID PK, `name`, `description`, `registre_space_id` (nullable, unique) | UUID generated in `BeforeCreate`; linked rows mirror Registre |
 | `space_members` | `id` UUID PK, unique `(space_id, user_id)`, `role` | Roles are `owner`, `admin`, `member` |
 | `projects` | `id`, `name`, `owner_id`, `space_id`, `facile_id` unique | `facile_id` is the cross-app identity used by pool sync |
 | `tasks` | `id`, unique `(project_id, name)`, `status`, `actor_id`, `space_id`, `facile_id` | Status is one of `to-do`, `in-progress`, `in-review`, `done` |

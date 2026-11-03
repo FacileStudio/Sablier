@@ -23,12 +23,18 @@ func newUUID() string {
 }
 
 // Space is a team workspace that projects and time entries belong to.
+//
+// RegistreSpaceID links the row to the space Registre owns. Registre is the only place a
+// shared space is created, renamed or has its members changed; a linked row is rewritten
+// from Registre's snapshot and never edited here. It is nullable so a space Registre has
+// not yet answered for stays unlinked rather than colliding on an empty string.
 type Space struct {
-	ID          string    `gorm:"column:id;primaryKey"`
-	Name        string    `gorm:"column:name;not null"`
-	Description string    `gorm:"column:description"`
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime"`
+	ID              string    `gorm:"column:id;primaryKey"`
+	Name            string    `gorm:"column:name;not null"`
+	Description     string    `gorm:"column:description"`
+	RegistreSpaceID *string   `gorm:"column:registre_space_id;uniqueIndex"`
+	CreatedAt       time.Time `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt       time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
 
 func (Space) TableName() string { return "spaces" }

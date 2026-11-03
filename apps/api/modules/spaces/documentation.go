@@ -3,8 +3,9 @@ package spaces
 import documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 
 var Documentation = documentation.Module{
-	Name:        "spaces",
-	Description: "Multi-tenant space management with role-based membership.",
+	Name: "spaces",
+	Description: "Read-only shared spaces and their members. Registre owns spaces: create, rename, " +
+		"invite, role changes, removal and leaving happen at https://sso.facile.studio/spaces.",
 	Routes: []documentation.Route{
 		{
 			Method:       "GET",
@@ -12,14 +13,6 @@ var Documentation = documentation.Module{
 			Summary:      "List spaces for current user",
 			Auth:         "bearer token required",
 			ResponseBody: ListSpacesResponse{},
-		},
-		{
-			Method:       "POST",
-			Path:         "/spaces",
-			Summary:      "Create space",
-			Auth:         "bearer token required",
-			RequestBody:  CreateSpaceRequest{},
-			ResponseBody: SpaceResponse{},
 		},
 		{
 			Method:       "GET",
@@ -30,31 +23,6 @@ var Documentation = documentation.Module{
 			ResponseBody: SpaceResponse{},
 		},
 		{
-			Method:       "PUT",
-			Path:         "/spaces/{spaceId}",
-			Summary:      "Update space",
-			Auth:         "bearer token required",
-			PathParams:   []documentation.Field{{Name: "spaceId", Type: "string", Description: "Space ID"}},
-			RequestBody:  UpdateSpaceRequest{},
-			ResponseBody: SpaceResponse{},
-		},
-		{
-			Method:       "DELETE",
-			Path:         "/spaces/{spaceId}",
-			Summary:      "Delete space",
-			Auth:         "bearer token required",
-			PathParams:   []documentation.Field{{Name: "spaceId", Type: "string", Description: "Space ID"}},
-			ResponseBody: DeleteSpaceResponse{},
-		},
-		{
-			Method:       "POST",
-			Path:         "/spaces/{spaceId}/leave",
-			Summary:      "Leave space",
-			Auth:         "bearer token required",
-			PathParams:   []documentation.Field{{Name: "spaceId", Type: "string", Description: "Space ID"}},
-			ResponseBody: LeaveSpaceResponse{},
-		},
-		{
 			Method:       "GET",
 			Path:         "/spaces/{spaceId}/members",
 			Summary:      "List space members",
@@ -63,36 +31,10 @@ var Documentation = documentation.Module{
 			ResponseBody: ListMembersResponse{},
 		},
 		{
-			Method:       "POST",
-			Path:         "/spaces/{spaceId}/members",
-			Summary:      "Add member to space",
-			Auth:         "bearer token required",
-			PathParams:   []documentation.Field{{Name: "spaceId", Type: "string", Description: "Space ID"}},
-			RequestBody:  AddMemberRequest{},
-			ResponseBody: MemberResponse{},
-		},
-		{
-			Method:  "PUT",
-			Path:    "/spaces/{spaceId}/members/{memberId}",
-			Summary: "Update member role",
-			Auth:    "bearer token required",
-			PathParams: []documentation.Field{
-				{Name: "spaceId", Type: "string", Description: "Space ID"},
-				{Name: "memberId", Type: "string", Description: "Member ID"},
-			},
-			RequestBody:  UpdateMemberRoleRequest{},
-			ResponseBody: MemberResponse{},
-		},
-		{
-			Method:  "DELETE",
-			Path:    "/spaces/{spaceId}/members/{memberId}",
-			Summary: "Remove member from space",
-			Auth:    "bearer token required",
-			PathParams: []documentation.Field{
-				{Name: "spaceId", Type: "string", Description: "Space ID"},
-				{Name: "memberId", Type: "string", Description: "Member ID"},
-			},
-			ResponseBody: RemoveMemberResponse{},
+			Method:  "POST",
+			Path:    "/registre/sync",
+			Summary: "Registre's nudge: schedules a pull of the space snapshot and answers 202",
+			Auth:    "none; the pull itself authenticates with the app's OIDC client credentials",
 		},
 	},
 }

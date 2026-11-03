@@ -2,37 +2,17 @@ package spaces
 
 import "time"
 
-// CreateSpaceRequest is the body for creating a space.
-type CreateSpaceRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-// UpdateSpaceRequest is the body for updating a space.
-type UpdateSpaceRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-// AddMemberRequest is the body for adding a member.
-type AddMemberRequest struct {
-	UserID int64  `json:"user_id"`
-	Role   string `json:"role"`
-}
-
-// UpdateMemberRoleRequest is the body for changing a member's role.
-type UpdateMemberRoleRequest struct {
-	Role string `json:"role"`
-}
-
 // SpaceResponse is the serialized shape of a space, including the caller's role.
+// RegistreSpaceID is empty until the space is linked to Registre, which is where the
+// client sends anyone who wants to change it.
 type SpaceResponse struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Role        string    `json:"role"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Description     string    `json:"description"`
+	Role            string    `json:"role"`
+	RegistreSpaceID string    `json:"registre_space_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // ListSpacesResponse wraps a space list.
@@ -57,19 +37,4 @@ type MemberResponse struct {
 // ListMembersResponse wraps a member list.
 type ListMembersResponse struct {
 	Members []MemberResponse `json:"members"`
-}
-
-// DeleteSpaceResponse reports whether a space was deleted.
-type DeleteSpaceResponse struct {
-	Deleted bool `json:"deleted"`
-}
-
-// LeaveSpaceResponse reports whether a user left a space.
-type LeaveSpaceResponse struct {
-	Left bool `json:"left"`
-}
-
-// RemoveMemberResponse reports whether a member was removed from a space.
-type RemoveMemberResponse struct {
-	Removed bool `json:"removed"`
 }

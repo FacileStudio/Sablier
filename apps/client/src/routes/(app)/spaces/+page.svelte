@@ -2,6 +2,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { backend, type Space } from '$lib/backend';
 	import { Badge, Button, Card, EmptyState, icons } from '@facile/muse';
+	import { registreSpaceUrl } from '$lib/registre';
 
 	const ctx = getContext<{ token: string }>('app');
 
@@ -39,16 +40,20 @@
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<h1 class="text-fc-xl font-semibold text-fc-fg">Espaces</h1>
-			<Button href="/spaces/new" icon={icons.plus}>Nouvel espace</Button>
+			<Button href={registreSpaceUrl()} target="_blank" rel="noopener noreferrer" icon={icons.settings}>
+				Gérer dans Registre
+			</Button>
 		</div>
 
 		{#if spaces.length === 0}
 			<EmptyState
 				icon={icons.usersGroup}
 				title="Aucun espace"
-				description="Créez un espace pour organiser les projets et sessions de votre équipe."
+				description="Les espaces se créent dans Registre et apparaissent ici, avec leurs membres."
 			>
-				<Button href="/spaces/new" size="lg" icon={icons.plus}>Créer un espace</Button>
+				<Button href={registreSpaceUrl()} target="_blank" rel="noopener noreferrer" size="lg" icon={icons.plus}>
+					Créer un espace dans Registre
+				</Button>
 			</EmptyState>
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

@@ -13,6 +13,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
+	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
@@ -50,7 +51,7 @@ func testRouter(t *testing.T) chi.Router {
 	if err != nil {
 		t.Fatalf("local.New: %v", err)
 	}
-	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService)
+	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService, &directory.Syncer{})
 }
 
 // The registry is hand-written, so it rots the moment someone registers a route
@@ -58,6 +59,15 @@ func testRouter(t *testing.T) chi.Router {
 func TestEveryRouteIsDocumented(t *testing.T) {
 	if missing := apiref.Undocumented(testRouter(t), referenceConfig(), "/files"); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
+	}
+}
+
+// Registre nudges anonymously, so the route must answer without a session or a CSRF token.
+func TestTheRegistreNudgeNeedsNoCredentials(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	testRouter(t).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, directory.SyncPath, nil))
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("POST %s = %d, want 202", directory.SyncPath, recorder.Code)
 	}
 }
 

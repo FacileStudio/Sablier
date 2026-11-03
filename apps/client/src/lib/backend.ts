@@ -127,6 +127,7 @@ export type Space = {
 	name: string;
 	description: string;
 	role: string;
+	registre_space_id: string;
 	created_at: string;
 	updated_at: string;
 };
@@ -459,24 +460,6 @@ export const backend = {
 	getSpace(token: string, id: string) {
 		return apiFetch<Space>(`/api/spaces/${id}`, {}, token);
 	},
-	createSpace(token: string, name: string, description: string) {
-		return apiFetch<Space>('/api/spaces', {
-			method: 'POST',
-			body: JSON.stringify({ name, description })
-		}, token);
-	},
-	updateSpace(token: string, id: string, name: string, description: string) {
-		return apiFetch<Space>(`/api/spaces/${id}`, {
-			method: 'PUT',
-			body: JSON.stringify({ name, description })
-		}, token);
-	},
-	deleteSpace(token: string, id: string) {
-		return apiFetch<{ deleted: boolean }>(`/api/spaces/${id}`, { method: 'DELETE' }, token);
-	},
-	leaveSpace(token: string, id: string) {
-		return apiFetch<{ left: boolean }>(`/api/spaces/${id}/leave`, { method: 'POST' }, token);
-	},
 	listSpaceMembers(token: string, spaceId: string) {
 		return apiFetch<{ members: SpaceMember[] }>(`/api/spaces/${spaceId}/members`, {}, token).then((result) => ({
 			members: result.members.map((member) => ({
@@ -485,27 +468,12 @@ export const backend = {
 			}))
 		}));
 	},
-	addSpaceMember(token: string, spaceId: string, userId: number, role: string) {
-		return apiFetch<SpaceMember>(`/api/spaces/${spaceId}/members`, {
-			method: 'POST',
-			body: JSON.stringify({ user_id: userId, role })
-		}, token);
-	},
-	updateSpaceMemberRole(token: string, spaceId: string, memberId: string, role: string) {
-		return apiFetch<SpaceMember>(`/api/spaces/${spaceId}/members/${memberId}`, {
-			method: 'PUT',
-			body: JSON.stringify({ role })
-		}, token);
-	},
 	listAgents(token: string) {
 		return apiFetch<Agent[]>('/api/agents', {}, token);
 	},
 	agentPairings(token: string, from: Date, to: Date) {
 		const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
 		return apiFetch<AgentPairing[]>(`/api/agents/paired?${query}`, {}, token);
-	},
-	removeSpaceMember(token: string, spaceId: string, memberId: string) {
-		return apiFetch<{ removed: boolean }>(`/api/spaces/${spaceId}/members/${memberId}`, { method: 'DELETE' }, token);
 	},
 
 	listDrafts(token: string, from: Date, to: Date) {

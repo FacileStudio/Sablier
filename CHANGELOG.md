@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0] - 2026-11-03
+
+### Added
+- Shared spaces come from Registre. At boot Sablier imports its spaces into Registre once, retrying until Registre answers, then mirrors Registre's snapshot at boot, every 5 minutes and within seconds of a nudge. Members Registre adds are provisioned before their first sign-in, with their Registre name and picture. Agent users stay Sablier's own: they are never imported and never removed by a sync.
+- `POST /api/registre/sync`, Registre's anonymous nudge. It answers `202` and is mounted only when `OIDC_ISSUER` is set.
+- `spaces.registre_space_id`, nullable and unique, links a space to Registre. `Space` responses carry it.
+
+### Changed
+- Space pages are read-only and link to `https://sso.facile.studio/spaces` to create a space, invite, change a role, remove a member or leave.
+
+### Removed
+- `POST /api/spaces`, `PUT` and `DELETE /api/spaces/{id}`, `POST /api/spaces/{id}/leave`, `POST /api/spaces/{id}/members`, `PUT` and `DELETE /api/spaces/{id}/members/{memberId}`, and the new-space, space settings and member management pages. Registre has no space deletion yet, so neither does Sablier.
+
 ## [1.4.0] - 2026-11-03
 
 ### Added

@@ -1,27 +1,16 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { backend, type Space, type SpaceMember } from '$lib/backend';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
-	import {
-		Badge,
-		Button,
-		Card,
-		ConfirmModal,
-		EmptyState,
-		Table,
-		icons,
-		toast
-	} from '@facile/muse';
+	import { registreSpaceUrl } from '$lib/registre';
+	import { Badge, Button, Card, EmptyState, Table, icons } from '@facile/muse';
 
 	const ctx = getContext<{ token: string }>('app');
 
 	let space = $state<Space | null>(null);
 	let members = $state<SpaceMember[]>([]);
-	let leaving = $state(false);
-	let confirmLeave = $state(false);
 
 	const spaceId = $derived(page.params.id as string);
 
@@ -43,19 +32,6 @@
 		});
 	}
 
-	async function leave() {
-		leaving = true;
-		try {
-			await backend.leaveSpace(ctx.token, spaceId);
-			toast.success('Espace quitté');
-			goto('/spaces');
-		} catch (e) {
-			toast.danger(e instanceof Error ? e.message : 'Impossible de quitter l\'espace');
-		} finally {
-			leaving = false;
-		}
-	}
-
 	onMount(async () => {
 		const [s, m] = await Promise.all([
 			backend.getSpace(ctx.token, spaceId),
@@ -75,24 +51,18 @@
 		<Button variant="ghost" size="sm" href="/spaces" icon={icons.chevronLeft} class="pl-2">
 			Espaces
 		</Button>
-		<div class="flex flex-wrap items-center gap-2">
-			{#if space && (space.role === 'owner' || space.role === 'admin')}
-				<Button variant="outline" size="sm" href="/spaces/{spaceId}/settings" icon={icons.settings}>
-					Paramètres
-				</Button>
-			{/if}
-			{#if space && space.role !== 'owner'}
-				<Button
-					variant="ghost-danger"
-					size="sm"
-					icon={icons.logout}
-					disabled={leaving}
-					onclick={() => (confirmLeave = true)}
-				>
-					{leaving ? 'Départ...' : 'Quitter'}
-				</Button>
-			{/if}
-		</div>
+		{#if space}
+			<Button
+				variant="outline"
+				size="sm"
+				href={registreSpaceUrl(space.registre_space_id)}
+				target="_blank"
+				rel="noopener noreferrer"
+				icon={icons.settings}
+			>
+				Gérer dans Registre
+			</Button>
+		{/if}
 	</div>
 
 	{#if space}
@@ -121,9 +91,7 @@
 		<section class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
 				<h2 class="text-fc-lg font-semibold text-fc-fg">Membres ({members.length})</h2>
-				{#if space.role === 'owner' || space.role === 'admin'}
-					<Button variant="outline" size="sm" href="/spaces/{spaceId}/members">Gérer</Button>
-				{/if}
+				<p class="text-fc-xs text-fc-fg-muted">Invitations, rôles et départs se gèrent dans Registre.</p>
 			</div>
 			{#if members.length === 0}
 				<EmptyState icon={icons.usersGroup} title="Aucun membre." />
@@ -171,13 +139,3 @@
 		</section>
 	{/if}
 </div>
-
-<ConfirmModal
-	bind:open={confirmLeave}
-	tone="danger"
-	title="Quitter cet espace ?"
-	description="Êtes-vous sûr de vouloir quitter cet espace ? Vous perdez l'accès à ses projets et à ses entrées de temps ; vos entrées existantes ne sont pas supprimées."
-	confirmLabel="Quitter"
-	cancelLabel="Annuler"
-	onConfirm={leave}
-/>

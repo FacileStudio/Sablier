@@ -95,7 +95,8 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `GET /files/*` -- Static file serving (legacy uploaded avatars)
 - Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/config`, `/api/auth/oidc/*`
 - Resources: `/api/projects`, `/api/time-entries`, `/api/users`, `/api/settings`
-- Spaces: `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`, `/api/spaces/{id}/leave`
+- Spaces (read-only, Registre owns them): `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`
+- `POST /api/registre/sync` -- Registre's anonymous nudge, answers 202; mounted only with OIDC
 
 ## Conventions
 
@@ -107,3 +108,4 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - **No linter or formatter configured** in the repo currently.
 - **No test setup on the client side** -- only the API has `go test`.
 - Profile pictures come from Registre: `oidc_picture_url` holds `<issuer>/avatars/<sub>`, backfilled at boot from `porte_identities`. Sablier has no upload; the profile page links to `https://sso.facile.studio/account`. Old uploads in `STORAGE_DIR/avatars/` still render for accounts with no Registre identity.
+- Shared spaces are Registre's (`modules/spaces/registre_*.go`, `porte/directory`). Boot imports unlinked spaces once, retrying, and only then starts the snapshot sync. Apply never touches members without an identity under `OIDC_ISSUER`, unlinked spaces, or linked spaces missing from the snapshot. No write route for spaces exists here; the UI links to `https://sso.facile.studio/spaces`.

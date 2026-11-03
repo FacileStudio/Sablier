@@ -59,148 +59,6 @@ func TestGetRefusesANonMember(t *testing.T) {
 	assertStatus(t, err, http.StatusForbidden, "not a member of this space")
 }
 
-func TestUpdateRequiresAdmin(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-update")
-	ctx := context.Background()
-	req := &UpdateSpaceRequest{Name: "Renamed"}
-
-	_, err := service.controller.update(ctx, spaceID, "3", req)
-	assertStatus(t, err, http.StatusForbidden, "only owners and admins can update a space")
-
-	if _, err := service.controller.update(ctx, spaceID, "2", req); err != nil {
-		t.Fatalf("admin update: %v", err)
-	}
-}
-
-func TestDeleteRequiresOwner(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-delete")
-
-	err := service.controller.delete(context.Background(), spaceID, "2")
-	assertStatus(t, err, http.StatusForbidden, "only owners can delete a space")
-}
-
-func TestAddMemberRefusesAnAdminMintingAnOwner(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-add")
-	ctx := context.Background()
-
-	_, err := service.controller.addMember(ctx, spaceID, "2", &AddMemberRequest{UserID: 4, Role: schemas.RoleOwner})
-	assertStatus(t, err, http.StatusForbidden, "only owners can assign the owner role")
-
-	user := schemas.User{ID: 4, Email: "four@example.test"}
-	if err := service.orm.Create(&user).Error; err != nil {
-		t.Fatalf("create user: %v", err)
-	}
-	_, err = service.controller.addMember(ctx, spaceID, "2", &AddMemberRequest{UserID: 4, Role: schemas.RoleAdmin})
-	if err != nil {
-		t.Fatalf("admin adding a peer admin: %v", err)
-	}
-}
-
-func TestLeaveRefusesTheSoleOwnerAndAllowsAPeer(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-leave")
-	ctx := context.Background()
-
-	err := service.controller.leave(ctx, spaceID, "1")
-	assertStatus(t, err, http.StatusPreconditionFailed,
-		"cannot leave space as the only owner; transfer ownership or delete the space")
-
-	if err := service.controller.leave(ctx, spaceID, "3"); err != nil {
-		t.Fatalf("member leaving: %v", err)
-	}
-
-	seedMember(t, service.orm, spaceID, 5, schemas.RoleOwner)
-	if err := service.controller.leave(ctx, spaceID, "1"); err != nil {
-		t.Fatalf("owner with a peer leaving: %v", err)
-	}
-}
-
-func ownerMemberID(t *testing.T, service *Service, spaceID string, userID int64) string {
-	t.Helper()
-
-	var member schemas.SpaceMember
-	err := service.orm.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error
-	if err != nil {
-		t.Fatalf("read member row: %v", err)
-	}
-	return member.ID
-}
-
-func countOwners(t *testing.T, service *Service, spaceID string) int64 {
-	t.Helper()
-
-	var count int64
-	err := service.orm.Model(&schemas.SpaceMember{}).
-		Where("space_id = ? AND role = ?", spaceID, schemas.RoleOwner).
-		Count(&count).Error
-	if err != nil {
-		t.Fatalf("count owners: %v", err)
-	}
-	return count
-}
-
-func TestRemoveMemberRefusesTheSoleOwner(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-remove-owner")
-	owner := ownerMemberID(t, service, spaceID, 1)
-
-	err := service.controller.removeMember(context.Background(), spaceID, "1", owner)
-	assertStatus(t, err, http.StatusPreconditionFailed,
-		"cannot remove the last owner; promote another owner first")
-
-	if got := countOwners(t, service, spaceID); got != 1 {
-		t.Fatalf("owners after the refusal = %d, want 1", got)
-	}
-}
-
-func TestRemoveMemberRefusesAnAdminRemovingAnOwner(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-remove-outranks")
-	seedMember(t, service.orm, spaceID, 5, schemas.RoleOwner)
-	owner := ownerMemberID(t, service, spaceID, 1)
-
-	err := service.controller.removeMember(context.Background(), spaceID, "2", owner)
-	assertStatus(t, err, http.StatusForbidden, "cannot remove a member who outranks you")
-
-	if err := service.controller.removeMember(context.Background(), spaceID, "1", owner); err != nil {
-		t.Fatalf("owner removing a peer owner: %v", err)
-	}
-}
-
-func TestRemoveMemberAllowsAnAdminRemovingAPeer(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-remove-peer")
-	peer := ownerMemberID(t, service, spaceID, 3)
-
-	if err := service.controller.removeMember(context.Background(), spaceID, "2", peer); err != nil {
-		t.Fatalf("admin removing a member: %v", err)
-	}
-}
-
-func TestUpdateMemberRoleRefusesDemotingTheSoleOwner(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-demote-owner")
-	owner := ownerMemberID(t, service, spaceID, 1)
-	req := &UpdateMemberRoleRequest{Role: schemas.RoleMember}
-
-	_, err := service.controller.updateMemberRole(context.Background(), spaceID, "1", owner, req)
-	assertStatus(t, err, http.StatusPreconditionFailed,
-		"cannot remove the last owner; promote another owner first")
-
-	if got := countOwners(t, service, spaceID); got != 1 {
-		t.Fatalf("owners after the refusal = %d, want 1", got)
-	}
-}
-
-func TestUpdateMemberRoleAllowsDemotingAnOwnerWithAPeer(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-demote-peer")
-	seedMember(t, service.orm, spaceID, 5, schemas.RoleOwner)
-	owner := ownerMemberID(t, service, spaceID, 1)
-
-	req := &UpdateMemberRoleRequest{Role: schemas.RoleAdmin}
-	if _, err := service.controller.updateMemberRole(context.Background(), spaceID, "5", owner, req); err != nil {
-		t.Fatalf("owner demoting a peer owner: %v", err)
-	}
-	if got := countOwners(t, service, spaceID); got != 1 {
-		t.Fatalf("owners after the demotion = %d, want 1", got)
-	}
-}
-
 func TestListDropsAMembershipTheLadderDoesNotRank(t *testing.T) {
 	service, spaceID := newTestSpace(t, "guard-list")
 	other := schemas.Space{Name: "Corrupt"}
@@ -218,17 +76,6 @@ func TestListDropsAMembershipTheLadderDoesNotRank(t *testing.T) {
 	}
 }
 
-func TestLeaveRefusesANonMember(t *testing.T) {
-	service, spaceID := newTestSpace(t, "guard-leave-stranger")
-
-	err := service.controller.leave(context.Background(), spaceID, "99")
-	assertStatus(t, err, http.StatusForbidden, "not a member of this space")
-}
-
-// The row lock leaveSpace takes is Postgres-only SQL, so SQLite proves nothing
-// about it: a malformed locking clause would surface as a 500 in production and
-// nowhere else.
-//
 // Every package in this module shares one SABLIER_TEST_DATABASE_URL and `go
 // test ./...` runs them at the same time, so this one owns a schema of its own
 // rather than dropping `public` out from under a neighbour mid-run.
@@ -288,22 +135,4 @@ func openPostgres(t *testing.T) *gorm.DB {
 		t.Fatalf("open the test database: %v", err)
 	}
 	return orm
-}
-
-func TestLeaveLocksTheMemberRowsOnPostgres(t *testing.T) {
-	orm := openPostgres(t)
-	space := schemas.Space{Name: "Shared"}
-	if err := orm.Create(&space).Error; err != nil {
-		t.Fatalf("create space: %v", err)
-	}
-	seedMember(t, orm, space.ID, 1, schemas.RoleOwner)
-	seedMember(t, orm, space.ID, 2, schemas.RoleOwner)
-	service := NewService(orm)
-
-	if err := service.controller.leave(context.Background(), space.ID, "2"); err != nil {
-		t.Fatalf("owner with a peer leaving: %v", err)
-	}
-	err := service.controller.leave(context.Background(), space.ID, "1")
-	assertStatus(t, err, http.StatusPreconditionFailed,
-		"cannot leave space as the only owner; transfer ownership or delete the space")
 }

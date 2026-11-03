@@ -78,24 +78,40 @@ upload endpoint.
 
 ## Spaces
 
-All routes require authentication. Space ids are UUIDs.
+Registre owns shared spaces. Create, rename, invite, role changes, removal and leaving happen
+at `https://sso.facile.studio/spaces`; Sablier mirrors the result and offers no write route.
+All routes below require authentication. Space ids are UUIDs.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | GET | `/api/spaces` | — | `{"spaces":[Space]}` — only spaces the caller belongs to |
-| POST | `/api/spaces` | `{"name","description"}` | 201 `Space` |
 | GET | `/api/spaces/{spaceId}` | — | `Space` |
-| PUT | `/api/spaces/{spaceId}` | `{"name","description"}` | `Space` |
-| DELETE | `/api/spaces/{spaceId}` | — | `{"deleted":true}` |
-| POST | `/api/spaces/{spaceId}/leave` | — | `{"left":true}` |
 | GET | `/api/spaces/{spaceId}/members` | — | `{"members":[Member]}` |
-| POST | `/api/spaces/{spaceId}/members` | `{"user_id","role"}` | 201 `Member` |
-| PUT | `/api/spaces/{spaceId}/members/{memberId}` | `{"role"}` | `Member` |
-| DELETE | `/api/spaces/{spaceId}/members/{memberId}` | — | `{"removed":true}` |
 
 `Space` carries the caller's own `role` alongside `id`, `name`, `description`,
-`created_at`, and `updated_at`. `Member` is `{id, space_id, user_id, user_email,
-user_name, user_color, user_avatar_url, role, joined_at}`. Roles are `owner`, `admin`, and `member`.
+`registre_space_id` (empty until linked), `created_at`, and `updated_at`. `Member` is
+`{id, space_id, user_id, user_email, user_name, user_color, user_avatar_url, role, joined_at}`.
+Roles are `owner`, `admin`, and `member`.
+
+### Registre sync
+
+`POST /api/registre/sync` is Registre's nudge. It takes no body and no credentials and answers
+`202`; it only makes the next pull happen within seconds. Mounted only when `OIDC_ISSUER` is set.
+
+At boot Sablier imports its unlinked spaces into Registre once (`POST <issuer>/api/directory/import`,
+members by subject under the issuer, else email), retrying from 10 s up to every 5 min until
+Registre answers. Only then does it pull `GET <issuer>/api/directory/snapshot` at boot, every
+5 minutes and after each nudge, with the OIDC client id and secret as HTTP Basic. Applying a
+snapshot:
+
+- links a Registre space to the row with its `registre_space_id`, else to the oldest unlinked
+  space with the same name (case-insensitive), else creates it; the name is Registre's;
+- resolves each member by porte identity, then by email (adding the identity), else
+  pre-provisions a user with Registre's name and picture plus the identity, so the first
+  sign-in lands on it;
+- sets roles (`owner`, `admin`, anything else `member`) and removes members of linked spaces
+  who hold a Registre identity but are absent from the snapshot. Local password accounts, agent users,
+  unlinked spaces and linked spaces missing from the snapshot are left alone.
 
 ## Projects and tasks
 

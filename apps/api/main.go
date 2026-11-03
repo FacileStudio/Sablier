@@ -29,6 +29,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/modules/users"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
@@ -223,7 +224,7 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, passwords *local.Kit, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service) chi.Router {
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, passwords *local.Kit, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer) chi.Router {
 	authService := auth.NewService(db, sessions, passwords, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
@@ -258,6 +259,9 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		users.RegisterRoutes(api, userService, authService)
 		settings.RegisterRoutes(api, settingsService, authService)
 		spaces.RegisterRoutes(api, spaceService, authService)
+		if syncer != nil {
+			spaces.RegisterSync(api, syncer)
+		}
 		antenne.RegisterRoutes(api, antenneService, authService)
 		notifications.RegisterRoutes(api, notificationsService, authService)
 		agents.RegisterRoutes(api, agentService, authService)
@@ -273,12 +277,12 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	return router
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service) (*http.Server, error) {
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer) (*http.Server, error) {
 	sessions, passwords, kit, err := buildAuth(context.Background(), db, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
-	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService)
+	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService, syncer)
 
 	antenneService.AutoConnect(context.Background())
 
@@ -293,6 +297,26 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 	}
 
 	return server, nil
+}
+
+// newDirectory builds the Registre space sync when OIDC is configured, using the app's own
+// client credentials, and returns nils otherwise: without Registre there is nothing to sync
+// and no nudge route to mount.
+func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*spaces.Registre, *directory.Syncer) {
+	if appEnv.OIDC == nil {
+		return nil, nil
+	}
+	registre := spaces.NewRegistre(db, appEnv.OIDC.Issuer, appLogger)
+	syncer := &directory.Syncer{
+		Client: directory.Client{
+			Issuer:       appEnv.OIDC.Issuer,
+			ClientID:     appEnv.OIDC.ClientID,
+			ClientSecret: appEnv.OIDC.ClientSecret,
+		},
+		Apply:  registre.Apply,
+		Logger: appLogger,
+	}
+	return registre, syncer
 }
 
 // Stamped at Docker build time with git describe (leading v stripped),
@@ -364,7 +388,8 @@ func run() error {
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
 	antenneService := antenne.NewService(db, appLogger)
 
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService)
+	registre, syncer := newDirectory(db, &appEnv, appLogger)
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err
@@ -387,6 +412,10 @@ func run() error {
 	appLogger.Info("notification worker started")
 
 	go antenneService.RunOutboxWorker(shutdownSignal)
+
+	if registre != nil {
+		go registre.Run(shutdownSignal, syncer)
+	}
 
 	appLogger.Info("antenne: outbox worker started")
 
