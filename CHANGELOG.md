@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.0] - 2026-11-03
+
+### Added
+- The sidebar user card opens a menu: Settings, Download the apps (web only) and Sign out. The settings cog is gone. Uses `@facile/muse` v0.9.0.
+- The client runs inside the desktop app: it signs in with Facile through the system browser and a `studio.facile.sablier://auth` link, like Android, and keeps the token in `~/.sablier.yml`.
+
+### Changed
+- CORS also allows `tauri://localhost` and `http://tauri.localhost` while the mobile sign-in is on.
+
 ## [1.8.1] - 2026-11-03
 
 ### Changed
