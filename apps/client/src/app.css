@@ -1,3 +1,11 @@
 @import 'tailwindcss';
 @import '@facile/muse/styles';
 @source '../node_modules/@facile/muse/src';
+
+:root[data-desktop='macos'] {
+	--desktop-titlebar: 40px;
+}
+
+:root[data-desktop='macos'] .desktop-inset {
+	padding-top: var(--desktop-titlebar);
+}
