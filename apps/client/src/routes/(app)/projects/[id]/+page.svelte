@@ -6,6 +6,7 @@
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
+	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import {
@@ -690,6 +691,7 @@
 													color={userColor(entry)}
 												/>
 												<span>{getEntryUserDisplayName(entry)}</span>
+												{#if entry.user_kind === 'agent'}<AgentBadge />{/if}
 											</div>
 										</td>
 										<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
