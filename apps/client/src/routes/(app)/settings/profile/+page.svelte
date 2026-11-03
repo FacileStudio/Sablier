@@ -18,6 +18,7 @@
 	import { backend, type UserProfile } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
+	import AutoConfirmSetting from '$lib/components/AutoConfirmSetting.svelte';
 
 	const ctx = getContext<{
 		token: string;
@@ -199,6 +200,8 @@
 		</SettingsRow>
 	{/if}
 </SettingsSection>
+
+<AutoConfirmSetting token={ctx.token} />
 
 <SettingsSection title="Session" description="This browser only.">
 	<SettingsRow label="Log out" description="Ends this session and returns you to the sign-in page.">

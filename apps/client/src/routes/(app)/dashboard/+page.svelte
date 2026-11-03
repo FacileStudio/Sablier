@@ -5,6 +5,7 @@
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
+	import SuggestedDrafts from '$lib/components/SuggestedDrafts.svelte';
 	import {
 		BarChart,
 		Button,
@@ -347,6 +348,8 @@
 			<StatCard label="Projects" value={projects.length} />
 		</div>
 	</section>
+
+	<SuggestedDrafts token={ctx.token} {projects} />
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">
