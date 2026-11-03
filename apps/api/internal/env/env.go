@@ -3,6 +3,7 @@ package env
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/FacileStudio/porte"
@@ -40,7 +41,20 @@ type OIDCConfig struct {
 	// sablier.write, anything else needs sablier.write. It requires
 	// MachineAudience.
 	ScopePrefix string
+
+	// MobileRedirect is where porte's ?flow=mobile login hands the one-time
+	// code back to the Android app: its custom scheme, never a value taken
+	// from the request.
+	MobileRedirect string
 }
+
+// NativeOrigin is the origin the Capacitor Android app serves its pages from.
+// It is always allowed by CORS while the mobile login is on, so a deploy that
+// overrides CORS_ALLOWED_ORIGINS cannot lock the app out.
+const NativeOrigin = "https://localhost"
+
+// DefaultMobileRedirect is the deep link the Sablier Android app registers.
+const DefaultMobileRedirect = "studio.facile.sablier://auth"
 
 // Porte returns the shared auth kit's configuration. The environment variable
 // names are the suite convention and do not change; this only reshapes what
@@ -64,6 +78,7 @@ func (c Config) Porte() porte.Config {
 
 		MachineAudience: c.OIDC.MachineAudience,
 		ScopePrefix:     c.OIDC.ScopePrefix,
+		MobileRedirect:  c.OIDC.MobileRedirect,
 	}
 }
 
@@ -161,10 +176,22 @@ func Load() (Config, error) {
 
 			MachineAudience: troncenv.String("OIDC_MACHINE_AUDIENCE", ""),
 			ScopePrefix:     troncenv.String("OIDC_SCOPE_PREFIX", ""),
+			MobileRedirect:  troncenv.String("OIDC_MOBILE_REDIRECT", DefaultMobileRedirect),
 		}
+		env.CORSAllowedOrigins = withNativeOrigin(env.CORSAllowedOrigins, env.OIDC.MobileRedirect)
 	}
 
 	return env, nil
+}
+
+// withNativeOrigin adds the Android app's origin to the CORS list when the
+// mobile login is on. It runs after OIDC_SUCCESS_URL has defaulted to the
+// first origin, so the app origin never becomes the web success page.
+func withNativeOrigin(origins []string, mobileRedirect string) []string {
+	if mobileRedirect == "" || slices.Contains(origins, NativeOrigin) {
+		return origins
+	}
+	return append(origins, NativeOrigin)
 }
 
 func validateLogLevel(level string) error {

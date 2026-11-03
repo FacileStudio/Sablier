@@ -1,6 +1,7 @@
 import { normalizeUserColor } from '$lib/user-colors';
+import { apiBase, clearToken, getToken, isNative } from '$lib/platform';
 
-const backendBaseUrl = '';
+const backendBaseUrl = apiBase();
 
 export type AuthResponse = {
 	user_id: string;
@@ -200,14 +201,25 @@ async function requestError(response: Response) {
 	throw new ApiError(response.status, payload?.error?.message || `Request failed with status ${response.status}`);
 }
 
+async function nativeRequest(options: RequestInit, token?: string): Promise<RequestInit> {
+	const headers = new Headers(options.headers);
+	if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+	const bearer = token || (await getToken());
+	if (bearer) headers.set('Authorization', `Bearer ${bearer}`);
+	return { ...options, headers };
+}
+
 async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
 	const method = options.method ?? 'GET';
-	const headers = buildHeaders(options.headers, method, token, Boolean(options.body));
-	const response = await fetch(`${backendBaseUrl}${path}`, {
-		...options,
-		headers,
-		credentials: 'same-origin'
-	});
+	const init: RequestInit = isNative()
+		? await nativeRequest(options, token)
+		: {
+				...options,
+				headers: buildHeaders(options.headers, method, token, Boolean(options.body)),
+				credentials: 'same-origin'
+			};
+	const response = await fetch(`${backendBaseUrl}${path}`, init);
+	if (response.status === 401 && isNative()) await clearToken();
 	if (!response.ok) {
 		throw await requestError(response);
 	}
@@ -254,8 +266,12 @@ export const backend = {
 			body: JSON.stringify({ email, password })
 		});
 	},
-	logout(token?: string) {
-		return apiFetch<{ logged_out: boolean }>('/api/auth/logout', { method: 'POST' }, token);
+	async logout(token?: string) {
+		try {
+			return await apiFetch<{ logged_out: boolean }>('/api/auth/logout', { method: 'POST' }, token);
+		} finally {
+			await clearToken();
+		}
 	},
 	me(token?: string) {
 		return apiFetch<MeResponse>('/api/users/me', {}, token).then((result) => ({

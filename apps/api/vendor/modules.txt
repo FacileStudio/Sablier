@@ -7,7 +7,7 @@ github.com/FacileStudio/antenne-client/go
 # github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee
 ## explicit; go 1.24.0
 github.com/FacileStudio/enveloppe/go
-# github.com/FacileStudio/porte v0.7.0
+# github.com/FacileStudio/porte v0.8.0
 ## explicit; go 1.26
 github.com/FacileStudio/porte
 github.com/FacileStudio/porte/internal/handoff
