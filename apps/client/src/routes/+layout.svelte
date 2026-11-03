@@ -3,10 +3,13 @@
 	import { browser } from '$app/environment';
 	import { Toaster } from '@facile/muse';
 	import { theme } from '$lib/theme.svelte';
+	import { registerDeepLinks } from '$lib/native';
+	import { isNative } from '$lib/platform';
 
 	if (browser) {
 		theme.restore();
 		void import('iconify-icon');
+		if (isNative()) registerDeepLinks();
 	}
 
 	let { children } = $props();

@@ -4,6 +4,8 @@
 	import { page } from '$app/stores';
 	import { backend } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
+	import { startNativeLogin } from '$lib/native';
+	import { isNative } from '$lib/platform';
 
 	const inputClass =
 		'flex h-10 w-full rounded-fc-md border border-fc-border bg-fc-page px-3 py-2 text-fc-sm text-fc-fg placeholder:text-fc-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring disabled:cursor-not-allowed disabled:opacity-50';
@@ -18,6 +20,16 @@
 	let ssoOnly = $state(false);
 	let oidcEnabled = $state(false);
 	let configLoaded = $state(false);
+	const native = isNative();
+
+	async function signInNative() {
+		message = '';
+		try {
+			await startNativeLogin();
+		} catch (err) {
+			message = err instanceof Error ? err.message : 'Could not open the sign-in page.';
+		}
+	}
 
 	onMount(async () => {
 		if (localStorage.getItem(TOKEN_KEY)) {
@@ -118,18 +130,23 @@
 					</p>
 				{/if}
 
-				{#if oidcEnabled}
+				{#if oidcEnabled && native}
+					<button type="button" onclick={signInNative} class={primaryButtonClass}>
+						<iconify-icon icon="solar:key-minimalistic-square-bold-duotone" width="18" class="mr-2"></iconify-icon>
+						Sign in with Facile
+					</button>
+				{:else if oidcEnabled}
 					<a href="{backend.baseUrl}/api/auth/oidc" data-sveltekit-reload class={primaryButtonClass}>
 						<iconify-icon icon="solar:key-minimalistic-square-bold-duotone" width="18" class="mr-2"></iconify-icon>
 						Sign in with Facile
 					</a>
-					{#if !ssoOnly}
-						<div class="my-6 flex items-center gap-3">
-							<span class="h-px flex-1 bg-fc-border"></span>
-							<span class="text-fc-xs uppercase tracking-wide text-fc-fg-muted">or</span>
-							<span class="h-px flex-1 bg-fc-border"></span>
-						</div>
-					{/if}
+				{/if}
+				{#if oidcEnabled && !ssoOnly}
+					<div class="my-6 flex items-center gap-3">
+						<span class="h-px flex-1 bg-fc-border"></span>
+						<span class="text-fc-xs uppercase tracking-wide text-fc-fg-muted">or</span>
+						<span class="h-px flex-1 bg-fc-border"></span>
+					</div>
 				{/if}
 
 				{#if !ssoOnly}

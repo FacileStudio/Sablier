@@ -1,0 +1,42 @@
+import { describe, expect, it } from 'vitest';
+import { base64Url, parseDeepLink, pkceChallenge, randomState, randomString } from './platform';
+
+describe('pkce', () => {
+	it('matches the RFC 7636 appendix B vector', async () => {
+		const challenge = await pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+		expect(challenge).toBe('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+	});
+
+	it('encodes base64url without padding', () => {
+		expect(base64Url(new Uint8Array([251, 255, 254]))).toBe('-__-');
+		expect(base64Url(new Uint8Array([1]))).toBe('AQ');
+	});
+
+	it('builds verifiers of unreserved characters', () => {
+		expect(randomString(64)).toMatch(/^[A-Za-z0-9\-._~]{64}$/);
+	});
+});
+
+describe('randomState', () => {
+	it('only uses characters porte keeps in the mobile state', () => {
+		for (let i = 0; i < 200; i++) expect(randomState()).toMatch(/^[A-Za-z0-9_-]{32}$/);
+	});
+});
+
+describe('parseDeepLink', () => {
+	it('parses the auth callback', () => {
+		expect(parseDeepLink('studio.facile.sablier://auth?code=abc&state=xyz')).toEqual({
+			kind: 'auth',
+			code: 'abc',
+			state: 'xyz',
+			error: ''
+		});
+	});
+
+	it('rejects foreign schemes and unknown hosts', () => {
+		expect(parseDeepLink('https://auth?code=1')).toBeNull();
+		expect(parseDeepLink('studio.facile.courrier://auth?code=1')).toBeNull();
+		expect(parseDeepLink('studio.facile.sablier://other')).toBeNull();
+		expect(parseDeepLink('nonsense')).toBeNull();
+	});
+});
