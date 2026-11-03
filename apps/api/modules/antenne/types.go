@@ -22,15 +22,17 @@ type PoolSettingsResponse struct {
 	FromEnv      bool         `json:"from_env,omitempty"`
 }
 
-// SyncResult reports how many projects and tasks were synced.
+// SyncResult reports how many projects, tasks and time entries a reconcile queued.
 type SyncResult struct {
-	ProjectsSynced int `json:"projects_synced"`
-	TasksSynced    int `json:"tasks_synced"`
+	ProjectsSynced    int `json:"projects_synced"`
+	TasksSynced       int `json:"tasks_synced"`
+	TimeEntriesSynced int `json:"time_entries_synced"`
 }
 
 var AllPoolEvents = []string{
 	"time_entry.created",
 	"time_entry.updated",
+	"time_entry.deleted",
 	"agent_session.created",
 	"agent_session.updated",
 	"project.created",

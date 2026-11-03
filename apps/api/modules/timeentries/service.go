@@ -86,12 +86,13 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 			if service.poolService != nil {
 				var project schemas.Project
 				if err := service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project).Error; err == nil {
-					go service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
+					service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
 				}
 			}
 		}
 	}
 
+	service.emitEntry(enveloppe.ActionCreated, record)
 	service.fireWebhook(ctx, uid, "timer_started", record)
 	return record, task.Name, nil
 }
@@ -150,6 +151,7 @@ func (service *Service) resumeTimer(ctx context.Context, userID string) (*schema
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to resume timer", err)
 	}
+	service.emitEntry(enveloppe.ActionUpdated, &record)
 	taskName, err := service.taskName(ctx, record.TaskID)
 	if err != nil {
 		return nil, "", err
@@ -181,6 +183,7 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to stop timer", err)
 	}
+	service.emitEntry(enveloppe.ActionUpdated, &record)
 	service.fireWebhook(ctx, uid, "timer_stopped", &record)
 	taskName, err := service.taskName(ctx, record.TaskID)
 	if err != nil {
@@ -267,6 +270,7 @@ func (service *Service) createEntry(ctx context.Context, userID string, projectI
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, "", errors.Internal("failed to create entry", err)
 	}
+	service.emitEntry(enveloppe.ActionCreated, record)
 	return record, task.Name, nil
 }
 
@@ -300,6 +304,7 @@ func (service *Service) updateEntry(ctx context.Context, userID string, entryID 
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to update entry", err)
 	}
+	service.emitEntry(enveloppe.ActionUpdated, &record)
 	return &record, task.Name, nil
 }
 
@@ -308,13 +313,18 @@ func (service *Service) deleteEntry(ctx context.Context, userID string, entryID 
 	if err != nil {
 		return errors.Invalid("invalid user id")
 	}
-	result := service.orm.WithContext(ctx).Where("id = ? AND user_id = ?", entryID, uid).Delete(&schemas.TimeEntry{})
-	if result.Error != nil {
-		return errors.Internal("failed to delete entry", result.Error)
-	}
-	if result.RowsAffected == 0 {
+	var record schemas.TimeEntry
+	err = service.orm.WithContext(ctx).Where("id = ? AND user_id = ?", entryID, uid).First(&record).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.NotFound("time entry not found")
 	}
+	if err != nil {
+		return errors.Internal("failed to get entry", err)
+	}
+	if err := service.orm.WithContext(ctx).Delete(&record).Error; err != nil {
+		return errors.Internal("failed to delete entry", err)
+	}
+	service.emitEntry(enveloppe.ActionDeleted, &record)
 	return nil
 }
 
@@ -359,13 +369,11 @@ func (service *Service) fireWebhook(ctx context.Context, userID int64, event str
 			Data:  data,
 		})
 	}
+}
 
+func (service *Service) emitEntry(action enveloppe.Action, entry *schemas.TimeEntry) {
 	if service.poolService != nil {
-		action := enveloppe.ActionCreated
-		if event == "timer_stopped" {
-			action = enveloppe.ActionUpdated
-		}
-		go service.poolService.EmitTimeEntryEvent(action, entry)
+		service.poolService.EmitTimeEntryEvent(action, entry)
 	}
 }
 

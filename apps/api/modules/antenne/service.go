@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	stderrors "errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -17,8 +16,6 @@ import (
 	antenneclient "github.com/FacileStudio/antenne-client/go"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-
-	enveloppe "github.com/FacileStudio/enveloppe/go"
 )
 
 const appSettingID = 1
@@ -26,7 +23,7 @@ const appSettingID = 1
 // EmitEvents and ListenEvents are the pool registration lists; antenne.yaml
 // documents them and a test keeps both in step.
 func EmitEvents() []string {
-	return []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated"}
+	return []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated", "time_entry.deleted"}
 }
 
 func ListenEvents() []string {
@@ -41,6 +38,7 @@ type Service struct {
 	controller *Controller
 	mu         sync.RWMutex
 	logger     *slog.Logger
+	issuer     string
 }
 
 // NewService constructs a Service bound to orm and logger.
@@ -48,6 +46,11 @@ func NewService(orm *gorm.DB, logger *slog.Logger) *Service {
 	service := &Service{orm: orm, logger: logger}
 	service.controller = newController(service)
 	return service
+}
+
+// SetIssuer names the OIDC issuer whose porte subjects identify people on the wire.
+func (s *Service) SetIssuer(issuer string) {
+	s.issuer = issuer
 }
 
 func getEnvPoolConfig() (string, string) {
@@ -347,230 +350,6 @@ func (s *Service) drainOutbox() {
 		}
 		s.orm.Delete(&rows[i])
 	}
-}
-
-func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.TimeEntry) {
-	if !s.shouldEmit() {
-		return
-	}
-
-	channel := fmt.Sprintf("time_entry.%s", action)
-	if !s.IsPoolEventEnabled(channel) {
-		return
-	}
-
-	e := *entry
-	if e.FacileID == nil {
-		fid := GenerateFacileID()
-		e.FacileID = &fid
-		s.orm.Model(&schemas.TimeEntry{}).Where("id = ?", e.ID).Update("facile_id", fid)
-	}
-
-	var taskFacileID string
-	var task schemas.Task
-	if err := s.orm.Where("id = ?", e.TaskID).First(&task).Error; err == nil {
-		if task.FacileID == nil {
-			fid := GenerateFacileID()
-			task.FacileID = &fid
-			s.orm.Model(&task).Update("facile_id", fid)
-		}
-		taskFacileID = *task.FacileID
-	}
-
-	var userEmail string
-	var user schemas.User
-	if err := s.orm.Select("email").Where("id = ?", e.UserID).First(&user).Error; err == nil {
-		userEmail = user.Email
-	}
-
-	var stoppedAt *string
-	if e.StoppedAt != nil {
-		formatted := e.StoppedAt.UTC().Format(time.RFC3339)
-		stoppedAt = &formatted
-	}
-
-	evt := enveloppe.Event[enveloppe.TimeEntry]{
-		Version:  enveloppe.EventVersion,
-		App:      enveloppe.AppSablier,
-		Object:   enveloppe.ObjectTimeEntry,
-		Action:   action,
-		FacileID: *e.FacileID,
-		Payload: enveloppe.TimeEntry{
-			FacileID:     *e.FacileID,
-			TaskFacileID: taskFacileID,
-			UserEmail:    userEmail,
-			StartedAt:    e.StartedAt.UTC().Format(time.RFC3339),
-			StoppedAt:    stoppedAt,
-		},
-		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_time_entry_%s_%s_%d", action, *e.FacileID, time.Now().UnixMilli()),
-	}
-
-	s.enqueueOutbox(channel, evt)
-}
-
-func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Project) {
-	if !s.shouldEmit() {
-		return
-	}
-
-	channel := fmt.Sprintf("project.%s", action)
-	if !s.IsPoolEventEnabled(channel) {
-		return
-	}
-
-	p := *project
-	if p.FacileID == nil {
-		fid := GenerateFacileID()
-		p.FacileID = &fid
-		s.orm.Model(&schemas.Project{}).Where("id = ?", p.ID).Update("facile_id", fid)
-	}
-
-	var desc *string
-	if p.Description != "" {
-		desc = &p.Description
-	}
-
-	evt := enveloppe.Event[enveloppe.Project]{
-		Version:  enveloppe.EventVersion,
-		App:      enveloppe.AppSablier,
-		Object:   enveloppe.ObjectProject,
-		Action:   action,
-		FacileID: *p.FacileID,
-		Payload: enveloppe.Project{
-			FacileID:    *p.FacileID,
-			Name:        p.Name,
-			Description: desc,
-			Icon:        normalizeIcon(p.Icon),
-		},
-		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_project_%s_%s_%d", action, *p.FacileID, time.Now().UnixMilli()),
-	}
-
-	s.enqueueOutbox(channel, evt)
-}
-
-func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, project *schemas.Project) {
-	if !s.shouldEmit() {
-		return
-	}
-
-	if !s.IsPoolEventEnabled(fmt.Sprintf("task.%s", action)) {
-		return
-	}
-
-	t := *task
-	if t.FacileID == nil {
-		fid := GenerateFacileID()
-		t.FacileID = &fid
-		s.orm.Model(&schemas.Task{}).Where("id = ?", t.ID).Update("facile_id", fid)
-	}
-
-	projectFacileID := ""
-	if project != nil {
-		p := *project
-		if p.FacileID == nil {
-			fid := GenerateFacileID()
-			p.FacileID = &fid
-			s.orm.Model(&schemas.Project{}).Where("id = ?", p.ID).Update("facile_id", fid)
-			s.EmitProjectEvent(enveloppe.ActionCreated, &p)
-		}
-		projectFacileID = *p.FacileID
-	}
-
-	var actorEmail string
-	if t.ActorID != nil {
-		var user schemas.User
-		if err := s.orm.Select("email").Where("id = ?", *t.ActorID).First(&user).Error; err == nil {
-			actorEmail = user.Email
-		}
-	}
-
-	evt := enveloppe.Event[enveloppe.Task]{
-		Version:  enveloppe.EventVersion,
-		App:      enveloppe.AppSablier,
-		Object:   enveloppe.ObjectTask,
-		Action:   action,
-		FacileID: *t.FacileID,
-		Payload: enveloppe.Task{
-			FacileID:        *t.FacileID,
-			ProjectFacileID: projectFacileID,
-			Name:            t.Name,
-			Status:          schemas.NormalizeStatus(t.Status),
-			ActorEmail:      actorEmail,
-		},
-		Timestamp:      time.Now().UTC().Format(time.RFC3339),
-		IdempotencyKey: fmt.Sprintf("sablier_task_%s_%s_%d", action, *t.FacileID, time.Now().UnixMilli()),
-	}
-
-	s.enqueueOutbox(fmt.Sprintf("task.%s", action), evt)
-}
-
-func (s *Service) InitialSync(ctx context.Context) (*SyncResult, error) {
-	s.mu.RLock()
-	client := s.client
-	s.mu.RUnlock()
-
-	if client == nil || !client.IsConnected() {
-		return nil, errors.Failed("antenne is not connected")
-	}
-
-	var unflaggedProjects []schemas.Project
-	s.orm.WithContext(ctx).Where("facile_id IS NULL").Find(&unflaggedProjects)
-	for i := range unflaggedProjects {
-		fid := GenerateFacileID()
-		unflaggedProjects[i].FacileID = &fid
-		s.orm.WithContext(ctx).Save(&unflaggedProjects[i])
-	}
-
-	var allProjects []schemas.Project
-	s.orm.WithContext(ctx).Find(&allProjects)
-	projectCount := 0
-	for i := range allProjects {
-		if allProjects[i].FacileID == nil {
-			continue
-		}
-		s.EmitProjectEvent(enveloppe.ActionCreated, &allProjects[i])
-		projectCount++
-		if projectCount%50 == 0 {
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
-
-	if projectCount > 0 {
-		time.Sleep(2 * time.Second)
-	}
-
-	var unflaggedTasks []schemas.Task
-	s.orm.WithContext(ctx).Where("facile_id IS NULL").Find(&unflaggedTasks)
-	for i := range unflaggedTasks {
-		fid := GenerateFacileID()
-		unflaggedTasks[i].FacileID = &fid
-		s.orm.WithContext(ctx).Save(&unflaggedTasks[i])
-	}
-
-	var allTasks []schemas.Task
-	s.orm.WithContext(ctx).Order("project_id ASC").Find(&allTasks)
-	taskCount := 0
-	for i := range allTasks {
-		if allTasks[i].FacileID == nil {
-			continue
-		}
-		var project schemas.Project
-		if err := s.orm.WithContext(ctx).Where("id = ? AND facile_id IS NOT NULL", allTasks[i].ProjectID).First(&project).Error; err != nil {
-			continue
-		}
-		s.EmitTaskEvent(enveloppe.ActionCreated, &allTasks[i], &project)
-		taskCount++
-		if taskCount%50 == 0 {
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
-
-	return &SyncResult{
-		ProjectsSynced: projectCount,
-		TasksSynced:    taskCount,
-	}, nil
 }
 
 // GenerateFacileID returns a random "fac_"-prefixed hex identifier.

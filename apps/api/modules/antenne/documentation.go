@@ -17,8 +17,8 @@ var Documentation = documentation.Module{
 		{
 			Method:       "POST",
 			Path:         "/antenne/sync",
-			Summary:      "Trigger initial sync",
-			Description:  "Syncs all existing projects and tasks to the Pool. Safe to run multiple times.",
+			Summary:      "Reconcile with the pool",
+			Description:  "Queues every synced project, its tasks and their time entries as created. Safe to run multiple times; it also runs once at boot.",
 			Auth:         "required",
 			ResponseBody: SyncResult{},
 		},

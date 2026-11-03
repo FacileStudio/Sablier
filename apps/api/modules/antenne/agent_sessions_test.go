@@ -27,7 +27,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open test database: %v", err)
 	}
 	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.AppSetting{}, &schemas.AntenneOutbox{}, &schemas.AntenneProcessedEvent{}, &schemas.SpaceMember{})
+		&schemas.AppSetting{}, &schemas.AntenneOutbox{}, &schemas.AntenneProcessedEvent{}, &schemas.SpaceMember{}, &schemas.Space{})
 	if err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}

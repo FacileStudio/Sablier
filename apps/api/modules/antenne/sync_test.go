@@ -19,6 +19,20 @@ const (
 	testTaskID    = "ZYXWVUTSRQPONMLKJIHGFEDCBA"
 )
 
+const sqliteIdentities = `CREATE TABLE porte_identities (
+	user_id integer NOT NULL, provider text NOT NULL, subject text NOT NULL, PRIMARY KEY (provider, subject))`
+
+func newSyncService(t *testing.T) *Service {
+	t.Helper()
+	s := newTestService(t)
+	s.SetIssuer("https://sso.test")
+	if err := s.orm.Exec(sqliteIdentities).Error; err != nil {
+		t.Fatal(err)
+	}
+	seedUser(t, s.orm, "owner@example.com")
+	return s
+}
+
 func wireEvent(t *testing.T, app enveloppe.App, object enveloppe.ObjectType, action enveloppe.Action, key string, payload map[string]any) json.RawMessage {
 	t.Helper()
 	data, err := json.Marshal(map[string]any{
@@ -40,6 +54,7 @@ func wireEvent(t *testing.T, app enveloppe.App, object enveloppe.ObjectType, act
 func opusProject(t *testing.T, action enveloppe.Action, key, name string) json.RawMessage {
 	return wireEvent(t, enveloppe.AppOpus, enveloppe.ObjectProject, action, key, map[string]any{
 		"id": 7, "facile_id": testProjectID, "workspace_id": 3, "name": name, "slug": "alpha",
+		"space": map[string]any{"registre_space_id": "", "personal": true, "owner_subject": "", "owner_email": "Owner@Example.com"},
 	})
 }
 
@@ -61,7 +76,7 @@ func countOf(s *Service, model any) int64 {
 }
 
 func TestInboundProjectLifecycle(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	var p schemas.Project
@@ -82,7 +97,7 @@ func TestInboundProjectLifecycle(t *testing.T) {
 }
 
 func TestInboundProjectUpdateForUnknownIsDropped(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectUpdated(opusProject(t, enveloppe.ActionUpdated, "k1", "Alpha"), testMeta)
 	if countOf(s, &schemas.Project{}) != 0 || s.alreadyProcessed("k1") {
 		t.Fatal("update of unknown project must not create or consume the event")
@@ -90,7 +105,7 @@ func TestInboundProjectUpdateForUnknownIsDropped(t *testing.T) {
 }
 
 func TestInboundLegacyIDsNeverCreateRows(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	for _, id := range []string{"2", "my-slug", "clx1abcdefghijklmnopqrst", "fac_p1"} {
 		payload := map[string]any{"facile_id": id, "name": "Junk"}
 		s.handleProjectCreated(wireEvent(t, enveloppe.AppOpus, enveloppe.ObjectProject, enveloppe.ActionCreated, "p"+id, payload), testMeta)
@@ -104,7 +119,7 @@ func TestInboundLegacyIDsNeverCreateRows(t *testing.T) {
 }
 
 func TestInboundIgnoresNonOpusApps(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	data := wireEvent(t, enveloppe.App("Agenda"), enveloppe.ObjectProject, enveloppe.ActionCreated, "k1", map[string]any{"facile_id": testProjectID, "name": "Agenda"})
 	s.handleProjectCreated(data, testMeta)
 	if countOf(s, &schemas.Project{}) != 0 {
@@ -113,11 +128,14 @@ func TestInboundIgnoresNonOpusApps(t *testing.T) {
 }
 
 func TestInboundTaskNameCollisionKeepsBothTasks(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	var project schemas.Project
 	s.orm.First(&project)
-	s.orm.Create(&schemas.Task{ProjectID: project.ID, Name: "Write docs"})
+	linked := time.Now()
+	local := schemas.Task{ProjectID: project.ID, Name: "Write docs"}
+	local.SyncedAt = &linked
+	s.orm.Create(&local)
 
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "write DOCS", "status": "open"}), testMeta)
 	var task schemas.Task
@@ -140,7 +158,7 @@ func TestInboundTaskNameCollisionKeepsBothTasks(t *testing.T) {
 }
 
 func TestInboundDeletesKeepTimeEntries(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "T", "status": "open"}), testMeta)
 	var project schemas.Project
@@ -151,13 +169,13 @@ func TestInboundDeletesKeepTimeEntries(t *testing.T) {
 
 	s.handleProjectDeleted(opusProject(t, enveloppe.ActionDeleted, "k3", "Alpha"), testMeta)
 	var entry schemas.TimeEntry
-	if err := s.orm.First(&entry).Error; err != nil || entry.TaskID != 0 {
+	if err := s.orm.First(&entry).Error; err != nil || entry.TaskID != 0 || entry.ProjectID != 0 {
 		t.Fatalf("time entry must survive unlinked: %v %+v", err, entry)
 	}
 }
 
 func TestInboundTaskLifecycleWithOpusExtras(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"title": "Write docs", "name": "", "status": "open"}), testMeta)
@@ -188,7 +206,7 @@ func TestInboundTaskLifecycleWithOpusExtras(t *testing.T) {
 }
 
 func TestInboundTaskUnknownStatusOnCreateDefaultsToTodo(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "X", "status": "icebox"}), testMeta)
 	var task schemas.Task
@@ -199,7 +217,7 @@ func TestInboundTaskUnknownStatusOnCreateDefaultsToTodo(t *testing.T) {
 }
 
 func TestInboundTaskWithUnknownProjectIsDropped(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k1", map[string]any{"name": "Orphan", "status": "open"}), testMeta)
 	if countOf(s, &schemas.Task{}) != 0 || countOf(s, &schemas.Project{}) != 0 {
 		t.Fatal("no orphan task and no phantom project allowed")
@@ -210,7 +228,7 @@ func TestInboundTaskWithUnknownProjectIsDropped(t *testing.T) {
 }
 
 func TestInboundIdempotentReplay(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	p := opusProject(t, enveloppe.ActionCreated, "k1", "Alpha")
 	s.handleProjectCreated(p, testMeta)
 	s.handleProjectCreated(p, testMeta)
@@ -228,7 +246,7 @@ func TestInboundIdempotentReplay(t *testing.T) {
 }
 
 func TestInboundStaleReplayCannotOverwriteNewerState(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	s.handleProjectUpdated(opusProject(t, enveloppe.ActionUpdated, "k2", "Newest"), testMeta)
 
@@ -251,7 +269,7 @@ func TestInboundStaleReplayCannotOverwriteNewerState(t *testing.T) {
 }
 
 func TestInboundIgnoresOwnEvents(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	data := wireEvent(t, enveloppe.AppSablier, enveloppe.ObjectProject, enveloppe.ActionCreated, "k1", map[string]any{"facile_id": "fac_self", "name": "Mine"})
 	s.handleProjectCreated(data, testMeta)
 	if countOf(s, &schemas.Project{}) != 0 {
@@ -260,7 +278,7 @@ func TestInboundIgnoresOwnEvents(t *testing.T) {
 }
 
 func TestInboundDoesNotReEmit(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.orm.Create(&schemas.AppSetting{ID: appSettingID, AntenneEnabled: true})
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "T", "status": "done"}), testMeta)
@@ -272,7 +290,7 @@ func TestInboundDoesNotReEmit(t *testing.T) {
 }
 
 func TestProjectDeleteRemovesItsTasks(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "k1", "Alpha"), testMeta)
 	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "k2", map[string]any{"name": "T", "status": "open"}), testMeta)
 	s.handleProjectDeleted(opusProject(t, enveloppe.ActionDeleted, "k3", "Alpha"), testMeta)
@@ -298,7 +316,7 @@ func TestMapRemoteStatus(t *testing.T) {
 }
 
 func TestLocalEmitCarriesFacileIDs(t *testing.T) {
-	s := newTestService(t)
+	s := newSyncService(t)
 	s.orm.Create(&schemas.AppSetting{ID: appSettingID, AntenneEnabled: true})
 	project := seedProject(t, s.orm, "Local")
 	task := &schemas.Task{ProjectID: project.ID, Name: "T"}

@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -302,18 +303,29 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 // newDirectory builds the Registre space sync when OIDC is configured, using the app's own
 // client credentials, and returns nils otherwise: without Registre there is nothing to sync
 // and no nudge route to mount.
-func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*spaces.Registre, *directory.Syncer) {
+//
+// ready runs once, in the background, after the first snapshot applied: the import has
+// succeeded by then and every imported space carries its Registre id, so the Antenne
+// reconcile can tell which projects are shareable.
+func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger, ready func(context.Context)) (*spaces.Registre, *directory.Syncer) {
 	if appEnv.OIDC == nil {
 		return nil, nil
 	}
 	registre := spaces.NewRegistre(db, appEnv.OIDC.Issuer, appLogger)
+	var once sync.Once
 	syncer := &directory.Syncer{
 		Client: directory.Client{
 			Issuer:       appEnv.OIDC.Issuer,
 			ClientID:     appEnv.OIDC.ClientID,
 			ClientSecret: appEnv.OIDC.ClientSecret,
 		},
-		Apply:  registre.Apply,
+		Apply: func(ctx context.Context, snapshot directory.Snapshot) error {
+			if err := registre.Apply(ctx, snapshot); err != nil {
+				return err
+			}
+			once.Do(func() { go ready(ctx) })
+			return nil
+		},
 		Logger: appLogger,
 	}
 	return registre, syncer
@@ -388,7 +400,10 @@ func run() error {
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
 	antenneService := antenne.NewService(db, appLogger)
 
-	registre, syncer := newDirectory(db, &appEnv, appLogger)
+	if appEnv.OIDC != nil {
+		antenneService.SetIssuer(appEnv.OIDC.Issuer)
+	}
+	registre, syncer := newDirectory(db, &appEnv, appLogger, antenneService.ReconcileAtBoot)
 	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
@@ -415,6 +430,8 @@ func run() error {
 
 	if registre != nil {
 		go registre.Run(shutdownSignal, syncer)
+	} else {
+		go antenneService.ReconcileAtBoot(shutdownSignal)
 	}
 
 	appLogger.Info("antenne: outbox worker started")

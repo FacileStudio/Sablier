@@ -29,6 +29,7 @@ var remoteStatusAliases = map[string]string{
 	"completed":   schemas.StatusDone,
 	"resolved":    schemas.StatusDone,
 	"finished":    schemas.StatusDone,
+	"archived":    schemas.StatusDone,
 }
 
 func mapRemoteStatus(raw string) (string, bool) {

@@ -11,6 +11,7 @@ events:
     - task.deleted
     - time_entry.created
     - time_entry.updated
+    - time_entry.deleted
   listen:
     - project.created
     - project.updated

@@ -26,7 +26,7 @@ func (c *Controller) getSettings(ctx context.Context) (*PoolSettingsResponse, er
 }
 
 func (c *Controller) triggerSync(ctx context.Context) (*SyncResult, error) {
-	return c.service.InitialSync(ctx)
+	return c.service.Reconcile(ctx)
 }
 
 func (c *Controller) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*PoolSettingsResponse, error) {
