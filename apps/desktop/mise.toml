@@ -1,0 +1,14 @@
+[tools]
+rust = "stable"
+
+[tasks.dev]
+description = "Run the tray app in debug mode"
+run = 'bunx @tauri-apps/cli@2 dev'
+
+[tasks.build]
+description = "Build the desktop installers for this OS"
+run = 'bunx @tauri-apps/cli@2 build'
+
+[tasks.check]
+description = "Format check, clippy and tests"
+run = 'cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test'

@@ -73,6 +73,32 @@ facile install sablier
 
 `facile login sablier` signs in through Facile SSO in your browser.
 
+## Desktop app
+
+`apps/desktop` is a Tauri tray app. It reuses the CLI's `~/.sablier.yml`, so sign in with
+`sablier login` first. It shows the running timer in the menu bar (macOS) or tray (Linux),
+starts, pauses and stops timers, and asks what to do with time you spent away from the
+keyboard while a timer ran.
+
+Window rules live in `~/.config/sablier/rules.yml`. The first match wins; patterns are
+case-insensitive regexes. After five minutes on a matched project with no timer running,
+the app offers to start one, or starts it when the rule says `auto: true`.
+
+```yaml
+- app: "^code$"
+  title: "bulle"
+  project: Bulle
+  task: Desktop
+- app: "figma"
+  project: Client site
+  auto: true
+```
+
+Window titles and paths stay on your machine. Heartbeats carry only the app name and the
+rule's project. On GNOME Wayland, window rules need the
+[Focused Window D-Bus](https://extensions.gnome.org/extension/5592/focused-window-d-bus/)
+extension. Build it with `cd apps/desktop && mise run build`.
+
 ## Configuration
 
 | Variable | What it does |
@@ -93,6 +119,7 @@ apps/
   api/       Go backend — modules/ (auth, projects, timeentries, users, settings,
              spaces, antenne, notifications), schemas/ (GORM models + migrations)
   client/    SvelteKit 5 SPA, built into the API image and served by it
+  desktop/   Tauri tray app: timer, idle detection, local window rules
 scripts/     check.sh, the quality gate the pre-push hook runs
 docs/        Architecture, configuration, development, deployment, API
 ```
