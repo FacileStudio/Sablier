@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.8.1] - 2026-11-03
+
+### Changed
+- Agent avatars (the Bulle blobs) render without the colored disc behind them, and a bit bigger, everywhere an avatar shows: dashboard, projects, spaces, users and the agents card.
+
 ## [1.8.0] - 2026-11-03
 
 ### Added
