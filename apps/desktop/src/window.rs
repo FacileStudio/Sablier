@@ -1,10 +1,9 @@
-use tauri::ipc::CapabilityBuilder;
-use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// Label of the window that shows the Sablier web app.
 pub const MAIN: &str = "main";
 
-/// Server opened when no `~/.sablier.yml` names one.
+/// The Sablier server the bundled app and its sign-in talk to.
 pub const DEFAULT_SERVER: &str = "https://sablier.facile.studio";
 
 const MARK_DESKTOP: &str = r#"(function () {
@@ -23,28 +22,12 @@ const MARK_DESKTOP: &str = r#"(function () {
   else document.addEventListener("DOMContentLoaded", addStrip);
 })();"#;
 
-/// The URL the main window opens for `server` and `path`, when `server` is an http(s) origin.
-pub fn page_url(server: &str, path: &str) -> Option<Url> {
-    let base = Url::parse(server.trim_end_matches('/')).ok()?;
-    if !matches!(base.scheme(), "https" | "http") || base.host_str().is_none() {
-        return None;
-    }
-    base.join(path).ok()
-}
-
-/// The remote URL pattern that may drag the window: every page of the server's origin.
-pub fn remote_pattern(url: &Url) -> String {
-    format!("{}/*", url.origin().ascii_serialization())
-}
-
-/// Shows the Sablier window on `path`, creating it on first use.
-pub fn show(app: &AppHandle, server: &str, path: &str) {
-    let Some(url) = page_url(server, path) else {
-        return eprintln!("sablier: {server:?} is not an http(s) server URL");
-    };
+/// Shows the Sablier window on `path` of the bundled app, creating it on first use.
+pub fn show(app: &AppHandle, path: &str) {
     let handle = app.clone();
+    let path = path.to_string();
     let result = app.run_on_main_thread(move || {
-        if let Err(err) = open(&handle, url) {
+        if let Err(err) = open(&handle, &path) {
             eprintln!("sablier: cannot open the Sablier window: {err}");
         }
     });
@@ -64,28 +47,19 @@ pub fn hide(window: &tauri::Window) {
     }
 }
 
-fn open(app: &AppHandle, url: Url) -> tauri::Result<()> {
+fn open(app: &AppHandle, path: &str) -> tauri::Result<()> {
     #[cfg(target_os = "macos")]
     app.set_activation_policy(tauri::ActivationPolicy::Regular)?;
     if let Some(window) = app.get_webview_window(MAIN) {
-        if window
-            .url()
-            .map(|current| current.origin() != url.origin())
-            .unwrap_or(true)
-        {
+        if path != "/" {
+            let mut url = window.url()?;
+            url.set_path(path);
+            url.set_query(None);
             window.navigate(url)?;
         }
         return focus(&window);
     }
-    app.add_capability(
-        CapabilityBuilder::new("main-window-drag")
-            .remote(remote_pattern(&url))
-            .local(false)
-            .window(MAIN)
-            .permission("core:window:allow-start-dragging")
-            .permission("core:window:allow-internal-toggle-maximize"),
-    )?;
-    let builder = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::External(url))
+    let builder = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App(asset(path).into()))
         .title("Sablier")
         .inner_size(1200.0, 800.0)
         .min_inner_size(820.0, 560.0)
@@ -105,21 +79,21 @@ fn focus(window: &WebviewWindow) -> tauri::Result<()> {
     window.set_focus()
 }
 
+/// The bundled asset a route opens from: the SPA entry for the root, the route itself otherwise.
+fn asset(path: &str) -> &str {
+    match path.trim_start_matches('/') {
+        "" => "index.html",
+        route => route,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn page_urls_join_the_path_onto_the_server() {
-        let url = page_url("https://sablier.facile.studio/", "/dashboard").unwrap();
-        assert_eq!(url.as_str(), "https://sablier.facile.studio/dashboard");
-        assert_eq!(remote_pattern(&url), "https://sablier.facile.studio/*");
-    }
-
-    #[test]
-    fn non_web_servers_are_refused() {
-        assert!(page_url("file:///etc/passwd", "/").is_none());
-        assert!(page_url("javascript:alert(1)", "/").is_none());
-        assert!(page_url("not a url", "/").is_none());
+    fn routes_open_from_the_bundled_app() {
+        assert_eq!(asset("/"), "index.html");
+        assert_eq!(asset("/dashboard"), "dashboard");
     }
 }

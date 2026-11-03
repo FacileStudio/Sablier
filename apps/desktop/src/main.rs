@@ -8,6 +8,7 @@ mod idle;
 mod platform;
 mod popup;
 mod rules;
+mod session;
 mod suggest;
 mod tray;
 mod update;
@@ -23,6 +24,9 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 
 const FIRST_RUN_MARKER: &str = "open-at-login-offered";
 
+/// Argument the login item launches the app with, so a login start stays in the tray.
+const HIDDEN: &str = "--hidden";
+
 fn tray_icon() -> tauri::Result<Image<'static>> {
     if cfg!(target_os = "macos") {
         Image::from_bytes(include_bytes!("../icons/tray-template.png"))
@@ -36,7 +40,13 @@ fn offer_open_at_login(app: &App) {
         return;
     };
     let marker = dir.join(FIRST_RUN_MARKER);
-    if cfg!(debug_assertions) || marker.exists() {
+    if cfg!(debug_assertions) {
+        return;
+    }
+    if marker.exists() {
+        if app.autolaunch().is_enabled().unwrap_or(false) {
+            let _ = app.autolaunch().enable();
+        }
         return;
     }
     if let Err(err) = app.autolaunch().enable() {
@@ -53,6 +63,16 @@ fn setup(
     #[cfg(target_os = "macos")]
     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
     offer_open_at_login(app);
+    #[cfg(any(target_os = "linux", windows))]
+    {
+        use tauri_plugin_deep_link::DeepLinkExt;
+        if let Err(err) = app.deep_link().register_all() {
+            eprintln!("sablier: cannot register the sign-in link handler: {err}");
+        }
+    }
+    if !std::env::args().any(|arg| arg == HIDDEN) {
+        window::show(app.handle(), "/");
+    }
     update::spawn_checks(app.handle().clone());
     let icon = TrayIconBuilder::with_id("sablier")
         .icon(tray_icon()?)
@@ -73,15 +93,18 @@ fn setup(
     Ok(())
 }
 
-/// Starts the tray app: one instance, a hidden popup for prompts, and the Sablier window on demand.
+/// Starts the tray app: one instance, a hidden popup for prompts, and the Sablier window unless launched at login.
 fn main() {
     let (commands, inbox) = channel();
     let menu_commands = commands.clone();
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            window::show(app, "/");
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
-            None,
+            Some(vec![HIDDEN]),
         ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -90,7 +113,10 @@ fn main() {
         .manage(Popup::new(commands))
         .invoke_handler(tauri::generate_handler![
             popup::current_prompt,
-            popup::answer
+            popup::answer,
+            session::stored_token,
+            session::store_token,
+            session::forget_token
         ])
         .setup(move |app| Ok(setup(app, menu_commands, inbox)?))
         .on_window_event(|window, event| {

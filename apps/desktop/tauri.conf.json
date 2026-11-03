@@ -5,7 +5,15 @@
   "version": "0.2.2",
   "identifier": "studio.facile.sablier",
   "build": {
-    "frontendDist": "ui"
+    "beforeDevCommand": {
+      "script": "sh scripts/stage-ui.sh",
+      "cwd": "."
+    },
+    "beforeBuildCommand": {
+      "script": "sh scripts/stage-ui.sh",
+      "cwd": "."
+    },
+    "frontendDist": "dist"
   },
   "app": {
     "withGlobalTauri": true,
@@ -13,7 +21,7 @@
       {
         "label": "popup",
         "title": "Sablier",
-        "url": "index.html",
+        "url": "popup.html",
         "width": 340,
         "height": 150,
         "resizable": false,
@@ -25,7 +33,10 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' ipc: http://ipc.localhost https:",
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ]
     }
   },
   "bundle": {
@@ -59,6 +70,13 @@
       "endpoints": [
         "https://github.com/FacileStudio/Sablier/releases/latest/download/latest.json"
       ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "studio.facile.sablier"
+        ]
+      }
     }
   }
 }

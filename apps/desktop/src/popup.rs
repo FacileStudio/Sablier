@@ -45,6 +45,15 @@ impl Popup {
         }
     }
 
+    /// Hands `command` to the worker thread.
+    pub fn send(&self, command: Command) {
+        let commands = self
+            .commands
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _ = commands.send(command);
+    }
+
     fn set(&self, prompt: Option<Prompt>) {
         *self
             .prompt
@@ -66,11 +75,7 @@ pub fn current_prompt(popup: State<'_, Popup>) -> Option<Prompt> {
 /// Hands the clicked answer to the worker.
 #[tauri::command]
 pub fn answer(action: String, popup: State<'_, Popup>) {
-    let commands = popup
-        .commands
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let _ = commands.send(Command::Answer(action));
+    popup.send(Command::Answer(action));
 }
 
 /// Shows `prompt` in the top-right corner of the primary screen, above every window.

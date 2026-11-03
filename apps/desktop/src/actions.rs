@@ -1,5 +1,6 @@
 use crate::idle::{self, Span};
 use crate::popup::{self, Action, Command, Prompt};
+use crate::session;
 use crate::update;
 use crate::window;
 use crate::worker::{Pending, Target, Worker, open_tasks};
@@ -7,10 +8,6 @@ use chrono::{Local, Utc};
 use tauri::AppHandle;
 use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_notification::NotificationExt as _;
-use tauri_plugin_opener::OpenerExt as _;
-
-/// Where a signed-out user learns about `sablier login`.
-pub const SIGN_IN_DOCS: &str = "https://github.com/FacileStudio/sablier-cli#readme";
 
 /// True when the app is registered to open at login.
 pub fn open_at_login(app: &AppHandle) -> bool {
@@ -41,30 +38,16 @@ impl Worker {
         self.poll();
     }
 
-    fn open(&self, url: &str) {
-        if let Err(err) = self.app.opener().open_url(url, None::<&str>) {
-            eprintln!("sablier: cannot open {url}: {err}");
-        }
-    }
-
-    fn show_window(&self, server: Option<String>, path: &str) {
-        let server = server.unwrap_or_else(|| window::DEFAULT_SERVER.to_string());
-        window::show(&self.app, &server, path);
-    }
-
     fn menu(&mut self, id: &str) {
-        let server = self
-            .credentials
-            .as_ref()
-            .map(|credentials| credentials.server_url.clone());
-        match (id, server) {
-            ("signin", _) => self.open(SIGN_IN_DOCS),
-            ("review", server) => self.show_window(server, "/dashboard"),
-            ("open", server) => self.show_window(server, "/"),
-            ("autostart", _) => self.toggle_open_at_login(),
-            ("update", _) => update::install(&self.app),
-            ("check-update", _) => update::check_now(&self.app),
-            ("stop" | "pause" | "resume", _) => {
+        match id {
+            "signin" => window::show(&self.app, "/login"),
+            "review" => window::show(&self.app, "/dashboard"),
+            "open" => window::show(&self.app, "/"),
+            session::REFRESH => self.poll(),
+            "autostart" => self.toggle_open_at_login(),
+            "update" => update::install(&self.app),
+            "check-update" => update::check_now(&self.app),
+            "stop" | "pause" | "resume" => {
                 if let Some(api) = &self.api {
                     report(api.timer(id));
                 }
