@@ -36,7 +36,7 @@
 	const navPages = $derived([
 		{ href: '/dashboard', label: 'Dashboard', icon: icons.dashboard, active: isActive('/dashboard') },
 		{ href: '/projects', label: 'Projects', icon: icons.folder, active: isActive('/projects') },
-		{ href: '/spaces', label: 'Spaces', icon: icons.usersGroup, active: isActive('/spaces') }
+		{ href: '/spaces', label: 'Spaces', icon: icons.space, active: isActive('/spaces') }
 	]);
 
 	const navUser = $derived(

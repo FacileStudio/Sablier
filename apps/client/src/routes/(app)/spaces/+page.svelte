@@ -40,14 +40,14 @@
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<h1 class="text-fc-xl font-semibold text-fc-fg">Espaces</h1>
-			<Button href={registreSpaceUrl()} target="_blank" rel="noopener noreferrer" icon={icons.settings}>
+			<Button href={registreSpaceUrl()} target="_blank" rel="noopener noreferrer" icon={icons.space}>
 				Gérer dans Registre
 			</Button>
 		</div>
 
 		{#if spaces.length === 0}
 			<EmptyState
-				icon={icons.usersGroup}
+				icon={icons.space}
 				title="Aucun espace"
 				description="Les espaces se créent dans Registre et apparaissent ici, avec leurs membres."
 			>
@@ -62,7 +62,7 @@
 						<span
 							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
 						>
-							<iconify-icon icon={icons.usersGroup} width="20" height="20" class="block"
+							<iconify-icon icon={icons.space} width="20" height="20" class="block"
 							></iconify-icon>
 						</span>
 						<div class="flex min-w-0 flex-1 flex-col gap-1">

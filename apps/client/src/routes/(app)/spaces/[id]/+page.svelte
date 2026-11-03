@@ -58,7 +58,7 @@
 				href={registreSpaceUrl(space.registre_space_id)}
 				target="_blank"
 				rel="noopener noreferrer"
-				icon={icons.settings}
+				icon={icons.space}
 			>
 				Gérer dans Registre
 			</Button>
@@ -71,7 +71,7 @@
 				<span
 					class="flex h-12 w-12 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
 				>
-					<iconify-icon icon={icons.usersGroup} width="24" height="24" class="block"></iconify-icon>
+					<iconify-icon icon={icons.space} width="24" height="24" class="block"></iconify-icon>
 				</span>
 				<div class="flex min-w-0 flex-1 flex-col gap-1">
 					<h1 class="truncate text-fc-xl font-semibold text-fc-fg">{space.name}</h1>
