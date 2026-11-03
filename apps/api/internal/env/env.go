@@ -48,10 +48,11 @@ type OIDCConfig struct {
 	MobileRedirect string
 }
 
-// NativeOrigin is the origin the Capacitor Android app serves its pages from.
-// It is always allowed by CORS while the mobile login is on, so a deploy that
-// overrides CORS_ALLOWED_ORIGINS cannot lock the app out.
-const NativeOrigin = "https://localhost"
+// NativeOrigins are the origins the installed apps serve their pages from: the
+// Capacitor Android app, then the Tauri desktop app on macOS/Linux and Windows.
+// They are always allowed by CORS while the mobile login is on, so a deploy that
+// overrides CORS_ALLOWED_ORIGINS cannot lock the apps out.
+var NativeOrigins = []string{"https://localhost", "tauri://localhost", "http://tauri.localhost"}
 
 // DefaultMobileRedirect is the deep link the Sablier Android app registers.
 const DefaultMobileRedirect = "studio.facile.sablier://auth"
@@ -184,14 +185,19 @@ func Load() (Config, error) {
 	return env, nil
 }
 
-// withNativeOrigin adds the Android app's origin to the CORS list when the
+// withNativeOrigin adds the installed apps' origins to the CORS list when the
 // mobile login is on. It runs after OIDC_SUCCESS_URL has defaulted to the
-// first origin, so the app origin never becomes the web success page.
+// first origin, so an app origin never becomes the web success page.
 func withNativeOrigin(origins []string, mobileRedirect string) []string {
-	if mobileRedirect == "" || slices.Contains(origins, NativeOrigin) {
+	if mobileRedirect == "" {
 		return origins
 	}
-	return append(origins, NativeOrigin)
+	for _, origin := range NativeOrigins {
+		if !slices.Contains(origins, origin) {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
 }
 
 func validateLogLevel(level string) error {

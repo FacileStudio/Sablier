@@ -7,7 +7,7 @@ import (
 
 func TestWithNativeOriginAddsTheAppOnce(t *testing.T) {
 	got := withNativeOrigin([]string{"https://sablier.example"}, DefaultMobileRedirect)
-	want := []string{"https://sablier.example", NativeOrigin}
+	want := append([]string{"https://sablier.example"}, NativeOrigins...)
 	if !slices.Equal(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
