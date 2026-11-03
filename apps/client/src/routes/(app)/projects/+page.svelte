@@ -198,12 +198,12 @@
 												name={user.label}
 												avatarUrl={user.avatarUrl}
 												color={user.color}
-												class="size-7 ring-1 ring-fc-border"
+												class="size-7"
 											/>
 										{/each}
 										{#if activeUsers.length > 4}
 											<span
-												class="flex size-7 items-center justify-center rounded-fc-pill bg-fc-surface text-fc-xs font-medium text-fc-fg-muted ring-1 ring-fc-border"
+												class="flex size-7 items-center justify-center rounded-fc-pill bg-fc-surface text-fc-xs font-medium text-fc-fg-muted"
 											>
 												+{activeUsers.length - 4}
 											</span>

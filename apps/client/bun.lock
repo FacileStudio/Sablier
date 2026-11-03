@@ -6,7 +6,7 @@
       "name": "frontend",
       "dependencies": {
         "@facile/journal": "github:FacileStudio/Journal#ts",
-        "@facile/muse": "github:FacileStudio/muse#v0.7.3",
+        "@facile/muse": "github:FacileStudio/muse#v0.8.0",
         "iconify-icon": "^3.0.2",
       },
       "devDependencies": {
@@ -78,7 +78,7 @@
 
     "@facile/journal": ["@facile/journal@github:FacileStudio/Journal#b211454", {}, "FacileStudio-Journal-b211454", "sha512-5zdWQy8EoKC4K7fyVoFSnB1wzVyOn3Rv+AkUjxebhug2uaw0ge7Pm2fqT7qu0bz7tDBFserMOQoh98QoCRmcyg=="],
 
-    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#955c08c", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-955c08c", "sha512-aBgSDTos6D7if5+2MgJZsS/EWphCnMoD607mDTeg11ZXQHKVc0qQgyR65F8WxpX38uPm16UfyhFSPywTnnBAkQ=="],
+    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#d845c45", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-d845c45", "sha512-a0p8z+7UFN0h49ELgY9SHcdhgmXs1oxD68MlaFXVAHIgUr6Zl7DRV0K3YXztwsBMdpsdZ1qU+l/Ev/xczdTs7g=="],
 
     "@iconify/types": ["@iconify/types@2.0.0", "", {}, "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="],
 

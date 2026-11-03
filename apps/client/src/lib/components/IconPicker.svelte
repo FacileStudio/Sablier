@@ -134,7 +134,7 @@
 	</button>
 
 	{#if open}
-		<div class="z-50 w-80 rounded-fc-lg border border-fc-border bg-fc-component p-3 shadow-lg" style={dropdownStyle}>
+		<div class="z-50 w-80 rounded-fc-lg bg-fc-component p-3 shadow-lg" style={dropdownStyle}>
 			<Input type="text" placeholder="Search icons..." bind:value={search} class="mb-2" />
 			<div
 				role="radiogroup"

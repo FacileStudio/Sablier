@@ -62,7 +62,7 @@
 
 {#if !redirecting}
 	<div class="min-h-dvh bg-fc-page text-fc-fg">
-		<header class="border-b border-fc-border">
+		<header>
 			<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
 				<div class="flex h-14 items-center gap-3">
 					<iconify-icon
@@ -105,9 +105,9 @@
 			<section class="mx-auto max-w-5xl px-6 py-20">
 				<div class="grid gap-6 md:grid-cols-3">
 					{#each features as feature (feature.title)}
-						<div class="rounded-fc-lg border border-fc-border p-6">
+						<div class="rounded-fc-lg bg-fc-surface p-6">
 							<div
-								class="mb-3 flex size-10 items-center justify-center rounded-fc-md border border-fc-border"
+								class="mb-3 flex size-10 items-center justify-center rounded-fc-md bg-fc-component"
 							>
 								<iconify-icon icon={feature.icon} width="20" height="20" class="block shrink-0"
 								></iconify-icon>
@@ -138,7 +138,7 @@
 			</section>
 		</main>
 
-		<footer class="border-t border-fc-border">
+		<footer>
 			<div class="mx-auto max-w-5xl px-6 py-6 text-center text-fc-sm text-fc-fg-muted">
 				© {new Date().getFullYear()} Sablier by
 				<a

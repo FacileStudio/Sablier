@@ -196,7 +196,7 @@
 
 	{#if menuVisible}
 		<div
-			class="fixed z-40 flex flex-col overflow-hidden rounded-fc-md border border-fc-border bg-fc-component shadow-lg"
+			class="fixed z-40 flex flex-col overflow-hidden rounded-fc-md bg-fc-component shadow-lg"
 			style:left="{menuLeft}px"
 			style:width="{menuWidth}px"
 			style:top={menuPlacement === 'down' ? `${menuOffset}px` : undefined}
