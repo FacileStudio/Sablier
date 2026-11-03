@@ -1,6 +1,6 @@
 [package]
 name = "sablier-desktop"
-version = "0.2.2"
+version = "0.3.0"
 description = "Sablier desktop app: a tray timer with idle detection and local window rules"
 license = "MIT"
 edition = "2024"

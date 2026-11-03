@@ -2,6 +2,13 @@
 
 Releases of the Sablier native apps (desktop tray app and Android), tagged `desktop-v<version>`.
 
+## [0.3.0] - 2026-11-03
+
+### Changed
+- The window shows the Sablier app bundled inside the desktop app instead of loading the website, which fixes the 404 on "Open Sablier".
+- Launching the app opens its window: the onboarding and "Sign in with Facile" when signed out, the dashboard when signed in. Starting at login stays in the tray. Launching it again while it runs brings the window back.
+- "Sign in" in the tray opens the in-app sign-in. Signing in there also signs in the tray and the `sablier` CLI, which share `~/.sablier.yml`.
+
 ## [0.2.2] - 2026-11-03
 
 ### Fixed
