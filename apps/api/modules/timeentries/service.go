@@ -411,3 +411,9 @@ func (service *Service) taskName(ctx context.Context, taskID int64) (string, err
 	}
 	return task.Name, nil
 }
+
+// CreateEntry records a finished entry for userID through the same validation as
+// POST /time-entries, for the modules that book time on a user's behalf.
+func (service *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntryRequest) (*TimeEntryResponse, error) {
+	return service.controller.create(ctx, strconv.FormatInt(userID, 10), req)
+}
