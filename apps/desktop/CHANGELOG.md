@@ -2,6 +2,12 @@
 
 Releases of the Sablier native apps (desktop tray app and Android), tagged `desktop-v<version>`.
 
+## [0.2.1] - 2026-11-03
+
+### Fixed
+
+- The release builds the Android APK again (`setup-android` v4). 0.2.0 was tagged but never published, so 0.2.1 is the first release with the Android app, self-update and the onboarding listed under 0.2.0.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added
