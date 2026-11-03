@@ -16,12 +16,14 @@ impl Credentials {
         Self::parse(&std::fs::read_to_string(path).ok()?)
     }
 
-    /// Parses the YAML the CLI writes; an empty token or server counts as signed out.
+    /// Parses the YAML the CLI writes, dropping the `/api` suffix it may store; an empty token or server counts as signed out.
     pub fn parse(text: &str) -> Option<Self> {
         let mut credentials: Self = serde_yaml::from_str(text).ok()?;
         credentials.server_url = credentials
             .server_url
             .trim()
+            .trim_end_matches('/')
+            .trim_end_matches("/api")
             .trim_end_matches('/')
             .to_string();
         if credentials.server_url.is_empty() || credentials.token.trim().is_empty() {
@@ -57,6 +59,14 @@ mod tests {
             Credentials::parse("server_url: https://sablier.facile.studio/\ntoken: abc\n").unwrap();
         assert_eq!(parsed.server_url, "https://sablier.facile.studio");
         assert_eq!(parsed.token, "abc");
+    }
+
+    #[test]
+    fn strips_the_api_suffix_the_cli_stores() {
+        let parsed =
+            Credentials::parse("server_url: https://sablier.facile.studio/api/\ntoken: abc\n")
+                .unwrap();
+        assert_eq!(parsed.server_url, "https://sablier.facile.studio");
     }
 
     #[test]
