@@ -7,6 +7,7 @@
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import AgentsCard from '$lib/components/AgentsCard.svelte';
+	import SuggestedDrafts from '$lib/components/SuggestedDrafts.svelte';
 	import {
 		BarChart,
 		Button,
@@ -351,6 +352,8 @@
 
 		<AgentsCard token={ctx.token} />
 	</section>
+
+	<SuggestedDrafts token={ctx.token} {projects} />
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">

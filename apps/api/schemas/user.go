@@ -21,6 +21,7 @@ type User struct {
 	Rate             float64   `gorm:"column:rate;not null;default:0"`
 	RateType         string    `gorm:"column:rate_type;not null;default:'daily'"`
 	WorkdayHours     float64   `gorm:"column:workday_hours;not null;default:8"`
+	AutoConfirm      bool      `gorm:"column:auto_confirm_drafts;not null;default:true"`
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	Kind             string    `gorm:"column:kind;not null;default:'human'"`
 	OwnerUserID      *int64    `gorm:"column:owner_user_id;index;uniqueIndex:idx_users_owner_agent_key"`

@@ -21,6 +21,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/agents"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
+	"github.com/FacileStudio/Sablier/apps/api/modules/heartbeats"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/Sablier/apps/api/modules/projects"
 	"github.com/FacileStudio/Sablier/apps/api/modules/settings"
@@ -65,6 +66,7 @@ func referenceConfig() apiref.Config {
 				antenne.Documentation,
 				notifications.Documentation,
 				agents.Documentation,
+				heartbeats.Documentation,
 			},
 		},
 	}
@@ -231,6 +233,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	agentService := agents.NewService(db)
 	projectService.SetPoolService(antenneService)
 	timeEntryService.SetPoolService(antenneService)
+	heartbeatService := heartbeats.NewService(db, timeEntryService)
 
 	router := httpx.NewRouter(httpx.Config{
 		TrustedProxies: appEnv.TrustedProxies,
@@ -258,6 +261,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		antenne.RegisterRoutes(api, antenneService, authService)
 		notifications.RegisterRoutes(api, notificationsService, authService)
 		agents.RegisterRoutes(api, agentService, authService)
+		heartbeats.RegisterRoutes(api, heartbeatService, authService)
 	})
 
 	clientDir := spa.DirFromEnv()
@@ -385,6 +389,8 @@ func run() error {
 	go antenneService.RunOutboxWorker(shutdownSignal)
 
 	appLogger.Info("antenne: outbox worker started")
+
+	go worker.RunHeartbeatWorker(shutdownSignal, heartbeats.NewService(db, timeentries.NewService(db)), appLogger)
 
 	select {
 	case err := <-serverErrCh:

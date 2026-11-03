@@ -108,6 +108,20 @@ export type TimeEntry = {
 	updated_at: string;
 };
 
+export type Draft = {
+	id: string;
+	started_at: string;
+	stopped_at: string;
+	project_id: number | null;
+	project_hint: string;
+	sources: string[];
+	heartbeats: number;
+};
+
+export type DraftSettings = {
+	auto_confirm_drafts: boolean;
+};
+
 export type Space = {
 	id: string;
 	name: string;
@@ -492,5 +506,31 @@ export const backend = {
 	},
 	removeSpaceMember(token: string, spaceId: string, memberId: string) {
 		return apiFetch<{ removed: boolean }>(`/api/spaces/${spaceId}/members/${memberId}`, { method: 'DELETE' }, token);
+	},
+
+	listDrafts(token: string, from: Date, to: Date) {
+		const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+		return apiFetch<Draft[]>(`/api/heartbeats/drafts?${params}`, {}, token);
+	},
+	confirmDraft(token: string, draft: Draft, projectId: number) {
+		return apiFetch<TimeEntry>('/api/heartbeats/drafts/confirm', {
+			method: 'POST',
+			body: JSON.stringify({ started_at: draft.started_at, stopped_at: draft.stopped_at, project_id: projectId })
+		}, token).then(normalizeEntry);
+	},
+	dismissDraft(token: string, draft: Draft) {
+		return apiFetch<{ dismissed: boolean }>('/api/heartbeats/drafts/dismiss', {
+			method: 'POST',
+			body: JSON.stringify({ started_at: draft.started_at, stopped_at: draft.stopped_at })
+		}, token);
+	},
+	getDraftSettings(token: string) {
+		return apiFetch<DraftSettings>('/api/heartbeats/settings', {}, token);
+	},
+	updateDraftSettings(token: string, settings: DraftSettings) {
+		return apiFetch<DraftSettings>('/api/heartbeats/settings', {
+			method: 'PUT',
+			body: JSON.stringify(settings)
+		}, token);
 	}
 };
