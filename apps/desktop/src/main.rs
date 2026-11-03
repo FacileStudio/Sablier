@@ -10,6 +10,7 @@ mod popup;
 mod rules;
 mod suggest;
 mod tray;
+mod window;
 mod worker;
 
 use popup::{Command, Popup};
@@ -70,7 +71,7 @@ fn setup(
     Ok(())
 }
 
-/// Starts the tray app: one instance, no main window, a hidden popup for prompts.
+/// Starts the tray app: one instance, a hidden popup for prompts, and the Sablier window on demand.
 fn main() {
     let (commands, inbox) = channel();
     let menu_commands = commands.clone();
@@ -91,7 +92,7 @@ fn main() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                let _ = window.hide();
+                window::hide(window);
             }
         })
         .build(tauri::generate_context!())

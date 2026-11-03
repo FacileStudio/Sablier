@@ -1,5 +1,6 @@
 use crate::idle::{self, Span};
 use crate::popup::{self, Action, Command, Prompt};
+use crate::window;
 use crate::worker::{Pending, Target, Worker, open_tasks};
 use chrono::{Local, Utc};
 use tauri::AppHandle;
@@ -45,6 +46,11 @@ impl Worker {
         }
     }
 
+    fn show_window(&self, server: Option<String>, path: &str) {
+        let server = server.unwrap_or_else(|| window::DEFAULT_SERVER.to_string());
+        window::show(&self.app, &server, path);
+    }
+
     fn menu(&mut self, id: &str) {
         let server = self
             .credentials
@@ -52,7 +58,8 @@ impl Worker {
             .map(|credentials| credentials.server_url.clone());
         match (id, server) {
             ("signin", _) => self.open(SIGN_IN_DOCS),
-            ("review" | "open", Some(server)) => self.open(&format!("{server}/")),
+            ("review", server) => self.show_window(server, "/dashboard"),
+            ("open", server) => self.show_window(server, "/"),
             ("autostart", _) => self.toggle_open_at_login(),
             ("stop" | "pause" | "resume", _) => {
                 if let Some(api) = &self.api {
