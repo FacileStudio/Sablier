@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0] - 2026-11-03
+
+### Added
+- Desktop app (`apps/desktop`, released separately as `desktop-v0.1.0`): "Open Sablier" and "Review suggestions" open the web app in its own window instead of the browser. On macOS the window has no title bar, and the traffic lights sit in a draggable band above the sidebar.
+- `.github/workflows/desktop.yml` builds a universal macOS dmg and Linux deb and rpm packages on `desktop-v*` tags and attaches them to a GitHub release.
+
+### Changed
+- When the desktop app marks the page with `data-desktop="macos"`, the sidebar column starts 40 px lower to leave room for the traffic lights. Browsers are unaffected.
+
 ## [1.6.0] - 2026-11-03
 
 ### Changed
