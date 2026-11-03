@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0] - 2026-11-03
+
+### Added
+- Android app (Capacitor, `apps/client/android`, appId `studio.facile.sablier`). It signs in through porte's mobile flow: PKCE in the system browser, a `studio.facile.sablier://auth` deep link, then a bearer token.
+- On the native app, `/` never shows the landing page. Signed-out users get a four-step onboarding at `/welcome`, with an hourglass that drains one step at a time, ending on "Sign in with Facile". Signed-in users go to `/dashboard`.
+- `/downloads` lists the macOS dmg, the Linux deb and rpm, and the universal Android APK with its checksum, and picks the visitor's OS.
+- `OIDC_MOBILE_REDIRECT` (default `studio.facile.sablier://auth`). While OIDC is on, CORS also allows `https://localhost`, the Android app's origin.
+- The client has unit tests (vitest): downloads, platform helpers, onboarding steps.
+
+### Changed
+- Bump porte to v0.8.0 for the mobile sign-in. The web cookie flow is unchanged.
+- The viewport uses `viewport-fit=cover` so safe-area insets apply on phones.
+
 ## [1.7.1] - 2026-11-03
 
 ### Changed

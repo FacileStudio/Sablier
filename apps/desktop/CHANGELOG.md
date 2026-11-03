@@ -1,12 +1,13 @@
 # Changelog
 
-Releases of the Sablier desktop app, tagged `desktop-v<version>`.
+Releases of the Sablier native apps (desktop tray app and Android), tagged `desktop-v<version>`.
 
 ## [0.2.0] - 2026-11-03
 
 ### Added
 
 - Self-update: Sablier checks GitHub 30 seconds after launch and then every 6 hours. When a new version exists it notifies once, and the tray menu offers "Install update X and restart". "Check for updates" runs a check on demand. Updates are signed; on Linux the deb or rpm installs through a `pkexec` prompt.
+- Android: `Sablier-android-universal.apk`, signed, with its SHA-256. It opens on an hourglass onboarding and signs in with Facile in the system browser.
 
 ## [0.1.0] - 2026-11-03
 
