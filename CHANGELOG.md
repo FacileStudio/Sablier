@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.0] - 2026-11-03
+
+### Changed
+- Cards, popovers and the login tab group lose their borders, matching `@facile/muse` v0.8.0, which this release adopts.
+
 ## [1.5.0] - 2026-11-03
 
 ### Added
