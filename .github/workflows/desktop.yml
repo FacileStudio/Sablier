@@ -1,0 +1,109 @@
+name: desktop
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-universal
+            runner: macos-latest
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            tauri_args: --target universal-apple-darwin --bundles app,dmg
+            bundle_dir: apps/desktop/target/universal-apple-darwin/release/bundle
+          - name: linux-x64
+            runner: ubuntu-22.04
+            rust_targets: x86_64-unknown-linux-gnu
+            tauri_args: --bundles deb,rpm
+            bundle_dir: apps/desktop/target/release/bundle
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: App and tag versions agree
+        if: github.ref_type == 'tag'
+        run: |
+          app=$(python3 -c "import json;print(json.load(open('apps/desktop/tauri.conf.json'))['version'])")
+          echo "app=$app tag=$GITHUB_REF_NAME"
+          test "desktop-v$app" = "$GITHUB_REF_NAME"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop -> target
+
+      - name: Install Linux libraries
+        if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev patchelf libssl-dev
+
+      - name: Test
+        working-directory: apps/desktop
+        run: cargo test --locked
+
+      - name: Build the app
+        working-directory: apps/desktop
+        run: npx --yes @tauri-apps/cli@2 build ${{ matrix.tauri_args }}
+
+      - name: Name the installers
+        run: |
+          version=$(python3 -c "import json;print(json.load(open('apps/desktop/tauri.conf.json'))['version'])")
+          mkdir -p out
+          bundle="${{ matrix.bundle_dir }}"
+          case "${{ matrix.name }}" in
+            macos-universal)
+              cp "$bundle"/dmg/*.dmg "out/Sablier-${version}-macos-universal.dmg" ;;
+            linux-x64)
+              cp "$bundle"/deb/*.deb "out/Sablier-${version}-linux-x64.deb"
+              cp "$bundle"/rpm/*.rpm "out/Sablier-${version}-linux-x64.rpm" ;;
+          esac
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: out/*
+          retention-days: 7
+
+  publish:
+    name: publish the release
+    needs: bundle
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Create the release with installers and checksums
+        run: |
+          cd out
+          sha256sum Sablier-* > desktop-checksums.txt
+          cat desktop-checksums.txt
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "Sablier desktop ${GITHUB_REF_NAME#desktop-v}" \
+            --notes "Tray app for Sablier, see docs/automatic-time-tracking.md. The macOS build is not notarized yet: right-click the app and choose Open the first time." \
+            Sablier-* desktop-checksums.txt
