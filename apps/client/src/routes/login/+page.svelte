@@ -235,6 +235,12 @@
 					</p>
 				{/if}
 			{/if}
+
+			{#if !native}
+				<p class="mt-8 text-center text-fc-sm text-fc-fg-muted">
+					<a href="/downloads" class="underline hover:text-fc-fg">Get the desktop and Android apps</a>
+				</p>
+			{/if}
 		</div>
 	</div>
 </div>
