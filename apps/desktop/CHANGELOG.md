@@ -2,6 +2,12 @@
 
 Releases of the Sablier native apps (desktop tray app and Android), tagged `desktop-v<version>`.
 
+## [0.2.2] - 2026-11-03
+
+### Fixed
+
+- "Open Sablier" and "Review" no longer show a 404. The CLI stores `server_url` with an `/api` suffix, so the window opened `/api/...`; the app now strips it.
+
 ## [0.2.1] - 2026-11-03
 
 ### Fixed
