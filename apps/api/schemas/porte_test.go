@@ -249,3 +249,33 @@ func TestAdoptPorteRekeysPasswordIdentitiesOntoTheAccountID(t *testing.T) {
 		t.Fatalf("the federated subject was re-keyed too, unmatching the SSO account: %q", federated)
 	}
 }
+
+// A user who has not signed in since Registre began naming a picture for every human
+// must still get one, derived from the identity row. Running it twice proves the boot
+// backfill is idempotent, and the password-only user proves it touches nobody else.
+func TestBackfillOIDCPicturesDerivesTheRegistreURL(t *testing.T) {
+	db := openPostgres(t)
+	seedPrePorte(t, db)
+	if err := AdoptPorte(db, testIssuer); err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+	if err := db.Exec(`UPDATE users SET oidc_picture_url = 'https://porte.test/old-upload.png' WHERE id = 1`).Error; err != nil {
+		t.Fatalf("seed a stale url: %v", err)
+	}
+	for range 2 {
+		if err := backfillOIDCPictures(db, testIssuer); err != nil {
+			t.Fatalf("backfill: %v", err)
+		}
+	}
+
+	want := map[int64]string{1: "https://porte.test/application/o/sablier/avatars/sub-1", 2: ""}
+	for id, url := range want {
+		var got string
+		if err := db.Raw(`SELECT coalesce(oidc_picture_url, '') FROM users WHERE id = ?`, id).Scan(&got).Error; err != nil {
+			t.Fatalf("read user %d: %v", id, err)
+		}
+		if got != url {
+			t.Errorf("user %d: oidc_picture_url = %q, want %q", id, got, url)
+		}
+	}
+}

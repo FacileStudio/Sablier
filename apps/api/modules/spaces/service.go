@@ -138,15 +138,10 @@ func (s *Service) deleteSpace(ctx context.Context, spaceID string) error {
 }
 
 func (s *Service) listMembers(ctx context.Context, spaceID string) ([]memberRow, error) {
-	type row struct {
-		schemas.SpaceMember
-		UserEmail string
-		UserName  string
-	}
-	var rows []row
+	var rows []memberRow
 	err := s.orm.WithContext(ctx).
 		Model(&schemas.SpaceMember{}).
-		Select("space_members.*, users.email as user_email, users.name as user_name").
+		Select("space_members.*, users.email as user_email, users.name as user_name, users.color as user_color, "+schemas.AvatarSelectExpr+" as user_avatar_url").
 		Joins("JOIN users ON users.id = space_members.user_id").
 		Where("space_members.space_id = ?", spaceID).
 		Order("space_members.joined_at asc").
@@ -154,17 +149,15 @@ func (s *Service) listMembers(ctx context.Context, spaceID string) ([]memberRow,
 	if err != nil {
 		return nil, errors.Internal("failed to list members", err)
 	}
-	result := make([]memberRow, len(rows))
-	for i, r := range rows {
-		result[i] = memberRow{SpaceMember: r.SpaceMember, UserEmail: r.UserEmail, UserName: r.UserName}
-	}
-	return result, nil
+	return rows, nil
 }
 
 type memberRow struct {
 	schemas.SpaceMember
-	UserEmail string
-	UserName  string
+	UserEmail     string
+	UserName      string
+	UserColor     string
+	UserAvatarURL string
 }
 
 func (s *Service) addMember(ctx context.Context, spaceID string, targetUserID int64, role string) (*schemas.SpaceMember, error) {

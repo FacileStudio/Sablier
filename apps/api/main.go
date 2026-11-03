@@ -223,7 +223,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	authService := auth.NewService(db, sessions, passwords, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
-	userService := users.NewService(db, appEnv.StorageDir, authService)
+	userService := users.NewService(db, authService)
 	settingsService := settings.NewService(db)
 	spaceService := spaces.NewService(db)
 	projectService.SetPoolService(antenneService)
@@ -341,10 +341,6 @@ func run() error {
 		appLogger.Info("database migrations applied")
 	}
 
-	if err := os.MkdirAll(filepath.Join(appEnv.StorageDir, "avatars"), 0o755); err != nil {
-		appLogger.Error("failed to prepare storage", slog.Any("error", err))
-		return err
-	}
 	sqlDB, err := db.DB()
 	if err != nil {
 		appLogger.Error("failed to access database handle", slog.Any("error", err))

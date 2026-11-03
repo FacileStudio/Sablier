@@ -73,7 +73,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `APP_ENV` -- `development`, `staging`, `production`. Never gates security behaviour
 - `PORT` -- API port (tronc default `8080`; compose and both `.env.example` pin `4000`)
 - `LOG_LEVEL` -- `debug`, `info`, `warn`, `error`
-- `STORAGE_DIR` -- Avatar file storage (default `./data`)
+- `STORAGE_DIR` -- Legacy uploaded avatars, read-only since Registre owns pictures (default `./data`)
 - `OIDC_*` -- OpenID Connect config (optional)
 - `SSO_ONLY` -- Hide password auth when `true`
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` -- Web push (optional; push stays off while the keys are unset)
@@ -92,7 +92,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 
 - `GET /health`, `GET /ready` -- Health and readiness probes
 - `GET /docs` -- Auto-generated JSON API documentation
-- `GET /files/*` -- Static file serving (avatars)
+- `GET /files/*` -- Static file serving (legacy uploaded avatars)
 - Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/config`, `/api/auth/oidc/*`
 - Resources: `/api/projects`, `/api/time-entries`, `/api/users`, `/api/settings`
 - Spaces: `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`, `/api/spaces/{id}/leave`
@@ -106,4 +106,4 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - **Svelte 5 runes** are enforced (`$state`, `$props`, `$derived`, `$effect`). No legacy Svelte 4 syntax.
 - **No linter or formatter configured** in the repo currently.
 - **No test setup on the client side** -- only the API has `go test`.
-- Avatar uploads are stored on disk at `STORAGE_DIR/avatars/` and served under `/files/`.
+- Profile pictures come from Registre: `oidc_picture_url` holds `<issuer>/avatars/<sub>`, backfilled at boot from `porte_identities`. Sablier has no upload; the profile page links to `https://sso.facile.studio/account`. Old uploads in `STORAGE_DIR/avatars/` still render for accounts with no Registre identity.

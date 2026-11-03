@@ -120,6 +120,8 @@ export type SpaceMember = {
 	user_id: number;
 	user_email: string;
 	user_name: string;
+	user_color: string;
+	user_avatar_url: string;
 	role: string;
 	joined_at: string;
 };
@@ -243,26 +245,6 @@ export const backend = {
 			user: normalizeUser(result.user),
 			token: result.token
 		}));
-	},
-	deleteAvatar(token: string) {
-		return apiFetch<MeResponse>('/api/users/me/avatar', { method: 'DELETE' }, token).then((result) => ({
-			user: normalizeUser(result.user)
-		}));
-	},
-	async uploadAvatar(token: string | undefined, file: File) {
-		const formData = new FormData();
-		formData.set('avatar', file);
-		const response = await fetch(`${backendBaseUrl}/api/users/me/avatar`, {
-			method: 'POST',
-			body: formData,
-			headers: buildHeaders(undefined, 'POST', token),
-			credentials: 'same-origin'
-		});
-		if (!response.ok) {
-			throw await requestError(response);
-		}
-		const result = (await response.json()) as MeResponse;
-		return { user: normalizeUser(result.user) };
 	},
 
 	listProjects(token: string, spaceId?: string | null) {
@@ -462,7 +444,12 @@ export const backend = {
 		return apiFetch<{ left: boolean }>(`/api/spaces/${id}/leave`, { method: 'POST' }, token);
 	},
 	listSpaceMembers(token: string, spaceId: string) {
-		return apiFetch<{ members: SpaceMember[] }>(`/api/spaces/${spaceId}/members`, {}, token);
+		return apiFetch<{ members: SpaceMember[] }>(`/api/spaces/${spaceId}/members`, {}, token).then((result) => ({
+			members: result.members.map((member) => ({
+				...member,
+				user_avatar_url: resolveFileUrl(member.user_avatar_url)
+			}))
+		}));
 	},
 	addSpaceMember(token: string, spaceId: string, userId: number, role: string) {
 		return apiFetch<SpaceMember>(`/api/spaces/${spaceId}/members`, {

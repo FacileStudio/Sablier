@@ -64,13 +64,15 @@ func toSpaceResponse(s *schemas.Space, role string) SpaceResponse {
 
 func toMemberResponse(m *memberRow) MemberResponse {
 	return MemberResponse{
-		ID:        m.ID,
-		SpaceID:   m.SpaceID,
-		UserID:    m.UserID,
-		UserEmail: m.UserEmail,
-		UserName:  m.UserName,
-		Role:      m.Role,
-		JoinedAt:  m.JoinedAt,
+		ID:            m.ID,
+		SpaceID:       m.SpaceID,
+		UserID:        m.UserID,
+		UserEmail:     m.UserEmail,
+		UserName:      m.UserName,
+		UserColor:     m.UserColor,
+		UserAvatarURL: m.UserAvatarURL,
+		Role:          m.Role,
+		JoinedAt:      m.JoinedAt,
 	}
 }
 

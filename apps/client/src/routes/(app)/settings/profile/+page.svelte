@@ -4,16 +4,13 @@
 	import {
 		Alert,
 		Button,
-		ColorPicker,
-		ConfirmModal,
-		Dropzone,
 		Field,
 		Input,
 		OptionCards,
 		ProfileCard,
 		SettingsRow,
 		SettingsSection,
-		UploadProgress,
+		SwatchPicker,
 		icons,
 		normalizeUserColor,
 		toast
@@ -22,23 +19,13 @@
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
 
-	type UploadItem = {
-		id: string;
-		name: string;
-		size?: number;
-		progress: number;
-		status: 'pending' | 'uploading' | 'done' | 'error';
-		error?: string;
-	};
-
 	const ctx = getContext<{
 		token: string;
 		user: UserProfile | null;
 		setUser: (user: UserProfile) => void;
 	}>('app');
 
-	const AVATAR_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
-	const AVATAR_MAX_SIZE = 5 * 1024 * 1024;
+	const ACCOUNT_URL = 'https://sso.facile.studio/account';
 
 	let name = $state(ctx.user?.name ?? '');
 	let color = $state(normalizeUserColor(ctx.user?.color));
@@ -48,10 +35,6 @@
 
 	let saving = $state(false);
 	let rateSaving = $state(false);
-	let uploading = $state(false);
-	let removingAvatar = $state(false);
-	let confirmRemoveAvatar = $state(false);
-	let uploads = $state<UploadItem[]>([]);
 
 	$effect(() => {
 		name = ctx.user?.name ?? '';
@@ -60,8 +43,6 @@
 		rateType = ctx.user?.rate_type ?? 'daily';
 		workdayHours = ctx.user?.workday_hours ?? 8;
 	});
-
-	const ssoAvatar = $derived(ctx.user?.avatar_source === 'oidc');
 
 	function displayName(user: UserProfile | null) {
 		return user?.name?.trim() || user?.email || '';
@@ -112,54 +93,6 @@
 		}
 	}
 
-	async function uploadAvatar(files: File[]) {
-		const file = files[0];
-		if (!file) return;
-
-		uploading = true;
-		uploads = [
-			{ id: `${file.name}-${file.lastModified}`, name: file.name, size: file.size, progress: 0, status: 'uploading' }
-		];
-
-		try {
-			const result = await backend.uploadAvatar(ctx.token, file);
-			ctx.setUser(result.user);
-			uploads = uploads.map((item) => ({ ...item, progress: 100, status: 'done' as const }));
-			toast.success('Avatar updated.');
-		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Failed to upload avatar.';
-			uploads = uploads.map((item) => ({ ...item, status: 'error' as const, error: message }));
-			toast.danger(message);
-		} finally {
-			uploading = false;
-		}
-	}
-
-	function rejectAvatar(rejections: { file: File; reason: 'type' | 'size' | 'count' }[]) {
-		const reason = rejections[0]?.reason;
-		toast.danger(
-			reason === 'size'
-				? 'That image is larger than 5 MB.'
-				: reason === 'count'
-					? 'One picture at a time.'
-					: 'PNG, JPG, GIF or WebP only.'
-		);
-	}
-
-	async function removeAvatar() {
-		removingAvatar = true;
-		try {
-			const result = await backend.deleteAvatar(ctx.token);
-			ctx.setUser(result.user);
-			uploads = [];
-			toast.success('Profile picture removed.');
-		} catch (err) {
-			toast.danger(err instanceof Error ? err.message : 'Failed to remove picture.');
-		} finally {
-			removingAvatar = false;
-		}
-	}
-
 	async function logout() {
 		await backend.logout(ctx.token).catch(() => {});
 		localStorage.removeItem(TOKEN_KEY);
@@ -207,47 +140,16 @@
 		label="Identity colour"
 		description="Your dot in member lists and your slice of shared charts."
 	>
-		<ColorPicker bind:value={color} showLabels label="Identity colour" />
+		<SwatchPicker bind:value={color} showLabels label="Identity colour" />
 	</SettingsRow>
 </SettingsSection>
 
-<SettingsSection
-	title="Profile picture"
-	description={ssoAvatar
-		? 'Supplied by single sign-on.'
-		: 'PNG, JPG, GIF or WebP. Max 5 MB.'}
-	bare={!ssoAvatar}
->
-	{#snippet actions()}
-		{#if !ssoAvatar && ctx.user?.avatar_url}
-			<Button
-				variant="ghost-danger"
-				icon={icons.remove}
-				disabled={removingAvatar}
-				onclick={() => (confirmRemoveAvatar = true)}
-			>
-				{removingAvatar ? 'Removing…' : 'Remove picture'}
-			</Button>
-		{/if}
-	{/snippet}
-
-	{#if ssoAvatar}
-		<Alert tone="info">
-			Your photo comes from single sign-on. Change it there and it updates here within a few
-			minutes.
-		</Alert>
-	{:else}
-		<Dropzone
-			accept={AVATAR_ACCEPT}
-			maxSize={AVATAR_MAX_SIZE}
-			disabled={uploading || removingAvatar}
-			label="Drop a picture here"
-			hint="PNG, JPG, GIF or WebP — max 5 MB."
-			onFiles={uploadAvatar}
-			onReject={rejectAvatar}
-		/>
-		<UploadProgress items={uploads} showTotal={false} onCancel={() => (uploads = [])} />
-	{/if}
+<SettingsSection title="Profile picture" description="Set once in Registre, shown in every Facile app.">
+	<Alert tone="info">
+		Your picture comes from your Facile account. Change it at
+		<a class="font-medium text-fc-accent underline" href={ACCOUNT_URL} target="_blank" rel="noopener noreferrer">sso.facile.studio/account</a>
+		and it shows here on the next page load.
+	</Alert>
 </SettingsSection>
 
 <SettingsSection
@@ -303,12 +205,3 @@
 		<Button variant="ghost-danger" icon={icons.logout} onclick={logout}>Log out</Button>
 	</SettingsRow>
 </SettingsSection>
-
-<ConfirmModal
-	bind:open={confirmRemoveAvatar}
-	tone="danger"
-	title="Remove profile picture?"
-	description="Sablier falls back to your initials everywhere until you upload a new one."
-	confirmLabel="Remove"
-	onConfirm={removeAvatar}
-/>

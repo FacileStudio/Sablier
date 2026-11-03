@@ -42,13 +42,15 @@ type ListSpacesResponse struct {
 
 // MemberResponse is the serialized shape of a space member.
 type MemberResponse struct {
-	ID        string    `json:"id"`
-	SpaceID   string    `json:"space_id"`
-	UserID    int64     `json:"user_id"`
-	UserEmail string    `json:"user_email"`
-	UserName  string    `json:"user_name"`
-	Role      string    `json:"role"`
-	JoinedAt  time.Time `json:"joined_at"`
+	ID            string    `json:"id"`
+	SpaceID       string    `json:"space_id"`
+	UserID        int64     `json:"user_id"`
+	UserEmail     string    `json:"user_email"`
+	UserName      string    `json:"user_name"`
+	UserColor     string    `json:"user_color"`
+	UserAvatarURL string    `json:"user_avatar_url"`
+	Role          string    `json:"role"`
+	JoinedAt      time.Time `json:"joined_at"`
 }
 
 // ListMembersResponse wraps a member list.

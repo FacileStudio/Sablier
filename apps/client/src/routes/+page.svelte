@@ -100,7 +100,7 @@
 				</div>
 			</section>
 
-			<Divider class="my-0" />
+			<Divider />
 
 			<section class="mx-auto max-w-5xl px-6 py-20">
 				<div class="grid gap-6 md:grid-cols-3">
@@ -119,7 +119,7 @@
 				</div>
 			</section>
 
-			<Divider class="my-0" />
+			<Divider />
 
 			<section class="mx-auto max-w-5xl px-6 py-20 text-center">
 				<h2 class="font-fc-title text-fc-2xl font-semibold tracking-tight">

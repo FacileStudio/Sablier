@@ -109,7 +109,7 @@ is what a missing or misplaced `CLIENT_DIR` looks like.
 | Volume | Mounted at | Holds |
 |---|---|---|
 | `sablier_db_data` | `/var/lib/postgresql/data` | The database |
-| `sablier_api_data` | `/data` | Uploaded and OIDC-fetched avatars under `/data/avatars` |
+| `sablier_api_data` | `/data` | Avatars uploaded before Registre owned pictures, under `/data/avatars` |
 
-Avatars are files on disk, not rows. Losing `sablier_api_data` loses every uploaded
-avatar; OIDC-sourced ones come back on the next profile sync, uploaded ones do not.
+Pictures now come from Registre as URLs, so nothing writes to `sablier_api_data`. It
+still holds the legacy uploads shown to accounts with no Registre identity.

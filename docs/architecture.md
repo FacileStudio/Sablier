@@ -85,9 +85,10 @@ it. When it is configured, three extra routes appear:
 - `POST /api/auth/sync-profile` re-pulls the provider profile for the logged-in user.
 
 The scopes requested are `openid`, `email`, `profile`, and `offline_access`. Access,
-refresh, and expiry are stored on the user row, along with `profile_synced_at`. A
-provider `picture` claim is downloaded into `STORAGE_DIR/avatars` and exposed as
-`/files/...`, with `avatar_source` set to `oidc`.
+refresh, and expiry are stored on the user row, along with `profile_synced_at`. The
+provider `picture` claim is stored as a URL in `oidc_picture_url`, never downloaded, and
+boot backfills `<issuer>/avatars/<subject>` for every identity under the configured issuer,
+so users who have not signed in since still get their Registre picture.
 
 `SSO_ONLY=true` removes `POST /api/auth/register` and `POST /api/auth/login` from the
 router entirely — they 404 rather than 403.

@@ -76,7 +76,7 @@ func newPasswordStack(t *testing.T) (*Service, *auth.Service, *gorm.DB) {
 		t.Fatalf("local kit: %v", err)
 	}
 	authService := auth.NewService(db, sessions, passwords, nil)
-	return NewService(db, t.TempDir(), authService), authService, db
+	return NewService(db, authService), authService, db
 }
 
 // scopedURL points a connection at testSchema through the DSN rather than a

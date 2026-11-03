@@ -7,7 +7,7 @@ Go backend for authentication, projects, tasks, sessions, profiles, and webhook 
 - JWT authentication with optional OIDC login
 - Shared project and task management
 - Timer start/stop plus manual time entries
-- User profiles with avatar file storage
+- User profiles with the Registre profile picture
 - Per-user webhook configuration for timer events
 - Health, readiness, and JSON docs endpoints
 
@@ -31,7 +31,6 @@ The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /users/me`
-- `POST /users/me/avatar`
 - `GET /projects`
 - `GET /projects/{id}/tasks`
 - `GET /time-entries`
@@ -45,7 +44,7 @@ The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
 - `DOMAINS`: comma-separated allowed origins
 - `PORT`: HTTP port, default `4000`
 - `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
-- `STORAGE_DIR`: avatar storage root, default `./data`
+- `STORAGE_DIR`: root of legacy uploaded avatars, default `./data`
 - `OIDC_*`: enables OpenID Connect login
 - `SSO_ONLY=true`: disables password auth routes
 
@@ -60,5 +59,5 @@ go build -o bin/api .
 
 ## Notes
 
-- Avatar files are served by the API under `/files/*`.
+- Legacy uploaded avatar files are served by the API under `/files/*`.
 - The production image stores uploaded files in `/data`.

@@ -35,9 +35,10 @@ const AvatarSelectExpr = `COALESCE(NULLIF(users.oidc_picture_url, ''), ` +
 	`NULLIF('/files/' || COALESCE(users.avatar_upload_path, ''), '/files/'), '')`
 
 // Avatar is the picture to render. It is derived from the two sources rather than stored
-// alongside them: a photo set in Porte always wins, an upload shows only when the IdP
-// offers none, and because nothing is written there is no third value that can drift out
-// of agreement with the two that matter.
+// alongside them: the Registre URL always wins, and a legacy upload shows only for an
+// account with no Registre identity. Registre answers 404 at that URL for a user with no
+// picture, and the client's Avatar falls back to initials. Sablier no longer accepts
+// uploads; the ones already on disk are kept and still read here.
 func (u User) Avatar() string {
 	if u.OIDCPictureURL != "" {
 		return u.OIDCPictureURL

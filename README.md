@@ -13,7 +13,7 @@ Live at [sablier.facile.studio](https://sablier.facile.studio).
 - Spaces that scope projects, tasks, and time entries to a group of members
 - Live timers with pause and resume, plus manually entered sessions
 - Per-project task boards with `to-do`, `in-progress`, `in-review`, and `done` statuses
-- Profiles with names, colors, avatar uploads, billing rate, and workday length
+- Profiles with names, colors, the Registre profile picture, billing rate, and workday length
 - Long-lived API tokens for scripting, alongside browser session tokens
 - Web push reminders for timers that are still running
 - Two-way project and task sync over the Antenne, plus outbound webhooks
@@ -80,7 +80,7 @@ facile install sablier
 | `DATABASE_URL` | Postgres connection string. Required — the API exits 1 without it |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API |
 | `PORT` | HTTP listen port. `tronc` defaults to `8080`; this repo pins `4000` everywhere |
-| `STORAGE_DIR` | Root for uploaded avatars, served back under `/files/` |
+| `STORAGE_DIR` | Root for avatars uploaded before Registre owned pictures, served back under `/files/` |
 | `APP_ENV` | `development`, `staging`, or `production` |
 | `LOG_LEVEL` | `debug`, `info`, `warn`, or `error` |
 

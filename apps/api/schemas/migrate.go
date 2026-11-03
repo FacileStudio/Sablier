@@ -24,6 +24,9 @@ func Migrate(db *gorm.DB, issuer string) error {
 	if err := AdoptPorte(db, issuer); err != nil {
 		return err
 	}
+	if err := backfillOIDCPictures(db, issuer); err != nil {
+		return err
+	}
 	if err := backfillAvatarUploadPath(db); err != nil {
 		return err
 	}
@@ -34,6 +37,29 @@ func Migrate(db *gorm.DB, issuer string) error {
 		return err
 	}
 	return backfillFacileIDs(db)
+}
+
+// backfillOIDCPictures stores the picture URL Registre would hand over at the next
+// sign-in, for every user holding an identity under the configured issuer.
+//
+// Registre names one stable URL per human, <issuer>/avatars/<sub>, whether or not a
+// picture exists, and answers 404 when none does. A user who last signed in before that
+// claim existed holds no URL, or an old per-upload one, and would show initials until
+// signing in again. Deriving it here from the identity row fixes them on the next boot.
+// It is idempotent: a row already holding the derived URL is not touched.
+//
+// The issuer is read from configuration and never written into a migration. A non-https
+// issuer is skipped, for the same reason PhotoURL refuses a non-https claim.
+func backfillOIDCPictures(db *gorm.DB, issuer string) error {
+	if db.Dialector.Name() != "postgres" || !strings.HasPrefix(strings.ToLower(issuer), "https://") {
+		return nil
+	}
+	return db.Exec(
+		`UPDATE users SET oidc_picture_url = rtrim(?, '/') || '/avatars/' || i.subject
+		 FROM porte_identities i
+		 WHERE i.user_id = users.id AND i.provider = ?
+		   AND users.oidc_picture_url IS DISTINCT FROM rtrim(?, '/') || '/avatars/' || i.subject`,
+		issuer, issuer, issuer).Error
 }
 
 // backfillAvatarUploadPath moves the uploaded avatars onto the column that now owns them.

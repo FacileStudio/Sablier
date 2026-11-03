@@ -36,17 +36,13 @@ func (p Profile) DisplayName() string {
 	return ""
 }
 
-// PhotoURL returns the picture claim when it is a photo somebody actually chose, and ""
-// when it is not.
+// PhotoURL returns the picture claim when it is an https URL, and "" otherwise.
 //
-// The distinction is the whole reason this function exists. Authentik never omits the
-// claim: a user with no photo gets `data:image/svg+xml;base64,…`, its own rendering of
-// their initials. Testing `picture != ""` — which every app in the suite did — therefore
-// reads "has an avatar" as always true, which is why an upload could never be offered as
-// the fallback and why the old fetch logged a failed HTTPS check every five minutes.
-//
-// An https URL is a file in Porte's media store. Anything else is a placeholder we can
-// draw better ourselves, so it is reported as no photo at all.
+// Registre names one stable URL per human, <issuer>/avatars/<sub>, which always serves the
+// current picture and answers 404 when there is none, so the client renders initials.
+// Authentik used to send `data:image/svg+xml;base64,…` placeholders instead; anything that
+// is not https is still reported as no photo, since storing it would never render better
+// than the initials.
 func PhotoURL(pictureClaim string) string {
 	if strings.HasPrefix(strings.ToLower(pictureClaim), "https://") {
 		return pictureClaim
