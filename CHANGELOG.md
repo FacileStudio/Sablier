@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.7.1] - 2026-11-03
+
+### Changed
+- Spaces use the share-circle icon (`icons.space` from `@facile/muse` v0.8.1, which this release adopts) in the navigation, the space list, its empty state, the space header and the "Gérer dans Registre" buttons.
+
 ## [1.7.0] - 2026-11-03
 
 ### Added
