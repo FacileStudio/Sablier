@@ -326,7 +326,7 @@ func (s *Service) resolveActorByEmail(tx *gorm.DB, email string) *int64 {
 		return nil
 	}
 	var user schemas.User
-	if err := tx.Select("id").Where("email = ?", email).First(&user).Error; err != nil {
+	if err := tx.Select("id").Where("email = ? AND kind <> ?", email, schemas.UserKindAgent).First(&user).Error; err != nil {
 		return nil
 	}
 	return &user.ID

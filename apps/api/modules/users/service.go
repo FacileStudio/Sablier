@@ -201,6 +201,8 @@ func mapUser(record schemas.User) *User {
 		RateType:     rateType,
 		WorkdayHours: workdayHours,
 		CreatedAt:    record.CreatedAt.UTC().Format(time.RFC3339),
+		Kind:         record.Kind,
+		OwnerUserID:  record.OwnerUserID,
 	}
 }
 

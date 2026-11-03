@@ -5,6 +5,8 @@
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
+	import AgentBadge from '$lib/components/AgentBadge.svelte';
+	import AgentsCard from '$lib/components/AgentsCard.svelte';
 	import {
 		BarChart,
 		Button,
@@ -346,6 +348,8 @@
 			<StatCard label="Sessions today" value={todaySessionCount()} />
 			<StatCard label="Projects" value={projects.length} />
 		</div>
+
+		<AgentsCard token={ctx.token} />
 	</section>
 
 	<section class="flex flex-col gap-4">
@@ -478,7 +482,10 @@
 						<div class="flex items-center gap-3">
 							<UserAvatarBadge name={label} avatarUrl={entry.user_avatar_url} color={entry.user_color} />
 							<div class="min-w-0">
-								<p class="truncate text-fc-sm font-medium text-fc-fg">{label}</p>
+								<p class="flex items-center gap-1.5 text-fc-sm font-medium text-fc-fg">
+									<span class="truncate">{label}</span>
+									{#if entry.user_kind === 'agent'}<AgentBadge />{/if}
+								</p>
 								<p class="truncate text-fc-xs text-fc-fg-muted">
 									{projectName(entry.project_id)}{entry.task_name ? ` · ${entry.task_name}` : ''}
 								</p>
@@ -545,6 +552,7 @@
 										color={entry.user_color}
 									/>
 									<span class="hidden md:block">{getEntryUserDisplayName(entry)}</span>
+									{#if entry.user_kind === 'agent'}<AgentBadge />{/if}
 								</div>
 							</td>
 							<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>

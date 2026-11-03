@@ -36,7 +36,10 @@ func Migrate(db *gorm.DB, issuer string) error {
 	if err := backfillTimeEntryTasks(db); err != nil {
 		return err
 	}
-	return backfillFacileIDs(db)
+	if err := backfillFacileIDs(db); err != nil {
+		return err
+	}
+	return backfillAgentEntries(db)
 }
 
 // backfillOIDCPictures stores the picture URL Registre would hand over at the next

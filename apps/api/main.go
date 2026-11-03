@@ -18,6 +18,7 @@ import (
 	documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/internal/worker"
+	"github.com/FacileStudio/Sablier/apps/api/modules/agents"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
@@ -63,6 +64,7 @@ func referenceConfig() apiref.Config {
 				spaces.Documentation,
 				antenne.Documentation,
 				notifications.Documentation,
+				agents.Documentation,
 			},
 		},
 	}
@@ -226,6 +228,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	userService := users.NewService(db, authService)
 	settingsService := settings.NewService(db)
 	spaceService := spaces.NewService(db)
+	agentService := agents.NewService(db)
 	projectService.SetPoolService(antenneService)
 	timeEntryService.SetPoolService(antenneService)
 
@@ -254,6 +257,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		spaces.RegisterRoutes(api, spaceService, authService)
 		antenne.RegisterRoutes(api, antenneService, authService)
 		notifications.RegisterRoutes(api, notificationsService, authService)
+		agents.RegisterRoutes(api, agentService, authService)
 	})
 
 	clientDir := spa.DirFromEnv()

@@ -5,6 +5,7 @@
 	import { getUserDisplayName } from '$lib/user-display';
 	import { Avatar, Card, EmptyState, Skeleton, StatusDot, icons, normalizeUserColor } from '@facile/muse';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
+	import AgentBadge from '$lib/components/AgentBadge.svelte';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -112,8 +113,11 @@
 								<div class="flex min-w-0 items-center gap-1.5">
 									<UserColorDot {color} />
 									<span class="truncate text-fc-sm font-semibold text-fc-fg">{name}</span>
+									{#if user.kind === 'agent'}<AgentBadge />{/if}
 								</div>
-								<span class="truncate text-fc-xs text-fc-fg-muted">{user.email}</span>
+								{#if user.kind !== 'agent'}
+									<span class="truncate text-fc-xs text-fc-fg-muted">{user.email}</span>
+								{/if}
 							</div>
 						</div>
 						<p class="text-fc-xs text-fc-fg-muted">Created {formatDate(user.created_at)}</p>

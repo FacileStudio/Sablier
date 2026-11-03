@@ -37,6 +37,7 @@ type TimeEntryResponse struct {
 	UserName       string     `json:"user_name,omitempty"`
 	UserColor      string     `json:"user_color,omitempty"`
 	UserAvatarURL  string     `json:"user_avatar_url,omitempty"`
+	UserKind       string     `json:"user_kind,omitempty"`
 	StartedAt      time.Time  `json:"started_at"`
 	StoppedAt      *time.Time `json:"stopped_at"`
 	PausedAt       *time.Time `json:"paused_at"`

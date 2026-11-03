@@ -60,6 +60,8 @@ func TestDelegatedJWTScopeGate(t *testing.T) {
 		{"read scope cannot stop a timer", []string{"sablier.read"}, http.MethodPost, "/api/time-entries/stop", http.StatusForbidden},
 		{"another app's scope reads nothing", []string{"courrier.read"}, http.MethodGet, "/api/time-entries/running", http.StatusForbidden},
 		{"write scope can start a timer", []string{"sablier.write"}, http.MethodPost, "/api/time-entries/start", http.StatusOK},
+		{"read scope cannot book an agent session", []string{"sablier.read"}, http.MethodPost, "/api/agents/sessions", http.StatusForbidden},
+		{"write scope can book an agent session", []string{"sablier.write"}, http.MethodPost, "/api/agents/sessions", http.StatusOK},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

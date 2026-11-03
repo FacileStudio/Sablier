@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { backend, type Space, type SpaceMember, type UserProfile } from '$lib/backend';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
+	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import {
 		Badge,
 		Button,
@@ -192,8 +193,13 @@
 										color={member.user_color}
 									/>
 									<div class="flex min-w-0 flex-col gap-0.5">
-										<span class="truncate font-medium text-fc-fg">{memberName(member)}</span>
-										<span class="truncate text-fc-xs text-fc-fg-muted">{member.user_email}</span>
+										<span class="flex min-w-0 items-center gap-1.5">
+											<span class="truncate font-medium text-fc-fg">{memberName(member)}</span>
+											{#if member.user_kind === 'agent'}<AgentBadge />{/if}
+										</span>
+										{#if member.user_kind !== 'agent'}
+											<span class="truncate text-fc-xs text-fc-fg-muted">{member.user_email}</span>
+										{/if}
 									</div>
 								</div>
 							</td>

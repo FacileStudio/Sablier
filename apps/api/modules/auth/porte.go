@@ -82,6 +82,9 @@ func (s *UserStore) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (in
 	default:
 		return 0, errors.Internal("failed to resolve the identity", err)
 	}
+	if user.IsAgent() {
+		return 0, errors.Forbidden("agent accounts cannot sign in")
+	}
 
 	updates := map[string]any{"email": email, "oidc_picture_url": oidcavatar.PhotoURL(claims.Picture)}
 	if displayName := claims.DisplayName(); displayName != "" {
@@ -103,10 +106,11 @@ func (s *UserStore) CreateFromPassword(ctx context.Context, email, name string) 
 	return user.ID, nil
 }
 
-// FindByEmail returns the user id for an address, or porte.ErrNotFound.
+// FindByEmail returns the user id for an address, or porte.ErrNotFound. Agent
+// users are never found, so no password or magic-link flow can reach one.
 func (s *UserStore) FindByEmail(ctx context.Context, email string) (int64, error) {
 	var user schemas.User
-	err := s.orm.WithContext(ctx).Select("id").Where("email = ?", email).First(&user).Error
+	err := s.orm.WithContext(ctx).Select("id").Where("email = ? AND kind <> ?", email, schemas.UserKindAgent).First(&user).Error
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return 0, porte.ErrNotFound
 	}
@@ -116,10 +120,11 @@ func (s *UserStore) FindByEmail(ctx context.Context, email string) (int64, error
 	return user.ID, nil
 }
 
-// CountUsers backs porte/local's registration gate.
+// CountUsers backs porte/local's registration gate. Agents are not people and
+// do not count.
 func (s *UserStore) CountUsers(ctx context.Context) (int64, error) {
 	var count int64
-	if err := s.orm.WithContext(ctx).Model(&schemas.User{}).Count(&count).Error; err != nil {
+	if err := s.orm.WithContext(ctx).Model(&schemas.User{}).Where("kind <> ?", schemas.UserKindAgent).Count(&count).Error; err != nil {
 		return 0, errors.Internal("failed to count users", err)
 	}
 	return count, nil

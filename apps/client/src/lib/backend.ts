@@ -18,6 +18,8 @@ export type UserProfile = {
 	rate_type: 'daily' | 'hourly';
 	workday_hours: number;
 	created_at: string;
+	kind?: 'human' | 'agent';
+	owner_user_id?: number;
 };
 
 export type MeResponse = {
@@ -97,6 +99,7 @@ export type TimeEntry = {
 	user_email?: string;
 	user_color?: string;
 	user_avatar_url?: string;
+	user_kind?: 'human' | 'agent';
 	started_at: string;
 	stopped_at: string | null;
 	paused_at: string | null;
@@ -122,8 +125,25 @@ export type SpaceMember = {
 	user_name: string;
 	user_color: string;
 	user_avatar_url: string;
+	user_kind?: 'human' | 'agent';
 	role: string;
 	joined_at: string;
+};
+
+export type Agent = {
+	id: number;
+	name: string;
+	avatar_url: string;
+	color: string;
+	agent_key: string;
+	owner_user_id: number;
+};
+
+export type AgentPairing = {
+	agent_id: number;
+	agent_seconds: number;
+	cowork_seconds: number;
+	paired_seconds: number;
 };
 
 export class ApiError extends Error {
@@ -462,6 +482,13 @@ export const backend = {
 			method: 'PUT',
 			body: JSON.stringify({ role })
 		}, token);
+	},
+	listAgents(token: string) {
+		return apiFetch<Agent[]>('/api/agents', {}, token);
+	},
+	agentPairings(token: string, from: Date, to: Date) {
+		const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+		return apiFetch<AgentPairing[]>(`/api/agents/paired?${query}`, {}, token);
 	},
 	removeSpaceMember(token: string, spaceId: string, memberId: string) {
 		return apiFetch<{ removed: boolean }>(`/api/spaces/${spaceId}/members/${memberId}`, { method: 'DELETE' }, token);
