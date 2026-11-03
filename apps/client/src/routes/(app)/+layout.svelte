@@ -9,6 +9,7 @@
 	import { NotificationService } from '$lib/notifications';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
+	import { isApp } from '$lib/platform';
 
 	let { children } = $props();
 
@@ -43,6 +44,19 @@
 		user ? { name: user.name?.trim() || user.email, avatar: user.avatar_url || undefined } : undefined
 	);
 	const settingsActive = $derived(isActive('/settings'));
+
+	async function signOut() {
+		await backend.logout(token).catch(() => {});
+		localStorage.removeItem(TOKEN_KEY);
+		identify(null);
+		goto('/login');
+	}
+
+	const userMenu = [
+		{ label: 'Settings', icon: icons.settings, href: '/settings' },
+		...(isApp() ? [] : [{ label: 'Download the apps', icon: icons.download, href: '/downloads' }]),
+		{ label: 'Sign out', icon: icons.logout, tone: 'danger' as const, onSelect: signOut }
+	];
 
 	function selectSpace(id: string | null) {
 		setActiveSpaceId(id);
@@ -94,7 +108,7 @@
 				bind:collapsed
 				pages={navPages}
 				user={navUser}
-				userHref="/settings"
+				{userMenu}
 				userActive={settingsActive}
 				spaces={userSpaces}
 				activeSpaceId={getActiveSpaceId()}

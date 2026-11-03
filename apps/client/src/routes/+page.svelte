@@ -4,7 +4,7 @@
 	import { backend } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { landingTarget } from '$lib/onboarding/steps';
-	import { isNative } from '$lib/platform';
+	import { isApp } from '$lib/platform';
 	import { Button, Divider, TextElevate, icons } from '@facile/muse';
 
 	let redirecting = $state(true);
@@ -23,7 +23,7 @@
 	}
 
 	onMount(async () => {
-		const native = isNative();
+		const native = isApp();
 		const target = landingTarget({ native, signedIn: await signedIn() });
 		if (target) {
 			goto(target, { replaceState: native });

@@ -13,7 +13,7 @@
 		isAndroid,
 		type DesktopOS
 	} from '$lib/downloads';
-	import { isNative } from '$lib/platform';
+	import { isApp } from '$lib/platform';
 
 	const STEPS = [
 		{ title: 'Download the APK', body: 'Tap the button above on your phone.' },
@@ -28,7 +28,7 @@
 	let android = $state(false);
 
 	onMount(() => {
-		if (isNative()) void goto('/dashboard', { replaceState: true });
+		if (isApp()) void goto('/dashboard', { replaceState: true });
 		os = detectOS(navigator.userAgent);
 		android = isAndroid(navigator.userAgent);
 	});

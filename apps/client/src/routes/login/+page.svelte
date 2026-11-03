@@ -5,7 +5,7 @@
 	import { backend } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { startNativeLogin } from '$lib/native';
-	import { isNative } from '$lib/platform';
+	import { isApp } from '$lib/platform';
 
 	const inputClass =
 		'flex h-10 w-full rounded-fc-md border border-fc-border bg-fc-page px-3 py-2 text-fc-sm text-fc-fg placeholder:text-fc-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring disabled:cursor-not-allowed disabled:opacity-50';
@@ -20,7 +20,7 @@
 	let ssoOnly = $state(false);
 	let oidcEnabled = $state(false);
 	let configLoaded = $state(false);
-	const native = isNative();
+	const native = isApp();
 
 	async function signInNative() {
 		message = '';

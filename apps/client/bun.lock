@@ -10,7 +10,10 @@
         "@capacitor/core": "8.6.0",
         "@capacitor/preferences": "8.0.1",
         "@facile/journal": "github:FacileStudio/Journal#ts",
-        "@facile/muse": "github:FacileStudio/muse#v0.8.1",
+        "@facile/muse": "github:FacileStudio/muse#v0.9.0",
+        "@tauri-apps/api": "^2",
+        "@tauri-apps/plugin-deep-link": "^2",
+        "@tauri-apps/plugin-opener": "^2",
         "iconify-icon": "^3.0.2",
       },
       "devDependencies": {
@@ -97,7 +100,7 @@
 
     "@facile/journal": ["@facile/journal@github:FacileStudio/Journal#b211454", {}, "FacileStudio-Journal-b211454", "sha512-5zdWQy8EoKC4K7fyVoFSnB1wzVyOn3Rv+AkUjxebhug2uaw0ge7Pm2fqT7qu0bz7tDBFserMOQoh98QoCRmcyg=="],
 
-    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#305103a", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-305103a", "sha512-C7S+8ID2fjPU+YgtmOdhAt10/afCeX3RdHBWjHP3fxerEOUzuJYdwN+RFSAUptjM9w4n42TR0hiw3Ytj7vUlyw=="],
+    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#11bdf8f", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-11bdf8f", "sha512-y18B4HKTEkDfL4iAQN5bFlRwAorJ/0Fq2Jfoy5OzQZ9R+3fYAyCa4u70aEGr3RgOUPvkh6Q6gfnMxg809AMahw=="],
 
     "@iconify/types": ["@iconify/types@2.0.0", "", {}, "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="],
 
@@ -222,6 +225,12 @@
     "@tailwindcss/oxide-win32-x64-msvc": ["@tailwindcss/oxide-win32-x64-msvc@4.2.2", "", { "os": "win32", "cpu": "x64" }, "sha512-1T/37VvI7WyH66b+vqHj/cLwnCxt7Qt3WFu5Q8hk65aOvlwAhs7rAp1VkulBJw/N4tMirXjVnylTR72uI0HGcA=="],
 
     "@tailwindcss/vite": ["@tailwindcss/vite@4.2.2", "", { "dependencies": { "@tailwindcss/node": "4.2.2", "@tailwindcss/oxide": "4.2.2", "tailwindcss": "4.2.2" }, "peerDependencies": { "vite": "^5.2.0 || ^6 || ^7 || ^8" } }, "sha512-mEiF5HO1QqCLXoNEfXVA1Tzo+cYsrqV7w9Juj2wdUFyW07JRenqMG225MvPwr3ZD9N1bFQj46X7r33iHxLUW0w=="],
+
+    "@tauri-apps/api": ["@tauri-apps/api@2.12.4", "", {}, "sha512-pVmfis+4zT8H0Qhp3xPZx9Ju7kpzvA6rr/PSJPyuwfvucTQ8sVt61NYU9KMkK703UFlYadFmjKA4HhybOtN0gg=="],
+
+    "@tauri-apps/plugin-deep-link": ["@tauri-apps/plugin-deep-link@2.6.3", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-L+fjyGe5RPBtfh3VUSl1HslC0/xW7frDvdsZk37d9UdqOpKwD9P0PmblSk7Q/WCiAEHZ9J9Pn7VyiecBBdiy/A=="],
+
+    "@tauri-apps/plugin-opener": ["@tauri-apps/plugin-opener@2.7.2", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-LyybP1VSzTMQiaFYcsbAse47KpivlyXdLZMQzGLEnkgQacGESnpjAfFoQ6h5sqWgAdZDH9szYjPzHMpv0Sz+TQ=="],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 

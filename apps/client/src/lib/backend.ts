@@ -1,5 +1,5 @@
 import { normalizeUserColor } from '$lib/user-colors';
-import { apiBase, clearToken, getToken, isNative } from '$lib/platform';
+import { apiBase, clearToken, getToken, isApp, isNative } from '$lib/platform';
 
 const backendBaseUrl = apiBase();
 
@@ -211,7 +211,7 @@ async function nativeRequest(options: RequestInit, token?: string): Promise<Requ
 
 async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
 	const method = options.method ?? 'GET';
-	const init: RequestInit = isNative()
+	const init: RequestInit = isApp()
 		? await nativeRequest(options, token)
 		: {
 				...options,

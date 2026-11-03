@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 
 export const APP_SCHEME = 'studio.facile.sablier';
 
@@ -12,42 +13,59 @@ export type DeepLink = { kind: 'auth'; code: string; state: string; error: strin
 
 let cachedToken: string | null | undefined;
 
-/** True inside the Capacitor Android app, which signs in with a bearer token instead of a cookie. */
+/** True inside the Capacitor Android app. */
 export function isNative(): boolean {
 	return Capacitor.isNativePlatform();
 }
 
+/** True inside the Tauri desktop app. */
+export function isDesktop(): boolean {
+	return isTauri();
+}
+
+/** True in either installed app, which signs in with a bearer token instead of a cookie. */
+export function isApp(): boolean {
+	return isNative() || isDesktop();
+}
+
 /**
  * The origin every API path is appended to. Paths already start with /api, so the web build
- * stays same-origin and the Android app, served from https://localhost, talks to production.
+ * stays same-origin and the installed apps, served from their own origin, talk to production.
  */
 export function apiBase(): string {
 	const override = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '');
 	if (override) return override;
-	return isNative() ? APP_API_ORIGIN : '';
+	return isApp() ? APP_API_ORIGIN : '';
 }
 
-/** Reads the bearer token the Android app keeps in its preferences, or null on the web. */
+/**
+ * Reads the bearer token an installed app holds, or null on the web. Android keeps it in its
+ * preferences; the desktop app keeps it in ~/.sablier.yml, shared with the tray and the CLI.
+ */
 export async function getToken(): Promise<string | null> {
-	if (!isNative()) return null;
+	if (!isApp()) return null;
 	if (cachedToken === undefined) {
-		cachedToken = (await Preferences.get({ key: TOKEN_KEY })).value;
+		cachedToken = isDesktop()
+			? await invoke<string | null>('stored_token')
+			: (await Preferences.get({ key: TOKEN_KEY })).value;
 	}
 	return cachedToken;
 }
 
-/** Stores the bearer token the mobile sign-in returned. */
+/** Stores the bearer token the app sign-in returned. */
 export async function setToken(token: string): Promise<void> {
-	if (!isNative()) return;
+	if (!isApp()) return;
 	cachedToken = token;
-	await Preferences.set({ key: TOKEN_KEY, value: token });
+	if (isDesktop()) await invoke('store_token', { token });
+	else await Preferences.set({ key: TOKEN_KEY, value: token });
 }
 
-/** Forgets the bearer token, signing the Android app out. */
+/** Forgets the bearer token, signing the installed app out. */
 export async function clearToken(): Promise<void> {
-	if (!isNative()) return;
+	if (!isApp()) return;
 	cachedToken = null;
-	await Preferences.remove({ key: TOKEN_KEY });
+	if (isDesktop()) await invoke('forget_token');
+	else await Preferences.remove({ key: TOKEN_KEY });
 }
 
 /** Encodes bytes as unpadded base64url. */
