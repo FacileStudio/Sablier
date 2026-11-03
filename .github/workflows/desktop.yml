@@ -63,19 +63,25 @@ jobs:
 
       - name: Build the app
         working-directory: apps/desktop
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx --yes @tauri-apps/cli@2 build ${{ matrix.tauri_args }}
 
       - name: Name the installers
         run: |
-          version=$(python3 -c "import json;print(json.load(open('apps/desktop/tauri.conf.json'))['version'])")
           mkdir -p out
           bundle="${{ matrix.bundle_dir }}"
           case "${{ matrix.name }}" in
             macos-universal)
-              cp "$bundle"/dmg/*.dmg "out/Sablier-${version}-macos-universal.dmg" ;;
+              cp "$bundle"/dmg/*.dmg out/Sablier-macos-universal.dmg
+              cp "$bundle"/macos/*.app.tar.gz out/Sablier-macos-universal.app.tar.gz
+              cp "$bundle"/macos/*.app.tar.gz.sig out/Sablier-macos-universal.app.tar.gz.sig ;;
             linux-x64)
-              cp "$bundle"/deb/*.deb "out/Sablier-${version}-linux-x64.deb"
-              cp "$bundle"/rpm/*.rpm "out/Sablier-${version}-linux-x64.rpm" ;;
+              cp "$bundle"/deb/*.deb out/Sablier-linux-x64.deb
+              cp "$bundle"/deb/*.deb.sig out/Sablier-linux-x64.deb.sig
+              cp "$bundle"/rpm/*.rpm out/Sablier-linux-x64.rpm
+              cp "$bundle"/rpm/*.rpm.sig out/Sablier-linux-x64.rpm.sig ;;
           esac
           ls -l out
 
@@ -93,17 +99,37 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
       - uses: actions/download-artifact@v4
         with:
           path: out
           merge-multiple: true
 
-      - name: Create the release with installers and checksums
+      - name: Test the manifest builder
+        run: bun test apps/desktop/scripts
+
+      - name: Build latest.json
+        run: |
+          bun run apps/desktop/scripts/latest-json.ts \
+            --tag "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir out \
+            --changelog apps/desktop/CHANGELOG.md \
+            --out out/latest.json
+          cat out/latest.json
+
+      - name: Create the release with installers, signatures, checksums and latest.json
         run: |
           cd out
-          sha256sum Sablier-* > desktop-checksums.txt
+          sha256sum Sablier-*.dmg Sablier-*.deb Sablier-*.rpm > desktop-checksums.txt
           cat desktop-checksums.txt
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
             --title "Sablier desktop ${GITHUB_REF_NAME#desktop-v}" \
             --notes "Tray app for Sablier, see docs/automatic-time-tracking.md. The macOS build is not notarized yet: right-click the app and choose Open the first time." \
-            Sablier-* desktop-checksums.txt
+            --latest \
+            Sablier-* desktop-checksums.txt latest.json
