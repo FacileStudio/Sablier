@@ -483,7 +483,7 @@
 					{@const label = getEntryUserDisplayName(entry)}
 					<Card href={`/projects/${entry.project_id}`} class="flex flex-col gap-4">
 						<div class="flex items-center gap-3">
-							<UserAvatarBadge name={label} avatarUrl={entry.user_avatar_url} color={entry.user_color} />
+							<UserAvatarBadge name={label} avatarUrl={entry.user_avatar_url} color={entry.user_color} agent={entry.user_kind === 'agent'} />
 							<div class="min-w-0">
 								<p class="flex items-center gap-1.5 text-fc-sm font-medium text-fc-fg">
 									<span class="truncate">{label}</span>
@@ -553,6 +553,7 @@
 										name={getEntryUserDisplayName(entry)}
 										avatarUrl={entry.user_avatar_url}
 										color={entry.user_color}
+										agent={entry.user_kind === 'agent'}
 									/>
 									<span class="hidden md:block">{getEntryUserDisplayName(entry)}</span>
 									{#if entry.user_kind === 'agent'}<AgentBadge />{/if}

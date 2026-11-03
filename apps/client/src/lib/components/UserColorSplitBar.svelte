@@ -9,6 +9,7 @@
 		label: string;
 		color?: string;
 		avatarUrl?: string;
+		agent?: boolean;
 		ms: number;
 	};
 
@@ -67,6 +68,7 @@
 							name={segment.label}
 							avatarUrl={segment.avatarUrl}
 							color={segment.color}
+							agent={segment.agent}
 							class="h-6 w-6 text-fc-xs"
 						/>
 					{/if}

@@ -113,6 +113,7 @@
 											name={member.user_name || member.user_email}
 											avatarUrl={member.user_avatar_url}
 											color={member.user_color}
+											agent={member.user_kind === 'agent'}
 										/>
 										<div class="flex min-w-0 flex-col gap-0.5">
 											<span class="flex min-w-0 items-center gap-1.5">

@@ -33,7 +33,7 @@
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
 	let stopTimeEntrySync: (() => void) | undefined;
 
-	type ActiveUser = { key: string; color: string; label: string; avatarUrl: string };
+	type ActiveUser = { key: string; color: string; label: string; avatarUrl: string; agent: boolean };
 
 	function activeUsersForProject(projectId: number): ActiveUser[] {
 		const seen = new Set<string>();
@@ -46,7 +46,7 @@
 			const label = getEntryUserDisplayName(e);
 			const color = normalizeUserColor(e.user_color);
 			const avatarUrl = e.user_avatar_url ?? '';
-			users.push({ key, color, label, avatarUrl });
+			users.push({ key, color, label, avatarUrl, agent: e.user_kind === 'agent' });
 		}
 		return users;
 	}
@@ -198,6 +198,7 @@
 												name={user.label}
 												avatarUrl={user.avatarUrl}
 												color={user.color}
+												agent={user.agent}
 												class="size-7"
 											/>
 										{/each}

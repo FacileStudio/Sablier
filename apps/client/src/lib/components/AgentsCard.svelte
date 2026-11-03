@@ -46,7 +46,7 @@
 			{#each agents as agent (agent.id)}
 				{@const row = pairings.get(agent.id)}
 				<li class="flex items-center gap-3">
-					<UserAvatarBadge name={agent.name} avatarUrl={agent.avatar_url} color={agent.color} />
+					<UserAvatarBadge name={agent.name} avatarUrl={agent.avatar_url} color={agent.color} agent />
 					<span class="min-w-0 flex-1 truncate text-fc-sm text-fc-fg">{agent.name}</span>
 					<dl class="flex gap-3 text-fc-xs text-fc-fg-muted tabular-nums">
 						<div class="flex gap-1"><dt>Agent</dt><dd class="text-fc-fg">{hours(row?.agent_seconds)}</dd></div>

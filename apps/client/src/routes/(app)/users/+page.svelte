@@ -4,6 +4,7 @@
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getUserDisplayName } from '$lib/user-display';
 	import { Avatar, Card, EmptyState, Skeleton, StatusDot, icons, normalizeUserColor } from '@facile/muse';
+	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
 
@@ -108,7 +109,11 @@
 							/>
 						{/if}
 						<div class="flex items-center gap-3">
-							<Avatar src={user.avatar_url || undefined} {name} alt={name} />
+							{#if user.kind === 'agent'}
+								<UserAvatarBadge {name} avatarUrl={user.avatar_url} {color} agent class="size-10 text-fc-sm" />
+							{:else}
+								<Avatar src={user.avatar_url || undefined} {name} alt={name} />
+							{/if}
 							<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 								<div class="flex min-w-0 items-center gap-1.5">
 									<UserColorDot {color} />

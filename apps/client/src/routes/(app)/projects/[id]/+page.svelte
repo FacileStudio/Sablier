@@ -72,6 +72,7 @@
 		label: string;
 		color?: string;
 		avatarUrl?: string;
+		agent?: boolean;
 		ms: number;
 	};
 
@@ -128,6 +129,7 @@
 				label: userLabel(entry),
 				color: userColor(entry),
 				avatarUrl: entry.user_avatar_url,
+				agent: entry.user_kind === 'agent',
 				ms
 			});
 		}
@@ -619,6 +621,7 @@
 														name={actor.name}
 														avatarUrl={actor.avatar_url}
 														color={actor.color}
+														agent={actor.kind === 'agent'}
 														class="size-6 text-fc-xs"
 													/>
 												{/if}
@@ -689,6 +692,7 @@
 													name={getEntryUserDisplayName(entry)}
 													avatarUrl={entry.user_avatar_url}
 													color={userColor(entry)}
+													agent={entry.user_kind === 'agent'}
 												/>
 												<span>{getEntryUserDisplayName(entry)}</span>
 												{#if entry.user_kind === 'agent'}<AgentBadge />{/if}
