@@ -63,10 +63,16 @@ required, and startup fails with a clear error if any of them is blank.
 | `OIDC_CLAIMS_SCOPE` | no | — | Scope carrying the `roles` claim, `roles` on Facile's provider. Setting it while the provider does not advertise the scope stops the API from booting, on purpose: a half-configured role claim denies everyone silently |
 | `OIDC_MACHINE_AUDIENCE` | no | — | This app's own Registre client id. Lets porte verify a bearer JWT minted for Sablier, such as the 5 minute delegated token Bulle obtains for a user. Needs `OIDC_ISSUER` |
 | `OIDC_SCOPE_PREFIX` | no | — | Set to `sablier` to gate those JWTs by method: `GET`, `HEAD` and `OPTIONS` need `sablier.read` or `sablier.write`, anything else needs `sablier.write`. Needs `OIDC_MACHINE_AUDIENCE`. Cookie and opaque sessions are never gated |
+| `OIDC_MOBILE_REDIRECT` | no | `studio.facile.sablier://auth` | Where porte's `?flow=mobile` login hands the one-time code back to the Android app. Must match the scheme in `apps/client/capacitor.config.ts` |
 
 The callback route is registered inside the `/api` group, so the redirect URL is
 `https://<host>/api/auth/oidc/callback`. Both `.env.example` files still show it without
 the `/api` prefix — the router is the source of truth.
+
+The Android app signs in through the system browser with PKCE and gets a bearer token
+from `POST /api/auth/oidc/exchange`. While SSO is on, the API adds the Capacitor origin
+`https://localhost` to the CORS list by itself, so a deploy that sets `CORS_ALLOWED_ORIGINS` explicitly cannot lock the app out. The Registre
+client needs no new redirect URI: the browser still returns to `/api/auth/oidc/callback`.
 
 ## Web push
 
