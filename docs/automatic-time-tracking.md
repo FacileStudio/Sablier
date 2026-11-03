@@ -85,6 +85,7 @@ The tray app reads `~/.sablier.yml`, which `sablier login` writes. It does the f
 - Starts, stops and pauses the timer from the tray menu.
 - Detects idle time after 3 minutes without input. Back from 5 minutes to 10 hours away with a timer running, it asks: Keep, Discard (stop the timer at the start of the idle time), or Discard and continue.
 - Matches the active window against `~/.config/sablier/rules.yml`. After 5 minutes on one project with no timer, it suggests starting one. Rules with `auto: true` start it without asking.
+- Opens the Sablier web app in its own window from "Open Sablier" and "Review suggestions". On macOS the window has no title bar: the traffic lights sit in a 40 px band above the sidebar, which drags the window. The window marks the page with `data-desktop`, and only that page can call `start_dragging`, nothing else. Linux keeps the native title bar.
 - Sends `{at, source: "desktop", entity: <app name>, project}` heartbeats, at most one per app every 2 minutes, with an offline queue.
 
 | Platform | Idle | Active window |
@@ -124,7 +125,6 @@ Then install the desktop app and turn on start at login. Bulle reports runs on i
 ## Open items
 
 - The owner cannot edit or delete an agent's entries yet.
-- The add-member picker in spaces lists agent users.
-- The desktop app has no release workflow or updater. A release needs macOS runners with signing and notarization, plus an Ubuntu 22.04 runner with `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `libdbus-1-dev`, `librsvg2-dev` and `rpm`.
+- The desktop app is released by a `desktop-v*` tag (`.github/workflows/desktop.yml`): a universal dmg plus deb and rpm. The dmg is not signed or notarized, and there is no updater yet. Both need Apple and Tauri signing secrets.
 - The macOS build and the GNOME, KDE and Hyprland window backends have not been run on real desktops.
 - Token counts sent with agent sessions are accepted but not stored.
