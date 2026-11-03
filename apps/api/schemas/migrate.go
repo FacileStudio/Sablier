@@ -36,7 +36,7 @@ func Migrate(db *gorm.DB, issuer string) error {
 	if err := backfillTimeEntryTasks(db); err != nil {
 		return err
 	}
-	if err := backfillFacileIDs(db); err != nil {
+	if err := BackfillFacileIDs(db); err != nil {
 		return err
 	}
 	return backfillAgentEntries(db)

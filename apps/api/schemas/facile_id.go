@@ -14,8 +14,9 @@ func NewFacileID() string {
 	return "fac_" + hex.EncodeToString(b)
 }
 
-func backfillFacileIDs(db *gorm.DB) error {
-	for _, table := range []string{"projects", "tasks"} {
+// BackfillFacileIDs gives every project, task and time entry without one a facile_id.
+func BackfillFacileIDs(db *gorm.DB) error {
+	for _, table := range []string{"projects", "tasks", "time_entries"} {
 		var ids []int64
 		if err := db.Table(table).Where("facile_id IS NULL OR facile_id = ''").Pluck("id", &ids).Error; err != nil {
 			return err

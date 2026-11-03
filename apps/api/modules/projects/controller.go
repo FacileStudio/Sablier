@@ -42,6 +42,11 @@ func toTaskResponse(task *schemas.Task) TaskResponse {
 		ActorID:   task.ActorID,
 		CreatedAt: task.CreatedAt,
 		UpdatedAt: task.UpdatedAt,
+		TaskSyncResponse: TaskSyncResponse{
+			Description: task.Description,
+			DueDate:     task.DueDate,
+			Priority:    task.Priority,
+		},
 	}
 }
 

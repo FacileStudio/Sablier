@@ -57,6 +57,19 @@ type Task struct {
 	FacileID  *string   `gorm:"column:facile_id;uniqueIndex" json:"facile_id,omitempty"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
+	TaskSync
+}
+
+// TaskSync holds what Opus owns on a synced task. Sablier stores it, shows it read-only
+// and echoes it back unchanged. SyncedName is the name Opus sent when the local name had
+// to take a " (n)" suffix, so the suffix never travels back; SyncedAt marks a task the
+// other side already knows under its facile_id.
+type TaskSync struct {
+	Description string     `gorm:"column:description;not null;default:''"`
+	DueDate     *string    `gorm:"column:due_date;size:10"`
+	Priority    string     `gorm:"column:priority;not null;default:'none'"`
+	SyncedName  string     `gorm:"column:synced_name;not null;default:''"`
+	SyncedAt    *time.Time `gorm:"column:synced_at"`
 }
 
 func (Task) TableName() string { return "tasks" }

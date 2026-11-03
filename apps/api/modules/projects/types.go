@@ -53,6 +53,14 @@ type TaskResponse struct {
 	ActorID   *int64    `json:"actor_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	TaskSyncResponse
+}
+
+// TaskSyncResponse is what Opus owns on a synced task; Sablier shows it read-only.
+type TaskSyncResponse struct {
+	Description string  `json:"description"`
+	DueDate     *string `json:"due_date"`
+	Priority    string  `json:"priority"`
 }
 
 // ListTasksResponse wraps a task list.
