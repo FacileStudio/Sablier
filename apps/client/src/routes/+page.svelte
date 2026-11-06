@@ -5,7 +5,7 @@
 	import { TOKEN_KEY } from '$lib/constants';
 	import { landingTarget } from '$lib/onboarding/steps';
 	import { isApp } from '$lib/platform';
-	import { Button, Divider, TextElevate, icons } from '@facile/muse';
+	import { Button, Divider, DownloadCta, PricingPlans, TextElevate, icons } from '@facile/muse';
 
 	let redirecting = $state(true);
 	let ssoOnly = $state(false);
@@ -106,6 +106,9 @@
 					</Button>
 					<Button size="lg" variant="outline" href="/login" class="rounded-fc-md">Log in</Button>
 				</div>
+				<div class="mt-4 flex justify-center">
+					<DownloadCta href="/downloads" platforms={['macos', 'linux', 'android']} />
+				</div>
 			</section>
 
 			<Divider />
@@ -128,6 +131,8 @@
 			</section>
 
 			<Divider />
+
+			<PricingPlans id="pricing" title="Pricing" class="mx-auto max-w-5xl px-6 py-20" />
 
 			<section class="mx-auto max-w-5xl px-6 py-20 text-center">
 				<h2 class="font-fc-title text-fc-2xl font-semibold tracking-tight">
