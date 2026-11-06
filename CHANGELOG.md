@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- The landing page has a "Pricing" section: muse's `PricingPlans` shows the live Facile plans from Ardoise's catalog. It renders nothing while the catalog is empty or unreachable.
+- The landing page links to `/downloads` with muse's `DownloadCta` (macOS, Linux, Android).
+
+### Changed
+- `@facile/muse` v0.9.0 to v0.11.0.
+
 ## [1.10.0] - 2026-11-03
 
 ### Added
