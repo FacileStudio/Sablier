@@ -36,5 +36,11 @@ var Documentation = documentation.Module{
 			Summary: "Registre's nudge: schedules a pull of the space snapshot and answers 202",
 			Auth:    "none; the pull itself authenticates with the app's OIDC client credentials",
 		},
+		{
+			Method:  "POST",
+			Path:    "/registre/deletions",
+			Summary: "Registre's signed user.deleted push: erases that person's data and answers 202",
+			Auth:    "signed security event; a notice that does not verify is a 400",
+		},
 	},
 }

@@ -17,6 +17,7 @@ type User struct {
 	OIDCTokenExpiry  time.Time `gorm:"column:oidc_token_expiry"`
 	ProfileSyncedAt  time.Time `gorm:"column:profile_synced_at"`
 	Color            string    `gorm:"column:color"`
+	Locale           string    `gorm:"column:locale;not null;default:'en'"`
 	PasswordHash     string    `gorm:"column:password_hash"`
 	Rate             float64   `gorm:"column:rate;not null;default:0"`
 	RateType         string    `gorm:"column:rate_type;not null;default:'daily'"`

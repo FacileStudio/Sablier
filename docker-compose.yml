@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     expose:
       - "4000"
     healthcheck:
@@ -67,7 +69,6 @@ services:
       OIDC_MACHINE_AUDIENCE: ${OIDC_MACHINE_AUDIENCE:-}
       OIDC_SCOPE_PREFIX: ${OIDC_SCOPE_PREFIX:-}
       OIDC_MOBILE_REDIRECT: ${OIDC_MOBILE_REDIRECT:-studio.facile.sablier://auth}
-      SSO_ONLY: ${SSO_ONLY:-false}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}

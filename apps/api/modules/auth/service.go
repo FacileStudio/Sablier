@@ -8,7 +8,6 @@ import (
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte"
-	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/errors"
 
@@ -19,18 +18,14 @@ import (
 // credential: the profile lookup the rest of the app reads, and a thin wrapper
 // over porte/local so the register and login routes keep their response shape.
 type Service struct {
-	orm        *gorm.DB
-	sessions   *session.Manager
-	passwords  *local.Kit
-	logger     *slog.Logger
-	controller *Controller
+	orm      *gorm.DB
+	sessions *session.Manager
+	logger   *slog.Logger
 }
 
-// NewService wires the auth service with a fresh route controller.
-func NewService(orm *gorm.DB, sessions *session.Manager, passwords *local.Kit, logger *slog.Logger) *Service {
-	service := &Service{orm: orm, sessions: sessions, passwords: passwords, logger: logger}
-	service.controller = newController(service)
-	return service
+// NewService wires the auth service onto the given database and session manager.
+func NewService(orm *gorm.DB, sessions *session.Manager, logger *slog.Logger) *Service {
+	return &Service{orm: orm, sessions: sessions, logger: logger}
 }
 
 // RequireAuth is porte's session middleware, re-exported so the eight module
@@ -67,46 +62,6 @@ func (service *Service) IdentityForUser(ctx context.Context, userID int64) (stri
 		return "", "", errors.Unauthorized("invalid auth token")
 	}
 	return strconv.FormatInt(out.ID, 10), out.Email, nil
-}
-
-// Register creates an account through porte/local and signs it in. The cookie
-// is set on the way out and the token comes back for the bearer transport, so
-// one call serves the dashboard and a script.
-func (service *Service) Register(ctx context.Context, w http.ResponseWriter, r *http.Request, email, password string) (string, string, error) {
-	userID, token, err := service.passwords.Register(ctx, w, r, email, "", password)
-	if err != nil {
-		return "", "", err
-	}
-	return strconv.FormatInt(userID, 10), token, nil
-}
-
-func (service *Service) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, email, password string) (string, string, error) {
-	userID, token, err := service.passwords.Login(ctx, w, r, email, password)
-	if err != nil {
-		return "", "", err
-	}
-	return strconv.FormatInt(userID, 10), token, nil
-}
-
-// SetPassword gives a first password to an account that has none, and answers
-// porte.ErrPasswordSet rather than overwriting one that is already there.
-//
-// It no longer takes an address: a password identity is keyed on the account
-// id since porte v0.3.0, so there is nothing about the mailbox left in the key.
-func (service *Service) SetPassword(ctx context.Context, userID int64, password string) error {
-	return service.passwords.SetPassword(ctx, userID, password)
-}
-
-// ChangePassword replaces an existing password after confirming the current
-// one, ends the account's other logins and rotates the caller's own session.
-//
-// It takes the writer and the request because porte sets the rotated cookie
-// itself, which is why this cannot be reached from a service method holding
-// only a context. The returned token is the bearer half of the same rotation,
-// for the clients that hold one instead of a cookie, and the count is how many
-// other logins were ended. Named API tokens deliberately survive.
-func (service *Service) ChangePassword(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int64, current, next string) (string, int64, error) {
-	return service.passwords.ChangePassword(ctx, w, r, userID, current, next)
 }
 
 // Issue mints a named API token: a porte session with a label and no

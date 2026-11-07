@@ -70,6 +70,21 @@ type Config struct {
 
 	// MinPasswordLength defaults to DefaultMinPasswordLength.
 	MinPasswordLength int
+
+	// AllowProtocolPasswords keeps Verify working when an OIDC issuer is
+	// configured, for a protocol client that cannot do OIDC and has no API
+	// token alternative. Off by default: with an issuer, Verify refuses like
+	// Login. An app whose protocol endpoint already accepts API tokens, as
+	// Agenda's CalDAV does, leaves it off.
+	AllowProtocolPasswords bool
+
+	// CustomerAccounts keeps register, login and Verify mounted even with an
+	// OIDC issuer configured. It exists for a customer-facing app that is not
+	// a Facile suite app, such as a shop built from the Boutique template,
+	// whose customers legitimately sign up with a password while its staff
+	// sign in through the issuer. A suite app never sets it: it reopens the
+	// password path the issuer closes, and New logs a warning saying so.
+	CustomerAccounts bool
 }
 
 // Deps are the stores and the session manager the kit writes through.
@@ -88,14 +103,23 @@ type Deps struct {
 
 // Kit serves the local routes and hashes the passwords behind them.
 type Kit struct {
-	cfg      Config
-	deps     Deps
-	sessions *session.Manager
-	logger   *slog.Logger
+	cfg       Config
+	deps      Deps
+	sessions  *session.Manager
+	logger    *slog.Logger
+	federated bool
 }
 
 // New returns a kit. It fails rather than degrading: a half-wired local login
 // that answers 500 on the first sign-up is worse than one that refuses to boot.
+//
+// When the session manager's porte.Config has an Issuer, the kit is
+// federated: Mount registers nothing, Register, Login and Verify answer
+// porte.ErrLocalLoginDisabled as a 404, AllowRegistration is ignored, and
+// New logs one line saying so. Signing in then goes through the issuer only.
+// Config.AllowProtocolPasswords reopens Verify alone, and
+// Config.CustomerAccounts opts out entirely. SetPassword and ChangePassword
+// are unaffected.
 func New(cfg Config, deps Deps) (*Kit, error) {
 	for name, missing := range map[string]bool{
 		"Users":      deps.Users == nil,
@@ -114,7 +138,17 @@ func New(cfg Config, deps Deps) (*Kit, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Kit{cfg: cfg, deps: deps, sessions: deps.Sessions, logger: logger}, nil
+	federated := deps.Sessions.Config().Enabled()
+	switch {
+	case federated && cfg.CustomerAccounts:
+		federated = false
+		logger.Warn("porte/local: CustomerAccounts is set, so the password routes stay mounted although OIDC_ISSUER is set; only a non-suite customer-facing app may do this")
+	case federated:
+		logger.Info("porte/local: OIDC_ISSUER is set, so the password routes are not mounted and AllowRegistration is ignored",
+			slog.Bool("allow_registration", cfg.AllowRegistration),
+			slog.Bool("allow_protocol_passwords", cfg.AllowProtocolPasswords))
+	}
+	return &Kit{cfg: cfg, deps: deps, sessions: deps.Sessions, logger: logger, federated: federated}, nil
 }
 
 // Mount registers POST /auth/register and POST /auth/login with porte's own
@@ -125,6 +159,9 @@ func New(cfg Config, deps Deps) (*Kit, error) {
 // skip this and call [Kit.Register] and [Kit.Login] from its own handlers
 // instead. That is the supported path, not a workaround.
 func (k *Kit) Mount(router chi.Router) {
+	if k.federated {
+		return
+	}
 	if k.cfg.AllowRegistration {
 		router.Post(porte.RouteRegister, k.handleRegister)
 	}
@@ -139,6 +176,9 @@ func (k *Kit) Mount(router chi.Router) {
 // app's PasswordUserStore is where that lock goes, and every Facile app
 // already takes an advisory lock there.
 func (k *Kit) Register(ctx context.Context, w http.ResponseWriter, r *http.Request, email, name, password string) (int64, string, error) {
+	if k.federated {
+		return 0, "", carrying(errors.NotFound(""), porte.ErrLocalLoginDisabled)
+	}
 	email, err := normalizeEmail(email)
 	if err != nil {
 		return 0, "", err
@@ -185,7 +225,7 @@ func (k *Kit) Register(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return 0, "", errors.Internal("failed to store the identity", err)
 	}
 
-	token, _, err := k.sessions.IssueCookie(ctx, w, r, userID)
+	token, _, err := k.sessions.IssueCookieFor(ctx, w, r, localSession(userID))
 	if err != nil {
 		return 0, "", err
 	}
@@ -199,12 +239,15 @@ func (k *Kit) Register(ctx context.Context, w http.ResponseWriter, r *http.Reque
 // account enumeration oracle, and the timing half is the one that gets dropped
 // when this is reimplemented.
 func (k *Kit) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, email, password string) (int64, string, error) {
+	if k.federated {
+		return 0, "", carrying(errors.NotFound(""), porte.ErrLocalLoginDisabled)
+	}
 	userID, err := k.Verify(ctx, email, password)
 	if err != nil {
 		return 0, "", err
 	}
 
-	token, _, err := k.sessions.IssueCookie(ctx, w, r, userID)
+	token, _, err := k.sessions.IssueCookieFor(ctx, w, r, localSession(userID))
 	if err != nil {
 		return 0, "", err
 	}
@@ -224,6 +267,9 @@ func (k *Kit) Login(ctx context.Context, w http.ResponseWriter, r *http.Request,
 // unknown address costs a real hash and returns the same error a wrong
 // password does.
 func (k *Kit) Verify(ctx context.Context, email, password string) (int64, error) {
+	if k.federated && !k.cfg.AllowProtocolPasswords {
+		return 0, carrying(errors.NotFound(""), porte.ErrLocalLoginDisabled)
+	}
 	normalized, err := normalizeEmail(email)
 	if err != nil {
 		EqualizeTiming(password)
@@ -339,7 +385,7 @@ func (k *Kit) ChangePassword(ctx context.Context, w http.ResponseWriter, r *http
 			return "", 0, errors.Internal("failed to rotate the session", err)
 		}
 	}
-	token, _, err := k.sessions.IssueCookie(ctx, w, r, userID)
+	token, _, err := k.sessions.IssueCookieFor(ctx, w, r, localSession(userID))
 	if err != nil {
 		return "", 0, err
 	}
@@ -399,4 +445,11 @@ func normalizeEmail(email string) (string, error) {
 		return "", carrying(errors.Invalid(""), porte.ErrInvalidEmail)
 	}
 	return normalized, nil
+}
+
+// localSession is a password login's session template, bound to the
+// account's password identity so a purge that removes it also stops any
+// session not yet stored.
+func localSession(userID int64) porte.Session {
+	return porte.Session{UserID: userID, Provider: porte.ProviderLocal, Subject: porte.LocalSubject(userID)}
 }

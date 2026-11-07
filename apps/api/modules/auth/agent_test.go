@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -46,14 +45,8 @@ func TestAgentUserCannotSignIn(t *testing.T) {
 	}
 
 	store := NewUserStore(orm)
-	if _, err := store.FindByEmail(ctx, agent.Email); !stderrors.Is(err, porte.ErrNotFound) {
-		t.Fatalf("password login must not find an agent, got %v", err)
-	}
 	claims := porte.Claims{Provider: "https://sso.example.test", Subject: "x", Email: agent.Email, EmailVerified: true}
 	if _, err := store.UpsertFromOIDC(ctx, claims); err == nil || !strings.Contains(err.Error(), "agent") {
 		t.Fatalf("OIDC must not sign in as an agent, got %v", err)
-	}
-	if count, err := store.CountUsers(ctx); err != nil || count != 1 {
-		t.Fatalf("agents must not count as users: %d %v", count, err)
 	}
 }

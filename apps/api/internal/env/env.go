@@ -60,12 +60,9 @@ const DefaultMobileRedirect = "studio.facile.sablier://auth"
 // Porte returns the shared auth kit's configuration. The environment variable
 // names are the suite convention and do not change; this only reshapes what
 // Load already read.
-//
-// SSOOnly rides along because porte serves /auth/config and the frontend
-// decides on it whether to draw a password form at all.
 func (c Config) Porte() porte.Config {
 	if c.OIDC == nil {
-		return porte.Config{SSOOnly: c.SSOOnly}
+		return porte.Config{}
 	}
 	return porte.Config{
 		Issuer:       c.OIDC.Issuer,
@@ -73,7 +70,6 @@ func (c Config) Porte() porte.Config {
 		ClientSecret: c.OIDC.ClientSecret,
 		RedirectURL:  c.OIDC.RedirectURL,
 		SuccessURL:   c.OIDC.SuccessURL,
-		SSOOnly:      c.SSOOnly,
 		ClaimsScope:  c.OIDCClaimsScope,
 		CLIAudience:  c.OIDC.CLIAudience,
 
@@ -89,7 +85,6 @@ type Config struct {
 	StorageDir      string
 	OIDC            *OIDCConfig
 	OIDCClaimsScope string
-	SSOOnly         bool
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	VAPIDSubject    string
@@ -134,15 +129,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	ssoOnly, err := troncenv.Bool("SSO_ONLY", false)
-	if err != nil {
-		return Config{}, err
-	}
-
 	env := Config{
 		Core:            core,
 		StorageDir:      troncenv.String("STORAGE_DIR", "./data"),
-		SSOOnly:         ssoOnly,
 		VAPIDPublicKey:  troncenv.String("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey: troncenv.String("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
@@ -180,6 +169,10 @@ func Load() (Config, error) {
 			MobileRedirect:  troncenv.String("OIDC_MOBILE_REDIRECT", DefaultMobileRedirect),
 		}
 		env.CORSAllowedOrigins = withNativeOrigin(env.CORSAllowedOrigins, env.OIDC.MobileRedirect)
+	}
+
+	if env.IsProduction() && env.OIDC == nil {
+		return Config{}, fmt.Errorf("OIDC_ISSUER is required in production: sign-in goes through Registre only")
 	}
 
 	return env, nil

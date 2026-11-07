@@ -84,7 +84,7 @@ func TestUpdateMeRejectsInvalidColor(t *testing.T) {
 		Email:  "user@example.com",
 	})
 
-	_, err := controller.updateMe(httptest.NewRecorder(), request.WithContext(ctx), req)
+	_, err := controller.updateMe(request.WithContext(ctx), req)
 	if err == nil || err.Error() != "color must be one of: AD9EF0, F09ED6, EE7E89, EEB47E, A9EE7E, 7EEEDB" {
 		t.Fatalf("expected invalid color error, got %v", err)
 	}
