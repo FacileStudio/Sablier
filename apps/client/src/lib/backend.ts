@@ -113,7 +113,7 @@ export type TimeEntry = {
 	needs_review?: boolean;
 };
 
-export type AttributionSource = 'explicit' | 'opus' | 'name' | 'running' | 'ai' | 'fallback';
+export type AttributionSource = 'explicit' | 'opus' | 'name' | 'running' | 'ai' | 'fallback' | 'manual';
 
 export type DraftSuggestion = {
 	task_id: number | null;

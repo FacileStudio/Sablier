@@ -19,6 +19,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 	router.With(middleware.RequireAuth(authService)).Get("/tasks/search", service.handleSearch)
 	router.Route("/projects", func(router chi.Router) {
 		router.Use(middleware.RequireAuth(authService))
+		visible := router.With(service.requireVisibleProject)
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
 			identity, _ := authcontext.IdentityFromContext(request.Context())
@@ -45,7 +46,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusCreated, resp)
 		})
 
-		router.Get("/{id}", func(w http.ResponseWriter, request *http.Request) {
+		visible.Get("/{id}", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -59,7 +60,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
-		router.Put("/{id}", func(w http.ResponseWriter, request *http.Request) {
+		visible.Put("/{id}", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -78,7 +79,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
-		router.Delete("/{id}", func(w http.ResponseWriter, request *http.Request) {
+		visible.Delete("/{id}", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -91,7 +92,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, map[string]bool{"deleted": true})
 		})
 
-		router.Get("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
+		visible.Get("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -105,7 +106,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
-		router.Post("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
+		visible.Post("/{id}/tasks", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -124,7 +125,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusCreated, resp)
 		})
 
-		router.Put("/{id}/tasks/{taskId}", func(w http.ResponseWriter, request *http.Request) {
+		visible.Put("/{id}/tasks/{taskId}", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
@@ -148,7 +149,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
-		router.Delete("/{id}/tasks/{taskId}", func(w http.ResponseWriter, request *http.Request) {
+		visible.Delete("/{id}/tasks/{taskId}", func(w http.ResponseWriter, request *http.Request) {
 			id, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 			if err != nil {
 				httpjson.WriteError(w, errors.Invalid("invalid project id"))
