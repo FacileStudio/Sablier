@@ -29,6 +29,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/heartbeats"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/Sablier/apps/api/modules/projects"
+	"github.com/FacileStudio/Sablier/apps/api/modules/review"
 	"github.com/FacileStudio/Sablier/apps/api/modules/settings"
 	"github.com/FacileStudio/Sablier/apps/api/modules/spaces"
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
@@ -72,6 +73,7 @@ func referenceConfig() apiref.Config {
 				notifications.Documentation,
 				agents.Documentation,
 				heartbeats.Documentation,
+				review.Documentation,
 			},
 		},
 	}
@@ -255,6 +257,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		notifications.RegisterRoutes(api, notificationsService, authService)
 		agents.RegisterRoutes(api, agentService, authService)
 		heartbeats.RegisterRoutes(api, heartbeatService, authService)
+		review.RegisterRoutes(api, review.Handlers{Entries: timeEntryService, Drafts: heartbeatService}, authService)
 	})
 
 	if spa.Available(clientDir) {
