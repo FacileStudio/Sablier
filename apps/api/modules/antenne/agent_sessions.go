@@ -1,6 +1,7 @@
 package antenne
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	enveloppe "github.com/FacileStudio/enveloppe/go"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 )
 
@@ -60,11 +62,11 @@ func (s *Service) handleAgentSession(payload json.RawMessage, meta antenneclient
 		description += " branch=" + p.Branch
 	}
 
-	result, err := agentwork.Record(s.orm, agentwork.Session{
+	result, err := agentwork.Record(context.Background(), s.orm, s.resolver, agentwork.Session{
 		OwnerID:     *userID,
 		Agent:       schemas.AgentFromName(p.Agent),
 		FacileID:    p.FacileID,
-		ProjectHint: p.Project,
+		Facts:       attribution.Facts{ProjectHint: p.Project},
 		StartedAt:   started,
 		StoppedAt:   stopped,
 		Description: description,

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 )
@@ -16,6 +17,9 @@ const (
 	maxFacileIDLength    = 200
 	maxDescriptionLength = 500
 	maxAvatarURLLength   = 2048
+	maxFactLength        = 200
+	maxEntityLength      = 1024
+	maxOpusTaskIDs       = 50
 	maxSessionLength     = 24 * time.Hour
 	maxClockSkew         = 5 * time.Minute
 )
@@ -36,8 +40,9 @@ func toSession(ownerID int64, req *RecordSessionRequest, now time.Time) (agentwo
 	if len(req.Description) > maxDescriptionLength {
 		return agentwork.Session{}, errors.Invalid("description is at most 500 characters")
 	}
-	if req.ProjectID < 0 {
-		return agentwork.Session{}, errors.Invalid("project_id must be positive")
+	facts, err := toFacts(req)
+	if err != nil {
+		return agentwork.Session{}, err
 	}
 	pausedMs, err := pausedMillis(req, now)
 	if err != nil {
@@ -47,13 +52,43 @@ func toSession(ownerID int64, req *RecordSessionRequest, now time.Time) (agentwo
 		OwnerID:     ownerID,
 		Agent:       identity,
 		FacileID:    facileID,
-		ProjectID:   req.ProjectID,
-		ProjectHint: strings.TrimSpace(req.Project),
+		Facts:       facts,
 		StartedAt:   req.StartedAt.UTC(),
 		StoppedAt:   req.StoppedAt.UTC(),
 		PausedMs:    pausedMs,
 		Cowork:      req.Cowork,
 		Description: strings.TrimSpace(req.Description),
+	}, nil
+}
+
+func toFacts(req *RecordSessionRequest) (attribution.Facts, error) {
+	if req.ProjectID < 0 || req.TaskID < 0 {
+		return attribution.Facts{}, errors.Invalid("project_id and task_id must be positive")
+	}
+	if len(req.OpusTaskIDs) > maxOpusTaskIDs {
+		return attribution.Facts{}, errors.Invalid("opus_task_ids holds at most 50 ids")
+	}
+	short := append([]string{req.Project, req.OpusUpdatedTaskID, req.OpusProjectID, req.RegistreSpaceID,
+		req.OpusWorkspace, req.Title}, req.OpusTaskIDs...)
+	for _, value := range short {
+		if len(value) > maxFactLength {
+			return attribution.Facts{}, errors.Invalid("project, title and the opus and registre ids are at most 200 characters")
+		}
+	}
+	if len(req.Entity) > maxEntityLength {
+		return attribution.Facts{}, errors.Invalid("entity is at most 1024 characters")
+	}
+	return attribution.Facts{
+		ProjectID:         req.ProjectID,
+		TaskID:            req.TaskID,
+		OpusTaskIDs:       req.OpusTaskIDs,
+		OpusUpdatedTaskID: strings.TrimSpace(req.OpusUpdatedTaskID),
+		OpusProjectID:     strings.TrimSpace(req.OpusProjectID),
+		RegistreSpaceID:   strings.TrimSpace(req.RegistreSpaceID),
+		OpusWorkspace:     strings.TrimSpace(req.OpusWorkspace),
+		Title:             strings.TrimSpace(req.Title),
+		ProjectHint:       strings.TrimSpace(req.Project),
+		Entity:            strings.TrimSpace(req.Entity),
 	}, nil
 }
 

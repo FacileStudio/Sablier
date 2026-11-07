@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/FacileStudio/Sablier/apps/api/schemas"
 )
 
 const (
@@ -18,6 +20,9 @@ type beat struct {
 	Source    string
 	ProjectID *int64
 	Hint      string
+	Explicit  bool
+	Facts     schemas.HeartbeatFacts
+	Entity    string
 }
 
 type interval struct {

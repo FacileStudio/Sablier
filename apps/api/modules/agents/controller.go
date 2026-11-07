@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
+	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 )
@@ -99,6 +100,12 @@ func toEntryResponse(result *agentwork.Result) SessionEntryResponse {
 		StoppedAt:      entry.StoppedAt,
 		PausedDuration: entry.PausedDurationMs,
 		Cowork:         entry.Cowork,
+		SpaceID:        entry.SpaceID,
+		AttributionResponse: timeentries.AttributionResponse{
+			Source:      entry.AttributionSource,
+			Confidence:  entry.AttributionConfidence,
+			NeedsReview: entry.NeedsReview,
+		},
 	}
 	if entry.FacileID != nil {
 		response.FacileID = *entry.FacileID

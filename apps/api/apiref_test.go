@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
@@ -43,7 +44,7 @@ func testRouter(t *testing.T) chi.Router {
 		t.Fatalf("oidc.New: %v", err)
 	}
 	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, appEnv.StorageDir, appLogger)
-	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions)
+	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{})
 }
 
 // The registry is hand-written, so it rots the moment someone registers a route

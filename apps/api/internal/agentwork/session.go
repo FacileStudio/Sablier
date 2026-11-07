@@ -1,9 +1,11 @@
 package agentwork
 
 import (
+	"context"
 	"errors"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/gorm"
@@ -18,8 +20,7 @@ type Session struct {
 	OwnerID     int64
 	Agent       schemas.AgentIdentity
 	FacileID    string
-	ProjectID   int64
-	ProjectHint string
+	Facts       attribution.Facts
 	StartedAt   time.Time
 	StoppedAt   time.Time
 	PausedMs    int64
@@ -34,17 +35,28 @@ type Result struct {
 	Target Target
 }
 
-// Record ensures the owner's agent user, resolves the project and task, and upserts the
-// entry by facile_id, all in one transaction. Replaying the same session updates the
-// entry in place.
-func Record(db *gorm.DB, session Session) (*Result, error) {
+// Record attributes the session through resolver, then ensures the owner's agent user and
+// upserts the entry by facile_id in one transaction. The resolver runs first and outside
+// the transaction, since its AI step may wait on the network. Replaying the same session
+// updates the entry in place, except where the owner already reassigned it in Review.
+func Record(ctx context.Context, db *gorm.DB, resolver attribution.Resolver, session Session) (*Result, error) {
+	owner, err := attribution.LoadOwner(db, session.OwnerID)
+	if err != nil {
+		return nil, err
+	}
+	facts := session.Facts
+	facts.At = session.StartedAt
+	resolved, err := resolver.Resolve(ctx, db, owner, []attribution.Facts{facts})
+	if err != nil {
+		return nil, err
+	}
 	var result Result
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		agent, err := schemas.EnsureAgentUser(tx, session.OwnerID, session.Agent)
 		if err != nil {
 			return err
 		}
-		target, err := ResolveTarget(tx, session.OwnerID, session.ProjectID, session.ProjectHint, session.StartedAt)
+		target, err := bookTarget(tx, resolved[0], facts.ProjectHint)
 		if err != nil {
 			return err
 		}
@@ -73,9 +85,12 @@ func upsertEntry(tx *gorm.DB, agentID int64, target Target, session Session) (*s
 	} else if err := claimable(tx, entry.UserID, session.OwnerID, agentID); err != nil {
 		return nil, err
 	}
-	entry.ProjectID = target.Project.ID
-	entry.TaskID = target.Task.ID
-	entry.SpaceID = target.Project.SpaceID
+	if !reviewed(entry) {
+		entry.ProjectID = target.Project.ID
+		entry.TaskID = target.Task.ID
+		entry.SpaceID = target.Project.SpaceID
+		entry.Attribution = target.Attribution
+	}
 	entry.UserID = agentID
 	entry.StartedAt = session.StartedAt.UTC()
 	entry.StoppedAt = &stopped
@@ -88,6 +103,10 @@ func upsertEntry(tx *gorm.DB, agentID int64, target Target, session Session) (*s
 		return nil, err
 	}
 	return &entry, nil
+}
+
+func reviewed(entry schemas.TimeEntry) bool {
+	return entry.AttributionSource != nil && *entry.AttributionSource == attribution.SourceManual
 }
 
 func claimable(tx *gorm.DB, holderID, ownerID, agentID int64) error {

@@ -1,6 +1,10 @@
 package agents
 
-import "time"
+import (
+	"time"
+
+	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
+)
 
 // RecordSessionRequest is the body for booking one span of agent work. The
 // authenticated caller is the agent's owner.
@@ -18,6 +22,21 @@ type RecordSessionRequest struct {
 	TokensOut     int64      `json:"tokens_out"`
 	Cowork        bool       `json:"cowork"`
 	Description   string     `json:"description"`
+	SessionFacts
+}
+
+// SessionFacts are the optional attribution facts of a session. Opus ids are facile ids:
+// opus_task_ids map to tasks, opus_project_id to a project. registre_space_id and
+// opus_workspace name the space the hint and the AI step search first.
+type SessionFacts struct {
+	TaskID            int64    `json:"task_id"`
+	OpusTaskIDs       []string `json:"opus_task_ids"`
+	OpusUpdatedTaskID string   `json:"opus_updated_task_id"`
+	OpusProjectID     string   `json:"opus_project_id"`
+	RegistreSpaceID   string   `json:"registre_space_id"`
+	OpusWorkspace     string   `json:"opus_workspace"`
+	Title             string   `json:"title"`
+	Entity            string   `json:"entity"`
 }
 
 // AgentResponse is the serialized shape of an agent user.
@@ -43,6 +62,8 @@ type SessionEntryResponse struct {
 	StoppedAt      *time.Time `json:"stopped_at"`
 	PausedDuration int64      `json:"paused_duration_ms"`
 	Cowork         bool       `json:"cowork"`
+	SpaceID        *string    `json:"space_id"`
+	timeentries.AttributionResponse
 }
 
 // RecordSessionResponse carries the upserted entry and the agent it belongs to.

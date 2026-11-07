@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
@@ -16,23 +17,24 @@ import (
 // time an owner's agents spent, alone and alongside the owner.
 type Service struct {
 	orm        *gorm.DB
+	resolver   attribution.Resolver
 	controller *Controller
 }
 
-// NewService wires the agents service.
-func NewService(orm *gorm.DB) *Service {
-	service := &Service{orm: orm}
+// NewService wires the agents service; resolver attributes each session.
+func NewService(orm *gorm.DB, resolver attribution.Resolver) *Service {
+	service := &Service{orm: orm, resolver: resolver}
 	service.controller = newController(service)
 	return service
 }
 
 func (service *Service) record(ctx context.Context, session agentwork.Session) (*agentwork.Result, error) {
-	result, err := agentwork.Record(service.orm.WithContext(ctx), session)
+	result, err := agentwork.Record(ctx, service.orm.WithContext(ctx), service.resolver, session)
 	switch {
 	case err == nil:
 		return result, nil
 	case stderrors.Is(err, agentwork.ErrProjectNotVisible):
-		return nil, errors.Invalid("project_id is not a project you can see")
+		return nil, errors.Invalid("project_id or task_id is not one you can see")
 	case stderrors.Is(err, agentwork.ErrForeignFacileID):
 		return nil, errors.Conflict("facile_id belongs to another user's entry")
 	default:

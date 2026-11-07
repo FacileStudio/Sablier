@@ -1,12 +1,14 @@
 package agentwork
 
 import (
+	"context"
 	stderrors "errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
 	"gorm.io/driver/sqlite"
@@ -39,12 +41,12 @@ var start = time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
 
 func session(ownerID int64, facileID string, minutes int) Session {
 	return Session{
-		OwnerID:     ownerID,
-		Agent:       schemas.AgentFromName("bulle"),
-		FacileID:    facileID,
-		ProjectHint: "Sablier",
-		StartedAt:   start,
-		StoppedAt:   start.Add(time.Duration(minutes) * time.Minute),
+		OwnerID:   ownerID,
+		Agent:     schemas.AgentFromName("bulle"),
+		FacileID:  facileID,
+		Facts:     attribution.Facts{ProjectHint: "Sablier"},
+		StartedAt: start,
+		StoppedAt: start.Add(time.Duration(minutes) * time.Minute),
 	}
 }
 
@@ -56,11 +58,11 @@ func TestRecordUpsertsByFacileID(t *testing.T) {
 	create(t, orm, &space)
 	create(t, orm, &schemas.SpaceMember{SpaceID: space.ID, UserID: owner.ID, Role: schemas.RoleOwner})
 
-	first, err := Record(orm, session(owner.ID, "bulle_run_1", 10))
+	first, err := Record(context.Background(), orm, attribution.Resolver{}, session(owner.ID, "bulle_run_1", 10))
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Record(orm, session(owner.ID, "bulle_run_1", 25))
+	second, err := Record(context.Background(), orm, attribution.Resolver{}, session(owner.ID, "bulle_run_1", 25))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,56 +83,40 @@ func TestRecordUpsertsByFacileID(t *testing.T) {
 
 	intruder := schemas.User{Email: "eve@example.com"}
 	create(t, orm, &intruder)
-	if _, err := Record(orm, session(intruder.ID, "bulle_run_1", 5)); !stderrors.Is(err, ErrForeignFacileID) {
+	if _, err := Record(context.Background(), orm, attribution.Resolver{}, session(intruder.ID, "bulle_run_1", 5)); !stderrors.Is(err, ErrForeignFacileID) {
 		t.Fatalf("another owner must not take over the entry, got %v", err)
 	}
 }
 
-func TestResolveTargetOrder(t *testing.T) {
+func TestRecordFlagsTheCatchAllAndKeepsAReviewedEntry(t *testing.T) {
 	orm := openDB(t)
 	owner := schemas.User{Email: "sara@example.com"}
 	create(t, orm, &owner)
-	explicit := schemas.Project{Name: "Explicit"}
-	named := schemas.Project{Name: "Sablier"}
-	running := schemas.Project{Name: "Running"}
-	hiddenSpace := "00000000-0000-4000-8000-000000000000"
-	hidden := schemas.Project{Name: "Hidden", SpaceID: &hiddenSpace}
-	for _, project := range []*schemas.Project{&explicit, &named, &running, &hidden} {
-		create(t, orm, project)
-	}
-	stopped := start.Add(time.Hour)
-	create(t, orm, &schemas.TimeEntry{UserID: owner.ID, ProjectID: running.ID, StartedAt: start.Add(-time.Hour), StoppedAt: &stopped})
+	unknown := session(owner.ID, "bulle_run_2", 10)
+	unknown.Facts = attribution.Facts{ProjectHint: "Unknown"}
 
-	cases := []struct {
-		name      string
-		projectID int64
-		hint      string
-		want      string
-		wantTask  string
-	}{
-		{"project id wins over the name", explicit.ID, "Sablier", "Explicit", SessionsTaskName},
-		{"name matches case-insensitively", 0, "sablier", "Sablier", SessionsTaskName},
-		{"running entry when the name misses", 0, "Unknown", "Running", SessionsTaskName},
-		{"a project in a foreign space is not matched by name", 0, "Hidden", "Running", SessionsTaskName},
-	}
-	for _, tc := range cases {
-		target, err := ResolveTarget(orm, owner.ID, tc.projectID, tc.hint, start)
-		if err != nil {
-			t.Fatalf("%s: %v", tc.name, err)
-		}
-		if target.Project.Name != tc.want || target.Task.Name != tc.wantTask {
-			t.Fatalf("%s: got %s/%s", tc.name, target.Project.Name, target.Task.Name)
-		}
-	}
-
-	if _, err := ResolveTarget(orm, owner.ID, hidden.ID, "", start); !stderrors.Is(err, ErrProjectNotVisible) {
-		t.Fatalf("a hidden project id must be refused, got %v", err)
-	}
-	target, err := ResolveTarget(orm, owner.ID, 0, "Unknown", start.Add(3*time.Hour))
+	first, err := Record(context.Background(), orm, attribution.Resolver{}, unknown)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if target.Project.Name != CatchAllProject || target.Task.Name != "Unknown" {
-		t.Fatalf("catch-all: got %s/%s", target.Project.Name, target.Task.Name)
+	if first.Target.Project.Name != CatchAllProject || first.Target.Task.Name != "Unknown" || !first.Entry.NeedsReview ||
+		*first.Entry.AttributionSource != attribution.SourceFallback {
+		t.Fatalf("catch-all: %s/%s %+v", first.Target.Project.Name, first.Target.Task.Name, first.Entry.Attribution)
+	}
+
+	chosen := schemas.Project{Name: "Chosen"}
+	create(t, orm, &chosen)
+	manual := attribution.SourceManual
+	err = orm.Model(&schemas.TimeEntry{}).Where("id = ?", first.Entry.ID).
+		Updates(map[string]any{"project_id": chosen.ID, "attribution_source": manual, "needs_review": false}).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := Record(context.Background(), orm, attribution.Resolver{}, unknown)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replay.Entry.ProjectID != chosen.ID || replay.Entry.NeedsReview {
+		t.Fatalf("a replay must keep the owner's reassignment, got project %d", replay.Entry.ProjectID)
 	}
 }

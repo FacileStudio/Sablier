@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
@@ -39,6 +40,7 @@ type Service struct {
 	mu         sync.RWMutex
 	logger     *slog.Logger
 	issuer     string
+	resolver   attribution.Resolver
 }
 
 // NewService constructs a Service bound to orm and logger.
@@ -46,6 +48,11 @@ func NewService(orm *gorm.DB, logger *slog.Logger) *Service {
 	service := &Service{orm: orm, logger: logger}
 	service.controller = newController(service)
 	return service
+}
+
+// SetResolver sets the attribution resolver Mycelium agent sessions are booked through.
+func (s *Service) SetResolver(resolver attribution.Resolver) {
+	s.resolver = resolver
 }
 
 // SetIssuer names the OIDC issuer whose porte subjects identify people on the wire.

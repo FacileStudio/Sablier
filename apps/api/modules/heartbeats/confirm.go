@@ -3,7 +3,6 @@ package heartbeats
 import (
 	"context"
 	stderrors "errors"
-	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
@@ -13,18 +12,6 @@ import (
 )
 
 const draftTaskName = "Auto-tracked"
-
-func (service *Service) listDrafts(ctx context.Context, userID int64, from, to time.Time) ([]Draft, error) {
-	spans, err := service.computeForUser(ctx, userID, from, to)
-	if err != nil {
-		return nil, err
-	}
-	drafts := make([]Draft, len(spans))
-	for i, s := range spans {
-		drafts[i] = toDraft(s)
-	}
-	return drafts, nil
-}
 
 // confirm books a draft as a regular time entry, refusing a range that an entry
 // created since the draft was computed now overlaps.
@@ -52,10 +39,11 @@ func (service *Service) confirm(ctx context.Context, userID int64, req *ConfirmR
 		taskID = task.ID
 	}
 	return service.entries.CreateEntry(ctx, userID, &timeentries.CreateEntryRequest{
-		ProjectID: req.ProjectID,
-		TaskID:    taskID,
-		StartedAt: req.StartedAt.UTC(),
-		StoppedAt: req.StoppedAt.UTC(),
+		ProjectID:   req.ProjectID,
+		TaskID:      taskID,
+		StartedAt:   req.StartedAt.UTC(),
+		StoppedAt:   req.StoppedAt.UTC(),
+		Attribution: req.attribution,
 	})
 }
 

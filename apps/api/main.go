@@ -17,7 +17,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/internal/database"
+	"github.com/FacileStudio/Sablier/apps/api/internal/decide"
 	documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/internal/worker"
@@ -207,17 +209,17 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions) chi.Router {
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver) chi.Router {
 	authService := auth.NewService(db, sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, authService)
 	settingsService := settings.NewService(db)
 	spaceService := spaces.NewService(db)
-	agentService := agents.NewService(db)
+	agentService := agents.NewService(db, resolver)
 	projectService.SetPoolService(antenneService)
 	timeEntryService.SetPoolService(antenneService)
-	heartbeatService := heartbeats.NewService(db, timeEntryService)
+	heartbeatService := heartbeats.NewService(db, timeEntryService, resolver)
 
 	clientDir := spa.DirFromEnv()
 	router := httpx.NewRouter(httpx.Config{
@@ -263,12 +265,12 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	return router
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions) (*http.Server, error) {
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver) (*http.Server, error) {
 	sessions, kit, err := buildAuth(context.Background(), db, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
-	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, kit, notificationsService, antenneService, syncer, deletions)
+	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, kit, notificationsService, antenneService, syncer, deletions, resolver)
 
 	antenneService.AutoConnect(context.Background())
 
@@ -436,13 +438,17 @@ func run() error {
 
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
 	antenneService := antenne.NewService(db, appLogger)
+	decider, backend := decide.New(decide.ConfigFromEnv(), nil)
+	resolver := attribution.Resolver{Decider: decider}
+	antenneService.SetResolver(resolver)
+	appLogger.Info("attribution: AI backend chosen", slog.String("backend", backend))
 
 	if appEnv.OIDC != nil {
 		antenneService.SetIssuer(appEnv.OIDC.Issuer)
 	}
 	registre, syncer := newDirectory(db, &appEnv, appLogger, antenneService.ReconcileAtBoot)
 	deletions := newDeletions(db, &appEnv, appLogger)
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions)
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err
@@ -478,7 +484,7 @@ func run() error {
 
 	appLogger.Info("antenne: outbox worker started")
 
-	go worker.RunHeartbeatWorker(shutdownSignal, heartbeats.NewService(db, timeentries.NewService(db)), appLogger)
+	go worker.RunHeartbeatWorker(shutdownSignal, heartbeats.NewService(db, timeentries.NewService(db), resolver), appLogger)
 
 	select {
 	case err := <-serverErrCh:

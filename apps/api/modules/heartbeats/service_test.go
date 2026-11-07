@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
@@ -28,11 +29,11 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open test database: %v", err)
 	}
 	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.SpaceMember{}, &schemas.Heartbeat{}, &schemas.DraftDismissal{})
+		&schemas.Space{}, &schemas.SpaceMember{}, &schemas.Heartbeat{}, &schemas.DraftDismissal{})
 	if err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
-	service := NewService(orm, timeentries.NewService(orm))
+	service := NewService(orm, timeentries.NewService(orm), attribution.Resolver{})
 	service.now = func() time.Time { return testNow }
 	return service
 }
