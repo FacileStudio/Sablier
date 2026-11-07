@@ -10,9 +10,11 @@ var Documentation = documentation.Module{
 			Method:  "GET",
 			Path:    "/time-entries",
 			Summary: "List entries",
-			Auth:    "bearer token required",
+			Description: "Each row carries space_id, project_name and the attribution fields attribution_source, " +
+				"attribution_confidence and needs_review. Flagged entries still count in every total.",
+			Auth: "bearer token required",
 			QueryParams: []documentation.Field{
-				{Name: "space_id", Type: "string", Description: "Filter by space ID"},
+				{Name: "space_id", Type: "string", Description: "Absent: personal rows only. all: personal rows plus every space you belong to. A space id: that space; 404 when you are not a member."},
 				{Name: "running", Type: "boolean", Description: "Filter by running state"},
 				{Name: "project_id", Type: "integer", Description: "Filter by project ID"},
 				{Name: "user_id", Type: "integer", Description: "Filter by user ID"},
@@ -30,6 +32,7 @@ var Documentation = documentation.Module{
 			Method:       "POST",
 			Path:         "/time-entries/start",
 			Summary:      "Start timer",
+			Description:  "The entry takes its project's space; a space_id in the body is ignored.",
 			Auth:         "bearer token required",
 			RequestBody:  StartTimerRequest{},
 			ResponseBody: TimeEntryResponse{},

@@ -34,12 +34,15 @@ func (service *Service) SetPoolService(ps *antenne.Service) {
 	service.poolService = ps
 }
 
-func (service *Service) startTimer(ctx context.Context, userID string, projectID int64, taskID int64, spaceID *string) (*schemas.TimeEntry, string, error) {
+func (service *Service) startTimer(ctx context.Context, userID string, projectID int64, taskID int64) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, "", errors.Invalid("invalid user id")
 	}
-
+	project, err := service.projectFor(ctx, uid, projectID)
+	if err != nil {
+		return nil, "", err
+	}
 	task, err := service.getTask(ctx, projectID, taskID)
 	if err != nil {
 		return nil, "", err
@@ -54,16 +57,11 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 		return nil, "", errors.Internal("failed to check running timer", err)
 	}
 
-	var resolvedSpaceID *string
-	if spaceID != nil && *spaceID != "" {
-		resolvedSpaceID = spaceID
-	}
-
 	record := &schemas.TimeEntry{
 		ProjectID:          projectID,
 		TaskID:             task.ID,
 		UserID:             uid,
-		SpaceID:            resolvedSpaceID,
+		SpaceID:            project.SpaceID,
 		StartedAt:          time.Now().UTC(),
 		LastNotificationAt: nil,
 	}
@@ -82,13 +80,8 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 		needsTaskUpdate = true
 	}
 	if needsTaskUpdate {
-		if err := service.orm.WithContext(ctx).Save(task).Error; err == nil {
-			if service.poolService != nil {
-				var project schemas.Project
-				if err := service.orm.WithContext(ctx).Where("id = ?", projectID).First(&project).Error; err == nil {
-					service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, &project)
-				}
-			}
+		if err := service.orm.WithContext(ctx).Save(task).Error; err == nil && service.poolService != nil {
+			service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, project)
 		}
 	}
 
@@ -192,80 +185,28 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	return &record, taskName, nil
 }
 
-type timeEntryRow struct {
-	schemas.TimeEntry
-	UserEmail     string
-	UserName      string
-	UserColor     string
-	UserAvatarURL string
-	UserKind      string
-	TaskName      string
-}
-
-func (service *Service) listEntries(ctx context.Context, projectID int64, userID int64, spaceID *string) ([]timeEntryRow, error) {
-	query := service.orm.WithContext(ctx).
-		Model(&schemas.TimeEntry{}).
-		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.kind as user_kind, " + schemas.AvatarSelectExpr + " as user_avatar_url, tasks.name as task_name").
-		Joins("JOIN users ON users.id = time_entries.user_id").
-		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id")
-	if projectID > 0 {
-		query = query.Where("time_entries.project_id = ?", projectID)
-	}
-	if userID > 0 {
-		query = query.Where("time_entries.user_id = ?", userID)
-	}
-	if spaceID != nil {
-		query = query.Where("time_entries.space_id = ?", *spaceID)
-	} else {
-		query = query.Where("time_entries.space_id IS NULL")
-	}
-	var records []timeEntryRow
-	if err := query.Order("time_entries.started_at desc").Limit(100).Find(&records).Error; err != nil {
-		return nil, errors.Internal("failed to list entries", err)
-	}
-	return records, nil
-}
-
-func (service *Service) listRunningEntries(ctx context.Context, spaceID *string) ([]timeEntryRow, error) {
-	query := service.orm.WithContext(ctx).
-		Model(&schemas.TimeEntry{}).
-		Select("time_entries.*, users.email as user_email, users.name as user_name, users.color as user_color, users.kind as user_kind, " + schemas.AvatarSelectExpr + " as user_avatar_url, tasks.name as task_name").
-		Joins("JOIN users ON users.id = time_entries.user_id").
-		Joins("LEFT JOIN tasks ON tasks.id = time_entries.task_id").
-		Where("time_entries.stopped_at IS NULL")
-	if spaceID != nil {
-		query = query.Where("time_entries.space_id = ?", *spaceID)
-	} else {
-		query = query.Where("time_entries.space_id IS NULL")
-	}
-	var records []timeEntryRow
-	if err := query.Order("time_entries.started_at asc").Find(&records).Error; err != nil {
-		return nil, errors.Internal("failed to list running entries", err)
-	}
-	return records, nil
-}
-
-func (service *Service) createEntry(ctx context.Context, userID string, projectID int64, taskID int64, startedAt, stoppedAt time.Time, spaceID *string) (*schemas.TimeEntry, string, error) {
+func (service *Service) createEntry(ctx context.Context, userID string, req *CreateEntryRequest) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, "", errors.Invalid("invalid user id")
 	}
-	task, err := service.getTask(ctx, projectID, taskID)
+	project, err := service.projectFor(ctx, uid, req.ProjectID)
 	if err != nil {
 		return nil, "", err
 	}
-	var resolvedSpaceID *string
-	if spaceID != nil && *spaceID != "" {
-		resolvedSpaceID = spaceID
+	task, err := service.getTask(ctx, req.ProjectID, req.TaskID)
+	if err != nil {
+		return nil, "", err
 	}
-	stopped := stoppedAt
+	stopped := req.StoppedAt
 	record := &schemas.TimeEntry{
-		ProjectID: projectID,
-		TaskID:    task.ID,
-		UserID:    uid,
-		SpaceID:   resolvedSpaceID,
-		StartedAt: startedAt.UTC(),
-		StoppedAt: &stopped,
+		ProjectID:   req.ProjectID,
+		TaskID:      task.ID,
+		UserID:      uid,
+		SpaceID:     project.SpaceID,
+		StartedAt:   req.StartedAt.UTC(),
+		StoppedAt:   &stopped,
+		Attribution: req.Attribution,
 	}
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, "", errors.Internal("failed to create entry", err)
@@ -292,6 +233,10 @@ func (service *Service) updateEntry(ctx context.Context, userID string, entryID 
 		return nil, "", errors.Invalid("only the currently running session can remain running after edit")
 	}
 
+	project, err := service.projectFor(ctx, uid, req.ProjectID)
+	if err != nil {
+		return nil, "", err
+	}
 	task, err := service.getTask(ctx, req.ProjectID, req.TaskID)
 	if err != nil {
 		return nil, "", err
@@ -299,6 +244,7 @@ func (service *Service) updateEntry(ctx context.Context, userID string, entryID 
 
 	record.ProjectID = req.ProjectID
 	record.TaskID = task.ID
+	record.SpaceID = project.SpaceID
 	record.StartedAt = req.StartedAt.UTC()
 	record.StoppedAt = req.StoppedAt
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {

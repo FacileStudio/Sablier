@@ -2,6 +2,7 @@ package projects
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
@@ -24,6 +25,7 @@ func toResponse(p *schemas.Project) ProjectResponse {
 		Description: p.Description,
 		Icon:        p.Icon,
 		OwnerID:     p.OwnerID,
+		SpaceID:     p.SpaceID,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
 	}
@@ -63,8 +65,12 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateProje
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context, spaceID *string) (*ListProjectsResponse, error) {
-	records, err := c.service.listProjects(ctx, spaceID)
+func (c *Controller) list(ctx context.Context, userID, spaceID string) (*ListProjectsResponse, error) {
+	uid, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return nil, errors.Invalid("invalid user id")
+	}
+	records, err := c.service.listProjects(ctx, uid, spaceID)
 	if err != nil {
 		return nil, err
 	}

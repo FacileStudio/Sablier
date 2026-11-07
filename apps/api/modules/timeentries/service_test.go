@@ -22,7 +22,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open test database: %v", err)
 	}
 
-	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{})
+	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{}, &schemas.SpaceMember{})
 	if err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestListEntriesIncludesUserColor(t *testing.T) {
 	task := seedTask(t, service.orm, project.ID)
 	seedEntry(t, service.orm, project.ID, task.ID, user.ID)
 
-	records, err := service.listEntries(context.Background(), project.ID, 0, nil)
+	records, err := service.listEntries(context.Background(), 1, listFilter{ProjectID: project.ID})
 	if err != nil {
 		t.Fatalf("list entries: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestPauseAndResumeTimerAdjustPausedDuration(t *testing.T) {
 	service := newTestService(t)
 	project := seedProject(t, service.orm, 1)
 	task := seedTask(t, service.orm, project.ID)
-	record, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID, nil)
+	record, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID)
 	if err != nil {
 		t.Fatalf("start timer: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestStopTimerWhilePausedFinalizesPausedDuration(t *testing.T) {
 	service := newTestService(t)
 	project := seedProject(t, service.orm, 1)
 	task := seedTask(t, service.orm, project.ID)
-	if _, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID, nil); err != nil {
+	if _, _, err := service.startTimer(context.Background(), "1", project.ID, task.ID); err != nil {
 		t.Fatalf("start timer: %v", err)
 	}
 	if _, _, err := service.pauseTimer(context.Background(), "1"); err != nil {
@@ -283,7 +283,7 @@ func TestPersonalScopeKeepsEntriesOutOfEverySpace(t *testing.T) {
 	project := seedProject(t, service.orm, 1)
 	task := seedTask(t, service.orm, project.ID)
 
-	personal, _, err := service.startTimer(ctx, "1", project.ID, task.ID, nil)
+	personal, _, err := service.startTimer(ctx, "1", project.ID, task.ID)
 	if err != nil {
 		t.Fatalf("start a personal timer: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestPersonalScopeKeepsEntriesOutOfEverySpace(t *testing.T) {
 		t.Fatalf("personal entry space id = %v, want nil", *personal.SpaceID)
 	}
 
-	entries, err := service.listEntries(ctx, project.ID, 1, nil)
+	entries, err := service.listEntries(ctx, 1, listFilter{ProjectID: project.ID, UserID: 1})
 	if err != nil {
 		t.Fatalf("list personal entries: %v", err)
 	}
@@ -300,7 +300,10 @@ func TestPersonalScopeKeepsEntriesOutOfEverySpace(t *testing.T) {
 	}
 
 	spaceID := "11111111-1111-4111-8111-111111111111"
-	if entries, err = service.listEntries(ctx, project.ID, 1, &spaceID); err != nil || len(entries) != 0 {
+	if err := service.orm.Create(&schemas.SpaceMember{SpaceID: spaceID, UserID: 1}).Error; err != nil {
+		t.Fatalf("join the space: %v", err)
+	}
+	if entries, err = service.listEntries(ctx, 1, listFilter{ProjectID: project.ID, UserID: 1, Space: spaceID}); err != nil || len(entries) != 0 {
 		t.Fatalf("space listing returned %d entries, %v, want 0, nil", len(entries), err)
 	}
 }

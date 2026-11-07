@@ -2,6 +2,7 @@ package timeentries
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
@@ -26,8 +27,14 @@ func toResponse(e *schemas.TimeEntry) TimeEntryResponse {
 		StoppedAt:      e.StoppedAt,
 		PausedAt:       e.PausedAt,
 		PausedDuration: e.PausedDurationMs,
+		SpaceID:        e.SpaceID,
 		CreatedAt:      e.CreatedAt,
 		UpdatedAt:      e.UpdatedAt,
+		AttributionResponse: AttributionResponse{
+			Source:      e.AttributionSource,
+			Confidence:  e.AttributionConfidence,
+			NeedsReview: e.NeedsReview,
+		},
 	}
 }
 
@@ -38,7 +45,7 @@ func (c *Controller) start(ctx context.Context, userID string, req *StartTimerRe
 	if req.TaskID <= 0 {
 		return nil, errors.Invalid("task_id is required")
 	}
-	record, taskName, err := c.service.startTimer(ctx, userID, req.ProjectID, req.TaskID, req.SpaceID)
+	record, taskName, err := c.service.startTimer(ctx, userID, req.ProjectID, req.TaskID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +84,12 @@ func (c *Controller) resume(ctx context.Context, userID string) (*TimeEntryRespo
 	return &resp, nil
 }
 
-func (c *Controller) list(ctx context.Context, projectID int64, userID int64, spaceID *string) (*ListEntriesResponse, error) {
-	records, err := c.service.listEntries(ctx, projectID, userID, spaceID)
+func (c *Controller) list(ctx context.Context, userID string, filter listFilter) (*ListEntriesResponse, error) {
+	callerID, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
-		return nil, err
+		return nil, errors.Invalid("invalid user id")
 	}
-	return rowsToResponse(records), nil
-}
-
-func (c *Controller) listRunning(ctx context.Context, spaceID *string) (*ListEntriesResponse, error) {
-	records, err := c.service.listRunningEntries(ctx, spaceID)
+	records, err := c.service.listEntries(ctx, callerID, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +106,7 @@ func rowsToResponse(records []timeEntryRow) *ListEntriesResponse {
 		items[i].UserAvatarURL = r.UserAvatarURL
 		items[i].UserKind = r.UserKind
 		items[i].TaskName = r.TaskName
+		items[i].ProjectName = r.ProjectName
 	}
 	return &ListEntriesResponse{Entries: items}
 }
@@ -120,7 +124,7 @@ func (c *Controller) create(ctx context.Context, userID string, req *CreateEntry
 	if req.StoppedAt.IsZero() || req.StoppedAt.Before(req.StartedAt) {
 		return nil, errors.Invalid("stopped_at must be after started_at")
 	}
-	record, taskName, err := c.service.createEntry(ctx, userID, req.ProjectID, req.TaskID, req.StartedAt, req.StoppedAt, req.SpaceID)
+	record, taskName, err := c.service.createEntry(ctx, userID, req)
 	if err != nil {
 		return nil, err
 	}

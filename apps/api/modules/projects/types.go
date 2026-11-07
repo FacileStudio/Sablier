@@ -35,6 +35,7 @@ type ProjectResponse struct {
 	Description string    `json:"description"`
 	Icon        *string   `json:"icon"`
 	OwnerID     int64     `json:"owner_id"`
+	SpaceID     *string   `json:"space_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -77,4 +78,39 @@ type DeleteProjectResponse struct {
 type DeleteTaskResponse struct {
 	Deleted          bool  `json:"deleted"`
 	SessionsUnlinked int64 `json:"sessions_unlinked"`
+}
+
+// TaskSearchResponse is GET /tasks/search.
+type TaskSearchResponse struct {
+	Results []TaskSearchResult `json:"results"`
+}
+
+// TaskSearchResult is one task with its project and space. Choosing it chooses all three.
+// LastUsedAt is the caller's latest entry on the task, and Opus marks a task Opus knows.
+type TaskSearchResult struct {
+	Task       TaskRef    `json:"task"`
+	Project    ProjectRef `json:"project"`
+	Space      *SpaceRef  `json:"space"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	Opus       bool       `json:"opus"`
+}
+
+// TaskRef names a task in a search result.
+type TaskRef struct {
+	ID       int64   `json:"id"`
+	Name     string  `json:"name"`
+	FacileID *string `json:"facile_id"`
+}
+
+// ProjectRef names a project in a search result.
+type ProjectRef struct {
+	ID   int64   `json:"id"`
+	Name string  `json:"name"`
+	Icon *string `json:"icon"`
+}
+
+// SpaceRef names a space in a search result; personal tasks carry none.
+type SpaceRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }

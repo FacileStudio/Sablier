@@ -2,6 +2,7 @@ package timeentries
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
@@ -13,6 +14,22 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func parseListFilter(query url.Values) (listFilter, error) {
+	filter := listFilter{Space: query.Get("space_id"), Running: query.Get("running") == "true"}
+	for name, target := range map[string]*int64{"project_id": &filter.ProjectID, "user_id": &filter.UserID} {
+		raw := query.Get(name)
+		if raw == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return listFilter{}, errors.Invalid("invalid " + name)
+		}
+		*target = id
+	}
+	return filter, nil
+}
+
 // RegisterRoutes wires the authenticated /time-entries endpoints, including the
 // timer subroutes for start, stop, pause and resume.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
@@ -20,38 +37,13 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		router.Use(middleware.RequireAuth(authService))
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
-			var spaceID *string
-			if raw := request.URL.Query().Get("space_id"); raw != "" {
-				spaceID = &raw
-			}
-			if request.URL.Query().Get("running") == "true" {
-				resp, err := service.controller.listRunning(request.Context(), spaceID)
-				if err != nil {
-					httpjson.WriteError(w, err)
-					return
-				}
-				httpjson.WriteJSON(w, http.StatusOK, resp)
+			identity, _ := authcontext.IdentityFromContext(request.Context())
+			filter, err := parseListFilter(request.URL.Query())
+			if err != nil {
+				httpjson.WriteError(w, err)
 				return
 			}
-			var projectID int64
-			if raw := request.URL.Query().Get("project_id"); raw != "" {
-				id, err := strconv.ParseInt(raw, 10, 64)
-				if err != nil {
-					httpjson.WriteError(w, errors.Invalid("invalid project_id"))
-					return
-				}
-				projectID = id
-			}
-			var userID int64
-			if raw := request.URL.Query().Get("user_id"); raw != "" {
-				id, err := strconv.ParseInt(raw, 10, 64)
-				if err != nil {
-					httpjson.WriteError(w, errors.Invalid("invalid user_id"))
-					return
-				}
-				userID = id
-			}
-			resp, err := service.controller.list(request.Context(), projectID, userID, spaceID)
+			resp, err := service.controller.list(request.Context(), identity.UserID, filter)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return

@@ -20,11 +20,8 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 		router.Use(middleware.RequireAuth(authService))
 
 		router.Get("/", func(w http.ResponseWriter, request *http.Request) {
-			var spaceID *string
-			if raw := request.URL.Query().Get("space_id"); raw != "" {
-				spaceID = &raw
-			}
-			resp, err := service.controller.list(request.Context(), spaceID)
+			identity, _ := authcontext.IdentityFromContext(request.Context())
+			resp, err := service.controller.list(request.Context(), identity.UserID, request.URL.Query().Get("space_id"))
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return

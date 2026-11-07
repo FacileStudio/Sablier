@@ -44,6 +44,9 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	}
 	var resolvedSpaceID *string
 	if spaceID != nil && *spaceID != "" {
+		if err := service.requireSpace(ctx, ownerID, *spaceID); err != nil {
+			return nil, err
+		}
 		resolvedSpaceID = spaceID
 	}
 	record := &schemas.Project{
@@ -63,13 +66,25 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 	return record, nil
 }
 
-func (service *Service) listProjects(ctx context.Context, spaceID *string) ([]schemas.Project, error) {
+func (service *Service) requireSpace(ctx context.Context, userID int64, spaceID string) error {
+	if err := schemas.RequireMember(service.orm.WithContext(ctx), userID, spaceID); err != nil {
+		return spaceError(err)
+	}
+	return nil
+}
+
+func spaceError(err error) error {
+	if stderrors.Is(err, schemas.ErrSpaceNotVisible) {
+		return errors.NotFound("space not found")
+	}
+	return errors.Internal("failed to check the space", err)
+}
+
+func (service *Service) listProjects(ctx context.Context, userID int64, spaceID string) ([]schemas.Project, error) {
 	var records []schemas.Project
-	query := service.orm.WithContext(ctx)
-	if spaceID != nil {
-		query = query.Where("space_id = ?", *spaceID)
-	} else {
-		query = query.Where("space_id IS NULL")
+	query, err := schemas.ScopeSpace(service.orm.WithContext(ctx), "projects.space_id", userID, spaceID)
+	if err != nil {
+		return nil, spaceError(err)
 	}
 	if err := query.Order("created_at desc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list projects", err)

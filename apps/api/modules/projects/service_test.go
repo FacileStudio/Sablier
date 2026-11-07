@@ -18,7 +18,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open test database: %v", err)
 	}
 
-	err = orm.AutoMigrate(&schemas.Project{}, &schemas.Task{})
+	err = orm.AutoMigrate(&schemas.Project{}, &schemas.Task{}, &schemas.SpaceMember{})
 	if err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestListProjectsReturnsOnlyOwnedProjects(t *testing.T) {
 	seedProject(t, service.orm, 1, "Mine")
 	seedProject(t, service.orm, 2, "Not mine")
 
-	projects, err := service.listProjects(context.Background(), nil)
+	projects, err := service.listProjects(context.Background(), 1, "")
 	if err != nil {
 		t.Fatalf("list projects: %v", err)
 	}
