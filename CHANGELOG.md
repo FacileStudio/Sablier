@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-11-07
+
 ### Changed
 
 - `@facile/muse` v0.13.0 to v0.14.1. The user menu is one options object on the sidebar and the mobile bar: Facile account, Downloads (browser only), Settings, language, theme and Sign out. Settings and Sign out are no longer entries of the app's own list.
