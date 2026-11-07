@@ -80,6 +80,8 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `JOURNAL_BROWSER_URL`, `JOURNAL_BROWSER_KEY` -- Browser error reporting. The URL is **not**
   `JOURNAL_URL`: that one is the server SDK's and points inside the Docker network, which no
   browser can resolve. It must end in `/api`, and the app refuses to boot otherwise
+- `BULLE_URL`, `BULLE_SERVICE_KEY` / `JEV_API_KEY`, `JEV_ENDPOINT`, `JEV_BASE_URL`, `JEV_MODEL` -- AI step of the
+  attribution resolver (`internal/attribution`, `internal/decide`). Bulle wins; no fallback to Jev; neither = off
 - `SOURCEMAP_DIR` -- where the built client's maps live, **outside `CLIENT_DIR`** so nothing
   serves them. The API uploads them to Journal at boot, keyed on the release in
   `_app/version.json` — the exact string the browser reports. Set by the Dockerfile, which moves
@@ -97,6 +99,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - Resources: `/api/projects`, `/api/time-entries`, `/api/users`, `/api/settings`
 - Spaces (read-only, Registre owns them): `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`
 - `POST /api/registre/sync` -- Registre's anonymous nudge, answers 202; mounted only with OIDC
+- `GET /api/tasks/search`, `GET /api/review`, `POST /api/review/{entry_id}` -- task picker and the Review inbox
 
 ## Conventions
 
@@ -109,3 +112,4 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - **No test setup on the client side** -- only the API has `go test`.
 - Profile pictures come from Registre: `oidc_picture_url` holds `<issuer>/avatars/<sub>`, backfilled at boot from `porte_identities`. Sablier has no upload; the profile page links to `https://sso.facile.studio/account`. Old uploads in `STORAGE_DIR/avatars/` still render for accounts with no Registre identity.
 - Shared spaces are Registre's (`modules/spaces/registre_*.go`, `porte/directory`). Boot imports unlinked spaces once, retrying, and only then starts the snapshot sync. Apply never touches members without an identity under `OIDC_ISSUER`, unlinked spaces, or linked spaces missing from the snapshot. No write route for spaces exists here; the UI links to `https://sso.facile.studio/spaces`.
+- Space visibility goes through `schemas.VisibleSpaces` / `schemas.ScopeSpace` (`space_id` absent = personal, `all`, or a member space; a non-member space is 404). They compare with `CAST(space_id AS TEXT)` because `space_members.space_id` is text. Query tests use `internal/testdb`, which runs on PostgreSQL in its own schema when `SABLIER_TEST_DATABASE_URL` is set.

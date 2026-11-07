@@ -40,12 +40,24 @@ An agent user is a row in `users` with `kind = 'agent'`, `owner_user_id` set to 
 }
 ```
 
-Sablier picks the project in this order:
+Optional attribution facts: `task_id`, `opus_task_ids` (Opus facile ids),
+`opus_updated_task_id`, `opus_project_id`, `registre_space_id`, `opus_workspace`, `title`
+and `entity`. The resolver (`internal/attribution`) tries, in order:
 
-1. `project_id`
-2. A project whose name matches `project`, ignoring case
-3. The project of the owner's entry running at `started_at`
-4. The shared "Agent work" project
+1. An explicit visible `task_id` or `project_id`. Confidence 1. An id you cannot see is a 400.
+2. An Opus task id that maps to a visible task (`opus_updated_task_id` first, then the
+   list order), else `opus_project_id`. Confidence 1.
+3. `project` matching a project name, first inside the space named by `registre_space_id`
+   (or `opus_workspace`), then across every visible project. Confidence 0.9.
+4. The project and task of the owner's entry running at `started_at`. Confidence 0.85.
+5. An AI pick among at most 30 open tasks of that space, or of every visible project when
+   the space is unknown. Confidence is the model's (see `docs/configuration.md`).
+6. The shared "Agent work" project, under a task named after `project`.
+
+A result below the owner's `review_threshold` (default 0.8, 0.5 to 1) or a fallback is
+booked with `needs_review: true` and waits in Review (`GET /api/review`). The entry keeps
+`attribution_source` and `attribution_confidence`. Once the owner settles it in Review it
+is `manual`, and replaying the session never moves it again.
 
 The gap between wall time and `active_seconds` is stored as paused time. Bulle uses it to leave out time spent waiting on an approval.
 
@@ -67,6 +79,8 @@ Mycelium already sends `agent_session` events for Claude Code. They now go to an
 {"heartbeats": [{"at": "2026-11-03T01:05:00Z", "source": "claude-code", "entity": "/home/me/Bulle", "project": "Bulle", "write": false}]}
 ```
 
+`registre_space_id`, `opus_task_id` and `title` are optional hints for the resolver.
+
 Sources are `claude-code`, `editor`, `desktop`, `git`, `bulle` and `cli`. `entity` is a path or an app name, never a window title.
 
 Sablier computes drafts when they are read, so it stores no draft rows that could go stale:
@@ -75,7 +89,11 @@ Sablier computes drafts when they are read, so it stores no draft rows that coul
 2. Remove the time already covered by the user's entries (a running entry counts up to now) and by dismissed ranges.
 3. Split a span where the resolved project changes. Drop pieces shorter than 1 minute.
 
-`POST /api/heartbeats/drafts/confirm` creates a normal entry and refuses an overlap with 409. `POST /api/heartbeats/drafts/dismiss` hides a range. An hourly worker confirms drafts that ended more than 48 hours ago and have a project, for users with `auto_confirm_drafts` on, which is the default. The same worker deletes heartbeats older than 90 days. The dashboard lists today's and yesterday's drafts, and the profile page has the auto-confirm toggle.
+Each draft runs through the same resolver, with one decide call per listing, and carries
+`suggestion: {task_id, project_id, space_id, source, confidence, needs_review}`, or null
+when nothing matched. `task_id` is null when only a project matched.
+
+`POST /api/heartbeats/drafts/confirm` creates a normal entry and refuses an overlap with 409. `POST /api/heartbeats/drafts/dismiss` hides a range. An hourly worker confirms drafts that ended more than 48 hours ago and whose suggestion does not need review, for users with `auto_confirm_drafts` on, which is the default. `GET/PUT /api/heartbeats/settings` carries `auto_confirm_drafts` and `review_threshold`. The same worker deletes heartbeats older than 90 days. The dashboard lists today's and yesterday's drafts, and the profile page has the auto-confirm toggle.
 
 ## Desktop app
 

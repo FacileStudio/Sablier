@@ -122,6 +122,23 @@ Add this column to `users`: `review_threshold real default 0.8`.
 - `GET /api/review`: entries flagged `needs_review` for the caller and the caller's agents, plus drafts.
 - `POST /api/review/{entry_id}`: takes `{task_id}` to reassign the entry, or an empty body to accept it as it is. Either way, it clears the flag.
 
+### Track A as built (2026-11-07)
+
+The contract above holds. These are the additions and the points the plan left open:
+
+- `space_id` semantics apply to `GET /api/projects`, `GET /api/time-entries` and `GET /api/time-entries?running=true`. `GET /api/time-entries/running` is the caller's own timer and takes no `space_id`. `running=true` now also honours `project_id` and `user_id`.
+- `POST /api/projects` with a `space_id` you are not a member of returns 404. Start, create and update of an entry refuse a project you cannot see with 400.
+- Entry rows (lists, running list, review, agent session response) carry `space_id`, `project_name` (lists and review), `attribution_source`, `attribution_confidence` and `needs_review`. `attribution_source` is null on entries a person booked.
+- A seventh source, `manual`, marks an entry settled in Review (accepted or reassigned). A replayed agent session never moves a `manual` entry.
+- `POST /api/agents/sessions` also accepts `opus_updated_task_id` (the Opus task the run updated, preferred over `opus_task_ids` order) and `entity`. Both are optional.
+- Heartbeat `title` is optional, like `registre_space_id` and `opus_task_id`.
+- `opus_workspace` maps to a member space by name, used only when `registre_space_id` is absent.
+- A fallback always needs review, whatever the threshold. A draft whose resolver found nothing has `suggestion: null`. A draft with a suggestion but no `project_id` of its own gets the suggestion's project as `project_id`.
+- `review_threshold` lives in `GET/PUT /api/heartbeats/settings` next to `auto_confirm_drafts`. A PUT without it keeps the stored value; outside 0.5 to 1 is a 400.
+- `POST /api/review/{entry_id}` accepts `{"task_id": n}`, `{}` or an empty body.
+- `review_threshold` and `attribution_confidence` are `double precision`, not `real`: a `real` 0.8 reads back as 0.800000011920929.
+- Bulle auth: `Authorization: Bearer <BULLE_SERVICE_KEY>` plus `X-Bulle-Acting-For: <email>`. Any non-200 (404 from an older Bulle, 402 `payment_required` from C4) is no answer. Drafts send one decide call per listing, one question per unplaced draft.
+
 ## Track B: Sablier client
 
 - B1. Remove the sidebar space switcher (`selectSpace` with `window.location.reload()`). Remove the old `space-context` active-space state, and keep only a per-page filter, stored in the URL as `?space=`.

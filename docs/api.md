@@ -114,7 +114,7 @@ All routes require authentication. Tasks are nested under their project.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| GET | `/api/projects` | — | `{"projects":[Project]}`; accepts `?space_id=` |
+| GET | `/api/projects` | — | `{"projects":[Project]}`; accepts `?space_id=` (see below) |
 | POST | `/api/projects` | `{"name","description","icon","space_id"}` | 201 `Project` |
 | GET | `/api/projects/{id}` | — | `Project` |
 | PUT | `/api/projects/{id}` | `{"name","description","icon"}` | `Project` |
@@ -124,7 +124,16 @@ All routes require authentication. Tasks are nested under their project.
 | PUT | `/api/projects/{id}/tasks/{taskId}` | `{"name","status"}` | `Task` |
 | DELETE | `/api/projects/{id}/tasks/{taskId}` | — | `{"deleted":true,"sessions_unlinked":n}` |
 
-`Project` is `{id, name, description, icon, owner_id, created_at, updated_at}`. `Task` is
+`?space_id=` on the project and time-entry lists: absent keeps personal rows (no space),
+`all` keeps personal rows plus every space you belong to, and a space id keeps that space.
+A space you are not a member of returns 404, and so does creating a project in one.
+
+`GET /api/tasks/search?q=&limit=` searches the tasks you can see (`limit` 1 to 50, default
+20) and returns `{"results":[{task:{id,name,facile_id}, project:{id,name,icon},
+space:{id,name}|null, last_used_at|null, opus}]}`. Your recent tasks come first, by your
+latest entry, then open Opus tasks, then task-name matches, then project-name matches.
+
+`Project` is `{id, name, description, icon, owner_id, space_id, created_at, updated_at}`. `Task` is
 `{id, project_id, name, status, actor_id, created_at, updated_at}`, with `status` one of
 `to-do`, `in-progress`, `in-review`, `done`. A non-numeric `{id}` returns 400
 `invalid project id`.
@@ -146,17 +155,36 @@ All routes require authentication. The timer routes act on the calling user's ow
 | DELETE | `/api/time-entries/{id}` | — | `{"deleted":true}` |
 
 `GET /api/time-entries` takes four query parameters: `space_id`, `project_id`, `user_id`,
-and `running=true`. `running=true` short-circuits to the list of every running entry in
-scope and ignores `project_id` and `user_id`. Non-numeric `project_id` or `user_id`
-return 400.
+and `running=true`. `running=true` lists the running entries in scope, still narrowed by
+`project_id` and `user_id` when given. Non-numeric `project_id` or `user_id` return 400.
+`/api/time-entries/running` is the caller's own timer and takes no `space_id`.
 
-`TimeEntry` is `{id, project_id, task_id, task_name, user_id, user_email, user_name,
-user_color, user_avatar_url, started_at, stopped_at, paused_at, paused_duration_ms,
-created_at, updated_at}`. A running entry has `stopped_at: null`; a paused one also has a
+Start and create ignore a `space_id` in the body: the entry takes its project's space,
+and a project you cannot see is refused with 400.
+
+`TimeEntry` is `{id, project_id, project_name, task_id, task_name, space_id, user_id,
+user_email, user_name, user_color, user_avatar_url, user_kind, started_at, stopped_at,
+paused_at, paused_duration_ms, created_at, updated_at, attribution_source,
+attribution_confidence, needs_review}`. `attribution_source` is one of `explicit`, `opus`,
+`name`, `running`, `ai`, `fallback` or `manual`, and null on an entry a person booked.
+`project_name` is filled on list and review rows. A running entry has `stopped_at: null`; a paused one also has a
 non-null `paused_at`, with accumulated pause time in `paused_duration_ms`.
 
 Starting a timer fires a `timer_started` webhook and a `time_entry.created` pool event;
 stopping fires `timer_stopped` and `time_entry.updated`.
+
+## Review
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `/api/review` | — | `{"entries":[TimeEntry], "drafts":[Draft]}` |
+| POST | `/api/review/{entry_id}` | `{"task_id"}`, `{}` or empty | `TimeEntry` |
+
+`entries` are the entries flagged `needs_review` that belong to you or to your agents.
+`drafts` are your drafts over the last 48 hours, each with its `suggestion`. Posting a
+`task_id` moves the entry to that task, its project and its space; an empty body accepts
+it as it is. Both clear the flag and set `attribution_source` to `manual`, so a replayed
+agent session never moves the entry again.
 
 ## Settings
 

@@ -96,6 +96,24 @@ These are read directly with `os.Getenv` in `modules/antenne/service.go` and are
 `PUT /api/antenne`, the database wins and the environment is ignored. Even in the
 fallback path the connection is only attempted when both values are non-empty.
 
+## AI attribution
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `BULLE_URL` | no | — | Bulle base URL. Sablier calls `POST {BULLE_URL}/api/ai/decide` |
+| `BULLE_SERVICE_KEY` | no | — | Bearer key Bulle issues to Sablier. Each call also sends `X-Bulle-Acting-For: <user email>` |
+| `JEV_API_KEY` | no | — | Jev key for a Sablier deployed without Bulle |
+| `JEV_ENDPOINT` | no | `systemone` | `systemone` (`/v1/systemone`) or `decisions` (`/api/alpha/decisions`) |
+| `JEV_BASE_URL` | no | `https://api.typesafe.ai` (`https://openrouter.ai` for `decisions`) | Jev host |
+| `JEV_MODEL` | no | `jev-latest` | Jev model name |
+
+The backend is chosen once at boot and logged as `attribution: AI backend chosen`:
+Bulle when `BULLE_URL` is set, else direct Jev when `JEV_API_KEY` is set, else off. Bulle
+wins when both are set, and a failed Bulle call never falls back to Jev. Each call has a
+5 second timeout, and any error, an older Bulle's 404 or a 402 `payment_required` included, counts as no answer: the
+work then waits in Review. The AI sees only the session title, the project hint, the
+entity and the candidate labels (`Space › Project › Task`), never message content.
+
 ## Compose-only
 
 `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` are consumed by the `db` service
