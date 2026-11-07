@@ -174,10 +174,11 @@
 							{pausing ? t('timer.pausing') : t('timer.pause')}
 						{/if}
 					</Button>
-					<Button variant="danger" icon={timerIcons.stop} onclick={stopTimer} disabled={busy}>
+					<Button variant="ghost-danger" icon={timerIcons.stop} onclick={stopTimer} disabled={busy}>
 						{stopping ? t('timer.stopping') : t('timer.stop')}
 					</Button>
 					<IconButton
+						variant="secondary"
 						aria-label={t('timer.editEntry')}
 						onclick={() => (editDrawerOpen = true)}
 						disabled={busy}
@@ -189,7 +190,7 @@
 		{:else}
 			<div class="flex items-center gap-2">
 				<Button icon={timerIcons.play} onclick={() => (paletteOpen = true)}>{t('timer.start')}</Button>
-				<IconButton aria-label={t('timer.addSession')} onclick={() => (manualDrawerOpen = true)}>
+				<IconButton variant="secondary" aria-label={t('timer.addSession')} onclick={() => (manualDrawerOpen = true)}>
 					<iconify-icon icon={icons.plus} width="18" height="18" class="block"></iconify-icon>
 				</IconButton>
 			</div>
@@ -221,7 +222,7 @@
 			<div class="flex flex-col items-end gap-2" transition:fly={{ y: 10, duration: 150 }}>
 				<Button
 					size="lg"
-					variant="outline"
+					variant="secondary"
 					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={icons.edit}
 					onclick={() => {
@@ -250,7 +251,7 @@
 				</Button>
 				<Button
 					size="lg"
-					variant="danger"
+					variant="ghost-danger"
 					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={timerIcons.stop}
 					onclick={() => {
@@ -283,7 +284,7 @@
 			<div class="flex flex-col items-end gap-2" transition:fly={{ y: 10, duration: 150 }}>
 				<Button
 					size="lg"
-					variant="outline"
+					variant="secondary"
 					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={icons.plus}
 					onclick={() => {

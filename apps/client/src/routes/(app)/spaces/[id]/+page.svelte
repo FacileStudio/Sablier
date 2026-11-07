@@ -53,7 +53,7 @@
 		</Button>
 		{#if space}
 			<Button
-				variant="outline"
+				variant="secondary"
 				size="sm"
 				href={registreSpaceUrl(space.registre_space_id)}
 				target="_blank"

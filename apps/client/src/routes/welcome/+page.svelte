@@ -140,7 +140,7 @@
 
 		<footer class="flex shrink-0 gap-3 py-6">
 			{#if index > 0}
-				<Button variant="outline" size="lg" icon={icons.chevronLeft} class="min-h-12" onclick={() => go(index - 1)}>
+				<Button variant="secondary" size="lg" icon={icons.chevronLeft} class="min-h-12" onclick={() => go(index - 1)}>
 					{t('welcome.back')}
 				</Button>
 			{/if}

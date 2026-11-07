@@ -137,7 +137,7 @@
 						</Button>
 						<Button
 							size="sm"
-							variant="outline"
+							variant="secondary"
 							icon={icons.edit}
 							disabled={busy === row.key}
 							onclick={() => {
