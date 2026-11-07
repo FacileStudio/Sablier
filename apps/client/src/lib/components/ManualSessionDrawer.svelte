@@ -3,7 +3,6 @@
 	import { backend, type Project, type Task, type TimeEntry } from '$lib/backend';
 	import { findTaskByName, upsertTask } from '$lib/task-selection';
 	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
-	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import { Button, Drawer, Field, Input, Select, icons } from '@facile/muse';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
 	import { t } from '$lib/i18n/index.svelte';
@@ -204,7 +203,7 @@
 				if (!stopIso) {
 					throw new Error(t('session.endRequired'));
 				}
-				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso, getActiveSpaceId());
+				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso);
 			}
 			reset();
 			drawerOpen = false;

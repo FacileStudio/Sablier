@@ -3,11 +3,14 @@
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
-	import { getActiveSpaceId } from '$lib/space-context.svelte';
+	import { page } from '$app/state';
+	import { filterScope, spaceFilter } from '$lib/space-context.svelte';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import AgentsCard from '$lib/components/AgentsCard.svelte';
-	import SuggestedDrafts from '$lib/components/SuggestedDrafts.svelte';
+	import ReviewInbox from '$lib/components/ReviewInbox.svelte';
+	import SpaceFilter from '$lib/components/SpaceFilter.svelte';
+	import AttributionChip from '$lib/components/AttributionChip.svelte';
 	import {
 		BarChart,
 		Button,
@@ -37,6 +40,7 @@
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
 	let stopTimeEntrySync: (() => void) | undefined;
+	const scope = $derived(filterScope(spaceFilter(page.url)));
 	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
 
 	function formatLongDate(iso: string): string {
@@ -76,18 +80,16 @@
 	}
 
 	async function loadEntries() {
-		const spaceId = getActiveSpaceId();
 		const [e, r] = await Promise.all([
-			backend.listEntries(ctx.token, undefined, undefined, spaceId),
-			backend.listRunningEntries(ctx.token, spaceId)
+			backend.listEntries(ctx.token, undefined, undefined, scope),
+			backend.listRunningEntries(ctx.token, scope)
 		]);
 		entries = e.entries;
 		runningEntries = r.entries;
 	}
 
 	async function loadRunning() {
-		const spaceId = getActiveSpaceId();
-		const r = await backend.listRunningEntries(ctx.token, spaceId);
+		const r = await backend.listRunningEntries(ctx.token, scope);
 		runningEntries = r.entries;
 	}
 
@@ -105,11 +107,10 @@
 	let mounted = $state(false);
 
 	async function loadAll() {
-		const spaceId = getActiveSpaceId();
 		const [p, e, r] = await Promise.all([
-			backend.listProjects(ctx.token, spaceId),
-			backend.listEntries(ctx.token, undefined, undefined, spaceId),
-			backend.listRunningEntries(ctx.token, spaceId)
+			backend.listProjects(ctx.token, scope),
+			backend.listEntries(ctx.token, undefined, undefined, scope),
+			backend.listRunningEntries(ctx.token, scope)
 		]);
 		projects = p.projects;
 		entries = e.entries;
@@ -136,7 +137,7 @@
 	});
 
 	$effect(() => {
-		getActiveSpaceId();
+		void scope;
 		if (mounted) {
 			void loadAll();
 		}
@@ -320,9 +321,12 @@
 
 <div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
-		<div class="flex flex-col gap-1">
-			<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('dash.heading')}</h1>
-			<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+			<div class="flex flex-col gap-1">
+				<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('dash.heading')}</h1>
+				<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
+			</div>
+			<SpaceFilter />
 		</div>
 
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -341,7 +345,7 @@
 		<AgentsCard token={ctx.token} />
 	</section>
 
-	<SuggestedDrafts token={ctx.token} {projects} />
+	<ReviewInbox token={ctx.token} />
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">
@@ -549,7 +553,16 @@
 									{#if entry.user_kind === 'agent'}<AgentBadge />{/if}
 								</div>
 							</td>
-							<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
+							<td class="text-fc-fg-muted">
+								<div class="flex flex-wrap items-center gap-2">
+									<span>{entry.task_name || '—'}</span>
+									<AttributionChip
+										source={entry.attribution_source}
+										confidence={entry.attribution_confidence}
+										booked
+									/>
+								</div>
+							</td>
 							<td class="hidden text-fc-fg-muted md:table-cell">{formatLongDate(entry.started_at)}</td>
 							<td class="text-fc-fg-muted md:hidden">{formatShortDate(entry.started_at)}</td>
 							<td class="text-right">

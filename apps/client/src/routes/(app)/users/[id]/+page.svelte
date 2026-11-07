@@ -279,8 +279,8 @@
 			}
 			const [userRes, entriesRes, projectsRes] = await Promise.all([
 				backend.getUser(ctx.token, id),
-				backend.listEntries(ctx.token, undefined, id),
-				backend.listProjects(ctx.token)
+				backend.listEntries(ctx.token, undefined, id, 'all'),
+				backend.listProjects(ctx.token, 'all')
 			]);
 			user = userRes.user;
 			entries = entriesRes.entries;

@@ -36,14 +36,14 @@
 	}
 
 	async function loadRunningEntries() {
-		const result = await backend.listRunningEntries(ctx.token);
+		const result = await backend.listRunningEntries(ctx.token, 'all');
 		runningEntries = result.entries;
 	}
 
 	onMount(async () => {
 		const [usersResult, runningResult] = await Promise.all([
 			backend.listUsers(ctx.token),
-			backend.listRunningEntries(ctx.token)
+			backend.listRunningEntries(ctx.token, 'all')
 		]);
 		users = usersResult.users;
 		runningEntries = runningResult.entries;

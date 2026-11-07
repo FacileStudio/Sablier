@@ -1,41 +1,31 @@
-import type { Space } from '$lib/backend';
+import type { Space, SpaceScope } from '$lib/backend';
 
-const STORAGE_KEY = 'sablier.active_space_id';
+const state = $state<{ spaces: Space[] }>({ spaces: [] });
 
-let activeSpaceId = $state<string | null>(null);
-let spaces = $state<Space[]>([]);
+export const PERSONAL = 'personal';
 
-if (typeof localStorage !== 'undefined') {
-	activeSpaceId = localStorage.getItem(STORAGE_KEY);
-}
-
+/** The spaces the signed-in person belongs to, loaded once by the app layout. */
 export function getSpaces(): Space[] {
-	return spaces;
+	return state.spaces;
 }
 
+/** Replaces the known spaces. */
 export function setSpaces(next: Space[]) {
-	spaces = next;
-	if (activeSpaceId && !next.find((s) => s.id === activeSpaceId)) {
-		setActiveSpaceId(null);
-	}
+	state.spaces = next;
 }
 
-export function getActiveSpaceId(): string | null {
-	return activeSpaceId;
+/** The space filter a page carries in `?space=`: `all` when absent, `personal`, or a space id. */
+export function spaceFilter(url: URL): string {
+	return url.searchParams.get('space') || 'all';
 }
 
-export function getActiveSpace(): Space | null {
-	if (!activeSpaceId) return null;
-	return spaces.find((s) => s.id === activeSpaceId) ?? null;
+/** Turns a filter value into the scope the list endpoints take. */
+export function filterScope(filter: string): SpaceScope {
+	return filter === PERSONAL ? null : filter;
 }
 
-export function setActiveSpaceId(id: string | null) {
-	activeSpaceId = id;
-	if (typeof localStorage !== 'undefined') {
-		if (id) {
-			localStorage.setItem(STORAGE_KEY, id);
-		} else {
-			localStorage.removeItem(STORAGE_KEY);
-		}
-	}
+/** The name of a space id, or null when the id is unknown or absent. */
+export function spaceName(id: string | null | undefined): string | null {
+	if (!id) return null;
+	return state.spaces.find((s) => s.id === id)?.name ?? null;
 }

@@ -127,6 +127,14 @@ export const settings = {
 	],
 	'preferences.title': ['Preferences — Sablier', 'Préférences — Sablier', 'Preferencias — Sablier', 'Einstellungen — Sablier'],
 	'tracking.title': ['Time tracking — Sablier', 'Suivi du temps — Sablier', 'Control del tiempo — Sablier', 'Zeiterfassung — Sablier'],
+	'suggested.threshold': ['Review threshold', 'Seuil de revue', 'Umbral de revisión', 'Prüfschwelle'],
+	'suggested.thresholdDescription': [
+		'Sessions guessed with less confidence than this wait in Review instead of booking themselves.',
+		'Les sessions devinées avec une confiance inférieure attendent dans la revue au lieu de s’enregistrer seules.',
+		'Las sesiones adivinadas con menos confianza esperan en Revisión en lugar de registrarse solas.',
+		'Sitzungen mit geringerer Sicherheit warten in der Prüfung, statt sich selbst zu buchen.'
+	],
+	'suggested.thresholdSaved': ['Threshold saved.', 'Seuil enregistré.', 'Umbral guardado.', 'Schwelle gespeichert.'],
 	'api.title': ['API — Sablier', 'API — Sablier', 'API — Sablier', 'API — Sablier'],
 	'api.cli.title': ['CLI token', 'Jeton CLI', 'Token de CLI', 'CLI-Token'],
 	'api.cli.description': [
@@ -191,10 +199,10 @@ export const settings = {
 	],
 	'advanced.clear': ['Clear local data', 'Effacer les données locales', 'Borrar datos locales', 'Lokale Daten löschen'],
 	'advanced.clearDescription': [
-		'Removes the stored session, the selected space and the theme preference, then signs you out.',
-		'Supprime la session enregistrée, l’espace sélectionné et la préférence de thème, puis vous déconnecte.',
-		'Elimina la sesión guardada, el espacio seleccionado y la preferencia de tema, y cierra tu sesión.',
-		'Entfernt die gespeicherte Sitzung, den gewählten Bereich und die Designeinstellung und meldet dich ab.'
+		'Removes the stored session and the theme preference, then signs you out.',
+		'Supprime la session enregistrée et la préférence de thème, puis vous déconnecte.',
+		'Elimina la sesión guardada y la preferencia de tema, y cierra tu sesión.',
+		'Entfernt die gespeicherte Sitzung und die Designeinstellung und meldet dich ab.'
 	],
 	'advanced.cleared': ['Local data cleared.', 'Données locales effacées.', 'Datos locales borrados.', 'Lokale Daten gelöscht.'],
 	'advanced.clear.title': ['Clear local data?', 'Effacer les données locales ?', '¿Borrar los datos locales?', 'Lokale Daten löschen?'],

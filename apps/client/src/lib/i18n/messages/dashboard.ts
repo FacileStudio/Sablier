@@ -147,5 +147,8 @@ export const dashboard = {
 		'Aucune session pour le moment.',
 		'Aún no hay sesiones.',
 		'Noch keine Sitzungen.'
-	]
+	],
+	'spaceFilter.label': ['Filter by space', 'Filtrer par espace', 'Filtrar por espacio', 'Nach Bereich filtern'],
+	'spaceFilter.all': ['All spaces', 'Tous les espaces', 'Todos los espacios', 'Alle Bereiche'],
+	'spaceFilter.personal': ['Personal', 'Personnel', 'Personal', 'Persönlich'],
 } satisfies Record<string, Row>;

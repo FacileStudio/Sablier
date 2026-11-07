@@ -101,13 +101,47 @@ export type TimeEntry = {
 	user_color?: string;
 	user_avatar_url?: string;
 	user_kind?: 'human' | 'agent';
+	space_id?: string | null;
 	started_at: string;
 	stopped_at: string | null;
 	paused_at: string | null;
 	paused_duration_ms: number;
 	created_at: string;
 	updated_at: string;
+	attribution_source?: AttributionSource | null;
+	attribution_confidence?: number | null;
+	needs_review?: boolean;
 };
+
+export type AttributionSource = 'explicit' | 'opus' | 'name' | 'running' | 'ai' | 'fallback';
+
+export type DraftSuggestion = {
+	task_id: number | null;
+	project_id: number | null;
+	space_id: string | null;
+	source: AttributionSource;
+	confidence: number;
+	needs_review: boolean;
+};
+
+export type ReviewEntry = TimeEntry & {
+	project_name: string;
+};
+
+export type ReviewResponse = {
+	entries: ReviewEntry[];
+	drafts: Draft[];
+};
+
+export type TaskSearchResult = {
+	task: { id: number; name: string; facile_id: string | null };
+	project: { id: number; name: string; icon: string | null };
+	space: { id: string; name: string } | null;
+	last_used_at: string | null;
+	opus: boolean;
+};
+
+export type SpaceScope = 'all' | string | null;
 
 export type Draft = {
 	id: string;
@@ -117,10 +151,12 @@ export type Draft = {
 	project_hint: string;
 	sources: string[];
 	heartbeats: number;
+	suggestion?: DraftSuggestion | null;
 };
 
 export type DraftSettings = {
 	auto_confirm_drafts: boolean;
+	review_threshold: number;
 };
 
 export type Space = {
@@ -244,7 +280,12 @@ function resolveFileUrl(path: string) {
 	return `${backendBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-function normalizeEntry(entry: TimeEntry): TimeEntry {
+function spaceQuery(params: URLSearchParams, scope: SpaceScope | undefined) {
+	if (scope) params.set('space_id', scope);
+	return params.size ? `?${params}` : '';
+}
+
+function normalizeEntry<T extends TimeEntry>(entry: T): T {
 	return {
 		...entry,
 		user_avatar_url: entry.user_avatar_url ? resolveFileUrl(entry.user_avatar_url) : ''
@@ -286,10 +327,8 @@ export const backend = {
 		}));
 	},
 
-	listProjects(token: string, spaceId?: string | null) {
-		const params = new URLSearchParams();
-		if (spaceId) params.set('space_id', spaceId);
-		const qs = params.size ? `?${params}` : '';
+	listProjects(token: string, scope?: SpaceScope) {
+		const qs = spaceQuery(new URLSearchParams(), scope);
 		return apiFetch<{ projects: Project[] }>(`/api/projects${qs}`, {}, token);
 	},
 	getProject(token: string, id: number) {
@@ -329,21 +368,18 @@ export const backend = {
 		return apiFetch<{ deleted: boolean; sessions_unlinked: number }>(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' }, token);
 	},
 
-	listEntries(token: string, projectId?: number, userId?: string, spaceId?: string | null) {
+	listEntries(token: string, projectId?: number, userId?: string, scope?: SpaceScope) {
 		const params = new URLSearchParams();
 		if (projectId) params.set('project_id', String(projectId));
 		if (userId) params.set('user_id', userId);
-		if (spaceId) params.set('space_id', spaceId);
-		const qs = params.size ? `?${params}` : '';
+		const qs = spaceQuery(params, scope);
 		return apiFetch<{ entries: TimeEntry[] }>(`/api/time-entries${qs}`, {}, token).then((r) => ({
 			entries: r.entries.map(normalizeEntry)
 		}));
 	},
-	listRunningEntries(token: string, spaceId?: string | null) {
-		const params = new URLSearchParams();
-		params.set('running', 'true');
-		if (spaceId) params.set('space_id', spaceId);
-		return apiFetch<{ entries: TimeEntry[] }>(`/api/time-entries?${params}`, {}, token).then((r) => ({
+	listRunningEntries(token: string, scope?: SpaceScope) {
+		const qs = spaceQuery(new URLSearchParams({ running: 'true' }), scope);
+		return apiFetch<{ entries: TimeEntry[] }>(`/api/time-entries${qs}`, {}, token).then((r) => ({
 			entries: r.entries.map(normalizeEntry)
 		}));
 	},
@@ -352,10 +388,10 @@ export const backend = {
 			entry: result.entry ? normalizeEntry(result.entry) : null
 		}));
 	},
-	startTimer(token: string, projectId: number, taskId: number, spaceId?: string | null) {
+	startTimer(token: string, projectId: number, taskId: number) {
 		return apiFetch<TimeEntry>('/api/time-entries/start', {
 			method: 'POST',
-			body: JSON.stringify({ project_id: projectId, task_id: taskId, space_id: spaceId || undefined })
+			body: JSON.stringify({ project_id: projectId, task_id: taskId })
 		}, token).then(normalizeEntry);
 	},
 	stopTimer(token: string) {
@@ -367,10 +403,10 @@ export const backend = {
 	resumeTimer(token: string) {
 		return apiFetch<TimeEntry>('/api/time-entries/resume', { method: 'POST' }, token).then(normalizeEntry);
 	},
-	createEntry(token: string, projectId: number, taskId: number, startedAt: string, stoppedAt: string, spaceId?: string | null) {
+	createEntry(token: string, projectId: number, taskId: number, startedAt: string, stoppedAt: string) {
 		return apiFetch<TimeEntry>('/api/time-entries', {
 			method: 'POST',
-			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt, space_id: spaceId || undefined })
+			body: JSON.stringify({ project_id: projectId, task_id: taskId, started_at: startedAt, stopped_at: stoppedAt })
 		}, token).then(normalizeEntry);
 	},
 	updateEntry(token: string, id: number, projectId: number, taskId: number, startedAt: string, stoppedAt: string | null) {
@@ -484,10 +520,15 @@ export const backend = {
 		const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
 		return apiFetch<Draft[]>(`/api/heartbeats/drafts?${params}`, {}, token);
 	},
-	confirmDraft(token: string, draft: Draft, projectId: number) {
+	confirmDraft(token: string, draft: Draft, projectId: number, taskId?: number | null) {
 		return apiFetch<TimeEntry>('/api/heartbeats/drafts/confirm', {
 			method: 'POST',
-			body: JSON.stringify({ started_at: draft.started_at, stopped_at: draft.stopped_at, project_id: projectId })
+			body: JSON.stringify({
+				started_at: draft.started_at,
+				stopped_at: draft.stopped_at,
+				project_id: projectId,
+				task_id: taskId || undefined
+			})
 		}, token).then(normalizeEntry);
 	},
 	dismissDraft(token: string, draft: Draft) {
@@ -504,5 +545,22 @@ export const backend = {
 			method: 'PUT',
 			body: JSON.stringify(settings)
 		}, token);
+	},
+
+	searchTasks(token: string, q: string, limit = 30) {
+		const params = new URLSearchParams({ q, limit: String(limit) });
+		return apiFetch<{ results: TaskSearchResult[] }>(`/api/tasks/search?${params}`, {}, token);
+	},
+	listReview(token: string) {
+		return apiFetch<ReviewResponse>('/api/review', {}, token).then((r) => ({
+			entries: r.entries.map(normalizeEntry),
+			drafts: r.drafts
+		}));
+	},
+	resolveReview(token: string, entryId: number, taskId?: number) {
+		return apiFetch<ReviewEntry>(`/api/review/${entryId}`, {
+			method: 'POST',
+			body: JSON.stringify(taskId ? { task_id: taskId } : {})
+		}, token).then(normalizeEntry);
 	}
 };

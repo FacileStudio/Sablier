@@ -378,7 +378,7 @@
 		if (!project) {
 			return;
 		}
-		const result = await backend.listEntries(ctx.token, project.id);
+		const result = await backend.listEntries(ctx.token, project.id, undefined, 'all');
 		entries = result.entries;
 	}
 
@@ -389,7 +389,7 @@
 			const [proj, taskResult, ents, usersResult] = await Promise.all([
 				backend.getProject(ctx.token, id),
 				backend.listTasks(ctx.token, id),
-				backend.listEntries(ctx.token, id),
+				backend.listEntries(ctx.token, id, undefined, 'all'),
 				backend.listUsers(ctx.token)
 			]);
 			project = proj;
@@ -413,7 +413,7 @@
 			if (!project) return;
 			const [taskResult, ents] = await Promise.all([
 				backend.listTasks(ctx.token, project.id),
-				backend.listEntries(ctx.token, project.id)
+				backend.listEntries(ctx.token, project.id, undefined, 'all')
 			]);
 			tasks = taskResult.tasks;
 			entries = ents.entries;

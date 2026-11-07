@@ -3,8 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SideBar, MobileNav, PageTransition, icons } from '@facile/muse';
-	import { ApiError, backend, type UserProfile, type Project, type Space } from '$lib/backend';
-	import { setSpaces, getActiveSpaceId, setActiveSpaceId } from '$lib/space-context.svelte';
+	import { ApiError, backend, type UserProfile, type Project } from '$lib/backend';
+	import { setSpaces } from '$lib/space-context.svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { NotificationService } from '$lib/notifications';
 	import { TOKEN_KEY } from '$lib/constants';
@@ -19,7 +19,7 @@
 	let user = $state<UserProfile | null>(null);
 	let loaded = $state(false);
 	let projects = $state<Project[]>([]);
-	let userSpaces = $state<Space[]>([]);
+	let paletteOpen = $state(false);
 	let collapsed = $state(false);
 
 	function setUser(nextUser: UserProfile) {
@@ -65,11 +65,6 @@
 		onLocaleChange: rememberLocale
 	});
 
-	function selectSpace(id: string | null) {
-		setActiveSpaceId(id);
-		window.location.reload();
-	}
-
 	onMount(async () => {
 		const stored = localStorage.getItem(TOKEN_KEY) ?? '';
 		try {
@@ -82,11 +77,10 @@
 			identify(user);
 			loaded = true;
 			const [p, s] = await Promise.all([
-				backend.listProjects(stored),
+				backend.listProjects(stored, 'all'),
 				backend.listSpaces(stored)
 			]);
 			projects = p.projects;
-			userSpaces = s.spaces;
 			setSpaces(s.spaces);
 			backend.syncProfile(stored).then(async (r) => {
 				if (r.synced) {
@@ -120,10 +114,8 @@
 				userHref="/settings"
 				{userMenu}
 				userActive={settingsActive}
-				spaces={userSpaces}
-				activeSpaceId={getActiveSpaceId()}
-				onSpaceSelect={selectSpace}
-				manageSpacesHref="/spaces"
+				showSearch
+				onSearch={() => (paletteOpen = true)}
 			/>
 		</div>
 		<main class="min-w-0 flex-1 overflow-auto overscroll-contain pb-28 md:pb-0">
@@ -137,5 +129,5 @@
 		</main>
 		<MobileNav items={navPages} user={navUser} profileHref="/settings" profileActive={settingsActive} {userMenu} />
 	</div>
-	<TimerControl {projects} />
+	<TimerControl {projects} bind:paletteOpen />
 {/if}

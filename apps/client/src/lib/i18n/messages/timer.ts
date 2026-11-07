@@ -13,9 +13,8 @@ export const timer = {
 	'timer.addSession': ['Add session', 'Ajouter une session', 'Añadir sesión', 'Sitzung hinzufügen'],
 	'timer.addEntry': ['Add entry', 'Ajouter une entrée', 'Añadir entrada', 'Eintrag hinzufügen'],
 	'timer.actions': ['Timer actions', 'Actions du minuteur', 'Acciones del temporizador', 'Timer-Aktionen'],
+	'timer.space': ['Space', 'Espace', 'Espacio', 'Bereich'],
 	'timer.drawer.title': ['Start a timer', 'Démarrer un minuteur', 'Iniciar un temporizador', 'Timer starten'],
-	'timer.drawer.start': ['Start timer', 'Démarrer le minuteur', 'Iniciar temporizador', 'Timer starten'],
-	'timer.drawer.starting': ['Starting…', 'Démarrage…', 'Iniciando…', 'Wird gestartet…'],
 	'timer.selectProject': ['Select a project', 'Choisir un projet', 'Seleccionar un proyecto', 'Projekt auswählen'],
 	'timer.selectProjectFirst': [
 		'Select a project first',
@@ -29,12 +28,6 @@ export const timer = {
 		'Elegir o crear una tarea',
 		'Aufgabe wählen oder anlegen'
 	],
-	'timer.pickProjectFirst': [
-		'Pick a project first.',
-		'Choisissez d’abord un projet.',
-		'Selecciona primero un proyecto.',
-		'Wähle zuerst ein Projekt.'
-	],
 	'timer.typeTask': [
 		'Type a task name.',
 		'Saisissez un nom de tâche.',
@@ -46,12 +39,6 @@ export const timer = {
 		'Impossible de charger les tâches.',
 		'No se pudieron cargar las tareas.',
 		'Die Aufgaben konnten nicht geladen werden.'
-	],
-	'timer.failed.start': [
-		'Failed to start timer.',
-		'Impossible de démarrer le minuteur.',
-		'No se pudo iniciar el temporizador.',
-		'Der Timer konnte nicht gestartet werden.'
 	],
 	'timer.failed.stop': [
 		'Failed to stop timer.',
@@ -112,31 +99,62 @@ export const timer = {
 	'iconPicker.select': ['Select icon', 'Choisir une icône', 'Seleccionar icono', 'Symbol auswählen'],
 	'iconPicker.search': ['Search icons...', 'Rechercher des icônes...', 'Buscar iconos...', 'Symbole suchen...'],
 	'iconPicker.label': ['Project icon', 'Icône du projet', 'Icono del proyecto', 'Projektsymbol'],
-	'drafts.heading': ['Suggested', 'Suggestions', 'Sugerencias', 'Vorschläge'],
-	'drafts.intro': [
-		'Activity your tools reported that no session covers yet.',
-		'Activité signalée par vos outils qu’aucune session ne couvre encore.',
-		'Actividad que tus herramientas han comunicado y que aún no cubre ninguna sesión.',
-		'Aktivität, die deine Werkzeuge gemeldet haben und die noch keine Sitzung abdeckt.'
-	],
-	'drafts.today': ['Today', 'Aujourd’hui', 'Hoy', 'Heute'],
-	'drafts.yesterday': ['Yesterday', 'Hier', 'Ayer', 'Gestern'],
-	'drafts.confirm': ['Confirm', 'Confirmer', 'Confirmar', 'Bestätigen'],
 	'drafts.dismiss': ['Dismiss', 'Ignorer', 'Descartar', 'Verwerfen'],
-	'drafts.added': ['Session added.', 'Session ajoutée.', 'Sesión añadida.', 'Sitzung hinzugefügt.'],
 	'drafts.dismissed': [
 		'Suggestion dismissed.',
 		'Suggestion ignorée.',
 		'Sugerencia descartada.',
 		'Vorschlag verworfen.'
 	],
-	'drafts.pickProject': [
-		'Pick a project first.',
-		'Choisissez d’abord un projet.',
-		'Selecciona primero un proyecto.',
-		'Wähle zuerst ein Projekt.'
-	],
 	'drafts.failed': ['Request failed', 'La requête a échoué', 'La solicitud falló', 'Anfrage fehlgeschlagen'],
+	'review.heading': ['Review', 'À vérifier', 'Revisión', 'Prüfen'],
+	'review.intro': [
+		'Sessions Sablier was not sure about. Each one carries its best guess.',
+		'Les sessions dont Sablier n’était pas sûr. Chacune porte sa meilleure hypothèse.',
+		'Sesiones de las que Sablier no estaba seguro. Cada una lleva su mejor suposición.',
+		'Sitzungen, bei denen Sablier unsicher war. Jede trägt ihre beste Vermutung.'
+	],
+	'review.noGuess': ['No guess yet', 'Aucune hypothèse', 'Sin suposición', 'Noch keine Vermutung'],
+	'review.accept': ['Accept', 'Accepter', 'Aceptar', 'Übernehmen'],
+	'review.change': ['Change task', 'Changer de tâche', 'Cambiar tarea', 'Aufgabe ändern'],
+	'review.pickTitle': ['Book on a task', 'Imputer sur une tâche', 'Asignar a una tarea', 'Auf eine Aufgabe buchen'],
+	'review.pickTask': [
+		'Pick a task first.',
+		'Choisissez d’abord une tâche.',
+		'Elige primero una tarea.',
+		'Wähle zuerst eine Aufgabe.'
+	],
+	'review.booked': ['Session booked.', 'Session enregistrée.', 'Sesión registrada.', 'Sitzung gebucht.'],
+	'attribution.title': [
+		'Why the session landed here',
+		'Pourquoi la session est arrivée ici',
+		'Por qué la sesión llegó aquí',
+		'Warum die Sitzung hier gelandet ist'
+	],
+	'attribution.ai': ['AI {percent} %', 'IA {percent} %', 'IA {percent} %', 'KI {percent} %'],
+	'attribution.opus': ['Opus task', 'Tâche Opus', 'Tarea de Opus', 'Opus-Aufgabe'],
+	'attribution.name': ['Name match', 'Nom correspondant', 'Coincidencia de nombre', 'Namenstreffer'],
+	'attribution.explicit': ['Chosen', 'Choisie', 'Elegida', 'Gewählt'],
+	'attribution.running': ['Running timer', 'Minuteur en cours', 'Temporizador activo', 'Laufender Timer'],
+	'attribution.fallback': ['Unassigned', 'Non attribuée', 'Sin asignar', 'Nicht zugeordnet'],
+	'palette.label': ['Search tasks', 'Rechercher une tâche', 'Buscar tareas', 'Aufgaben suchen'],
+	'palette.placeholder': [
+		'Search a task or a project',
+		'Rechercher une tâche ou un projet',
+		'Buscar una tarea o un proyecto',
+		'Aufgabe oder Projekt suchen'
+	],
+	'palette.recent': ['Recent', 'Récentes', 'Recientes', 'Zuletzt'],
+	'palette.create': ['New task', 'Nouvelle tâche', 'Nueva tarea', 'Neue Aufgabe'],
+	'palette.newTask': [
+		'+ New task "{name}" in {project}',
+		'+ Nouvelle tâche « {name} » dans {project}',
+		'+ Nueva tarea «{name}» en {project}',
+		'+ Neue Aufgabe „{name}“ in {project}'
+	],
+	'palette.empty': ['No matching task', 'Aucune tâche correspondante', 'Ninguna tarea coincide', 'Keine passende Aufgabe'],
+	'palette.opusTitle': ['Linked to an Opus task', 'Liée à une tâche Opus', 'Vinculada a una tarea de Opus', 'Mit einer Opus-Aufgabe verknüpft'],
+	'palette.failed': ['Request failed', 'La requête a échoué', 'La solicitud falló', 'Anfrage fehlgeschlagen'],
 	'agents.heading': ['Agents', 'Agents', 'Agentes', 'Agenten'],
 	'agents.thisWeek': ['This week', 'Cette semaine', 'Esta semana', 'Diese Woche'],
 	'agents.agent': ['Agent', 'Agent', 'Agente', 'Agent'],

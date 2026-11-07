@@ -2,7 +2,9 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { backend, type Project, type TimeEntry } from '$lib/backend';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
-	import { getActiveSpaceId } from '$lib/space-context.svelte';
+	import { page } from '$app/state';
+	import { PERSONAL, filterScope, spaceFilter } from '$lib/space-context.svelte';
+	import SpaceFilter from '$lib/components/SpaceFilter.svelte';
 	import {
 		Button,
 		Card,
@@ -32,6 +34,8 @@
 	let name = $state('');
 	let description = $state('');
 	let newProjectIcon = $state('Layout');
+	const filter = $derived(spaceFilter(page.url));
+	const scope = $derived(filterScope(filter));
 	let runningPoller: ReturnType<typeof setInterval> | undefined;
 	let stopTimeEntrySync: (() => void) | undefined;
 
@@ -95,17 +99,15 @@
 	);
 
 	async function loadRunning() {
-		const spaceId = getActiveSpaceId();
-		const r = await backend.listRunningEntries(ctx.token, spaceId);
+		const r = await backend.listRunningEntries(ctx.token, scope);
 		runningEntries = r.entries;
 	}
 
 	async function load() {
-		const spaceId = getActiveSpaceId();
 		const [projRes, entriesRes, runningRes] = await Promise.all([
-			backend.listProjects(ctx.token, spaceId),
-			backend.listEntries(ctx.token, undefined, undefined, spaceId),
-			backend.listRunningEntries(ctx.token, spaceId)
+			backend.listProjects(ctx.token, scope),
+			backend.listEntries(ctx.token, undefined, undefined, scope),
+			backend.listRunningEntries(ctx.token, scope)
 		]);
 		projects = projRes.projects;
 		allEntries = entriesRes.entries;
@@ -113,7 +115,7 @@
 	}
 
 	async function create() {
-		await backend.createProject(ctx.token, name, description, newProjectIcon, getActiveSpaceId());
+		await backend.createProject(ctx.token, name, description, newProjectIcon, filter === 'all' || filter === PERSONAL ? null : filter);
 		name = '';
 		description = '';
 		newProjectIcon = 'Layout';
@@ -138,7 +140,7 @@
 	});
 
 	$effect(() => {
-		getActiveSpaceId();
+		void scope;
 		if (mounted) {
 			void load();
 		}
@@ -155,6 +157,7 @@
 			<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('projects.heading')}</h1>
 			<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>{t('projects.new')}</Button>
 		</div>
+		<SpaceFilter />
 
 		{#if projects.length === 0}
 			<EmptyState
