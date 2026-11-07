@@ -373,9 +373,9 @@ func securityConfig(clientDir, journalBrowserURL string, appLogger *slog.Logger)
 	return troncmiddleware.SecurityConfig{CSPSources: sources}
 }
 
-// Stamped at Docker build time with git describe (leading v stripped),
-// matching goreleaser's {{.Version}} so `/api version` reads the same shape
-// as the suite's CLI binaries.
+// Stamped at Docker build time from the newest released CHANGELOG.md heading
+// (no leading v), matching goreleaser's {{.Version}} so `/api version` reads the
+// same shape as the suite's CLI binaries.
 var version = "dev"
 
 func main() {

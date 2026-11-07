@@ -95,7 +95,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `GET /docs` -- Auto-generated JSON API documentation
 - `GET /files/*` -- Static file serving (legacy uploaded avatars)
 - Auth: `/api/auth/config`, `/api/auth/oidc/*` (no register or login route)
-- `GET /version` -- the `APP_VERSION` build arg; `POST /api/registre/sync` and `POST /api/registre/deletions` are Registre's pushes
+- `GET /version` -- the newest released heading of `CHANGELOG.md`, baked in at build time by `scripts/version.sh` (never an env); `POST /api/registre/sync` and `POST /api/registre/deletions` are Registre's pushes
 - Resources: `/api/projects`, `/api/time-entries`, `/api/users`, `/api/settings`
 - Spaces (read-only, Registre owns them): `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`
 - `POST /api/registre/sync` -- Registre's anonymous nudge, answers 202; mounted only with OIDC

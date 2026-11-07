@@ -44,7 +44,7 @@ The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
 - `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
 - `STORAGE_DIR`: root of legacy uploaded avatars, default `./data`
 - `OIDC_*`: enables OpenID Connect login
-- `APP_VERSION` (build arg): served at `GET /version`
+- `GET /version` serves the newest released heading of the root `CHANGELOG.md`, read by `scripts/version.sh` in the Docker build
 
 See [`./.env.example`](./.env.example) for the local template.
 

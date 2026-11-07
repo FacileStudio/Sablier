@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- `@facile/muse` v0.16.0 to v0.16.1: checkboxes, radios and switches keep their 44px touch target. Buttons use
+  the current variant names (`outline` is `secondary`, `danger` is `ghost-danger`, icon buttons say
+  `secondary`); nothing else changes on screen.
+- `GET /version` serves the newest released `CHANGELOG.md` heading, baked into the binary at build time by
+  `scripts/version.sh`. The `APP_VERSION` build arg is gone from the Dockerfile, compose and the image
+  workflow, so a hand-set Dokploy env can no longer make it lag. The response shape stays `{"version":"1.16.0"}`.
+
 ## [1.16.0] - 2026-11-07
 
 ### Changed
