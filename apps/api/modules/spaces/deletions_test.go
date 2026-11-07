@@ -10,6 +10,7 @@ import (
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte/directory"
+	portepg "github.com/FacileStudio/porte/pg"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -229,5 +230,19 @@ func TestErasePersonTransfersSpaceProjectsToTheLongestStandingAdmin(t *testing.T
 		if got := count(t, db, `SELECT owner_id FROM projects WHERE name = ?`, name); got != want {
 			t.Errorf("%s owner = %d, want %d", name, got, want)
 		}
+	}
+}
+
+func TestEraseIdentityToleratesTheSchemaWithoutMagicLinks(t *testing.T) {
+	db := openPostgres(t)
+	if err := schemas.AdoptPorte(db, ""); err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := portepg.New(sqlDB).EraseIdentity(context.Background(), erasureIssuer, "sub-nobody"); err != nil {
+		t.Fatalf("EraseIdentity on Sablier's schema: %v", err)
 	}
 }

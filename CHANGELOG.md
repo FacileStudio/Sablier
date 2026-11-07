@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- `porte` v0.12.0 to v0.12.1: the GDPR erase no longer fails on a database without `porte_magic_links`, which is Sablier's production schema.
+
 ## [1.12.0] - 2026-11-07
 
 ### Added
