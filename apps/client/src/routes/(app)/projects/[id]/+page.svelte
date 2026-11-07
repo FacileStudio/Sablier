@@ -463,9 +463,9 @@
 					</p>
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
-					<Button variant="outline" icon={icons.edit} onclick={startProjectEdit}>{t('project.edit')}</Button>
+					<Button variant="secondary" icon={icons.edit} onclick={startProjectEdit}>{t('project.edit')}</Button>
 					<Button
-						variant="danger"
+						variant="ghost-danger"
 						icon={icons.remove}
 						onclick={() => { projectDeleteDialogOpen = true; }}
 						disabled={deletingProject}
@@ -578,7 +578,7 @@
 															{savingTaskId === task.id ? t('common.saving') : t('common.save')}
 														</Button>
 														<Button
-															variant="outline"
+															variant="secondary"
 															size="sm"
 															icon={icons.close}
 															onclick={cancelTaskEdit}
@@ -853,7 +853,7 @@
 
 	{#snippet footer()}
 		<div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-			<Button variant="outline" size="lg" icon={icons.close} onclick={cancelProjectEdit} disabled={savingProject}>
+			<Button variant="secondary" size="lg" icon={icons.close} onclick={cancelProjectEdit} disabled={savingProject}>
 				{t('common.cancel')}
 			</Button>
 			<Button size="lg" icon={icons.check} onclick={saveProject} disabled={savingProject}>

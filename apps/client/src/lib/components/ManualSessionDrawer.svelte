@@ -218,7 +218,7 @@
 </script>
 
 {#if !hideTrigger}
-	<Button variant="outline" icon={icons.plus} onclick={() => (drawerOpen = true)}>{t('timer.addSession')}</Button>
+	<Button variant="secondary" icon={icons.plus} onclick={() => (drawerOpen = true)}>{t('timer.addSession')}</Button>
 {/if}
 
 <Drawer bind:open={drawerOpen} title={isEditMode ? t('session.edit.title') : t('session.add.title')}>

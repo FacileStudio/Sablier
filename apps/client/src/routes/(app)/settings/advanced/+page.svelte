@@ -74,7 +74,7 @@
 		<span class="text-fc-sm font-medium text-fc-fg">{t('advanced.clear')}</span>
 		<span class="text-fc-sm text-fc-fg-muted">{t('advanced.clearDescription')}</span>
 	</div>
-	<Button variant="danger" icon={icons.remove} onclick={() => (confirmClear = true)}>
+	<Button variant="ghost-danger" icon={icons.remove} onclick={() => (confirmClear = true)}>
 		{t('advanced.clear')}
 	</Button>
 </DangerZone>

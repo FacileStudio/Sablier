@@ -144,7 +144,7 @@
 				<p class="text-fc-sm text-fc-fg-muted">
 					{t('downloads.web.detail')}
 				</p>
-				<div class="mt-2"><Button href="/login" variant="outline" class="min-h-11">{t('downloads.web.open')}</Button></div>
+				<div class="mt-2"><Button href="/login" variant="secondary" class="min-h-11">{t('downloads.web.open')}</Button></div>
 			</div>
 		</Card>
 	</main>
