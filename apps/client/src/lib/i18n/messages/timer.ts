@@ -136,6 +136,7 @@ export const timer = {
 	'attribution.name': ['Name match', 'Nom correspondant', 'Coincidencia de nombre', 'Namenstreffer'],
 	'attribution.explicit': ['Chosen', 'Choisie', 'Elegida', 'Gewählt'],
 	'attribution.running': ['Running timer', 'Minuteur en cours', 'Temporizador activo', 'Laufender Timer'],
+	'attribution.manual': ['Reviewed', 'Revu', 'Revisado', 'Geprüft'],
 	'attribution.fallback': ['Unassigned', 'Non attribuée', 'Sin asignar', 'Nicht zugeordnet'],
 	'palette.label': ['Search tasks', 'Rechercher une tâche', 'Buscar tareas', 'Aufgaben suchen'],
 	'palette.placeholder': [
