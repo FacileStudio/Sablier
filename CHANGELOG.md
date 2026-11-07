@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-07
+
 ### Added
 - GDPR deletion: Sablier polls Registre's deletion list and accepts its signed `user.deleted` push at `POST /api/registre/deletions`. A deleted person loses their account, personal projects with their tasks and sessions, every time entry, their agent users, heartbeats, dismissed drafts, push subscription and memberships. A space project they owned passes to the space's longest-standing admin, else its longest-standing member; tasks they were assigned become unassigned. The receiver's cursor lives in the new `directory_deletion_state` table.
 - `GET /version` serves the `APP_VERSION` build arg.
