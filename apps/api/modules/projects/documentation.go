@@ -11,13 +11,29 @@ var Documentation = documentation.Module{
 			Path:         "/projects",
 			Summary:      "List projects",
 			Auth:         "bearer token required",
-			QueryParams:  []documentation.Field{{Name: "space_id", Type: "string", Description: "Filter projects by space ID"}},
+			QueryParams:  []documentation.Field{{Name: "space_id", Type: "string", Description: "Absent: personal rows only. all: personal rows plus every space you belong to. A space id: that space; 404 when you are not a member."}},
 			ResponseBody: ListProjectsResponse{},
+			Errors:       []documentation.Error{{Status: 404, Code: "not_found", Description: "space_id names a space you are not in."}},
+		},
+		{
+			Method:  "GET",
+			Path:    "/tasks/search",
+			Summary: "Search tasks",
+			Description: "Searches the tasks you can see by task or project name. Ranks the tasks you last worked on first, " +
+				"then open Opus tasks, then task-name matches, then project-name matches. Choosing a result chooses its " +
+				"project and space too.",
+			Auth: "bearer token required",
+			QueryParams: []documentation.Field{
+				{Name: "q", Type: "string", Description: "Case-insensitive substring, at most 200 characters; empty lists everything"},
+				{Name: "limit", Type: "integer", Description: "1 to 50, default 20"},
+			},
+			ResponseBody: TaskSearchResponse{},
 		},
 		{
 			Method:       "POST",
 			Path:         "/projects",
 			Summary:      "Create project",
+			Description:  "A space_id must name a space you belong to, otherwise the answer is 404.",
 			Auth:         "bearer token required",
 			RequestBody:  CreateProjectRequest{},
 			ResponseBody: ProjectResponse{},

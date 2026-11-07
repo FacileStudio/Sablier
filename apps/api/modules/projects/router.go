@@ -13,9 +13,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// RegisterRoutes wires the authenticated /projects endpoints and their task
-// subroutes.
+// RegisterRoutes wires the authenticated /projects endpoints, their task subroutes and
+// the task search.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
+	router.With(middleware.RequireAuth(authService)).Get("/tasks/search", service.handleSearch)
 	router.Route("/projects", func(router chi.Router) {
 		router.Use(middleware.RequireAuth(authService))
 
