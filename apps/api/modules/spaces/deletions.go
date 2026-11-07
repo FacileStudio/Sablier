@@ -59,7 +59,7 @@ const (
 	anonymiseTaskActor     = `UPDATE tasks SET actor_id = NULL WHERE actor_id IN @ids`
 	transferSpaceProjects  = `UPDATE projects SET owner_id = COALESCE((
 		SELECT m.user_id FROM space_members m JOIN users u ON u.id = m.user_id
-		WHERE m.space_id = projects.space_id AND m.user_id NOT IN @ids AND u.kind <> 'agent'
+		WHERE CAST(m.space_id AS text) = CAST(projects.space_id AS text) AND m.user_id NOT IN @ids AND u.kind <> 'agent'
 		ORDER BY CASE WHEN m.role IN ('owner', 'admin') THEN 0 ELSE 1 END, m.joined_at, m.id
 		LIMIT 1), 0)
 		WHERE space_id IS NOT NULL AND owner_id IN @ids`
