@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.14.0] - 2026-11-07
+
+### Security
+
+- **Breaking:** personal projects, tasks and entries (no space) are private to their owner. Before, every
+  signed-in account could read them. A project is yours when you own it, an entry when you or one of your
+  agents booked it. Team work belongs in a Registre space.
+- `?space_id=` on the project and time-entry lists checks membership: a space you are not in is a 404.
+- Every `/api/projects/{id}` route, tasks included, answers 404 for a project you cannot see.
+- Creating a project in a foreign space is a 404. Starting, creating or updating an entry on a project you
+  cannot see is a 400. The server takes an entry's space from its project and ignores the client's value.
+
+### Added
+
+- Work across spaces without switching. The dashboard and projects page have a space filter (All, Personal,
+  each space), kept in the URL as `?space=`. `space_id=all` lists personal rows plus every member space.
+- A task palette (Ctrl+K / Cmd+K, or the play button) starts a session in any space. It searches tasks grouped
+  by space and project, recent and Opus tasks first, and can create a task. `GET /api/tasks/search` backs it.
+- Agent sessions and drafts are attributed in layers: explicit ids, Opus task ids, Registre space, project
+  name, the running timer, then an AI choice among that space's tasks. Each entry records
+  `attribution_source`, `attribution_confidence` and `needs_review`.
+- The AI choice goes through Bulle (`BULLE_URL`, `BULLE_SERVICE_KEY`, `POST /api/ai/decide`), or straight to
+  Jev for a Sablier without the suite (`JEV_API_KEY`, `JEV_ENDPOINT`, `JEV_BASE_URL`, `JEV_MODEL`). Bulle wins
+  when both are set. With neither, the rules still run. Answers are cached for ten minutes, failures for one.
+- A Review inbox (`GET /api/review`, `POST /api/review/{entry_id}`) replaces the Suggested table. Sure
+  results book themselves; the rest wait there, prefilled with the best guess. Accepted entries are never
+  moved again by a replayed agent session.
+- A review threshold (0.5 to 1, default 0.8) under Time tracking settings, saved as `review_threshold`.
+- `POST /api/agents/sessions` accepts `registre_space_id`, `opus_workspace`, `opus_task_ids`,
+  `opus_updated_task_id`, `title` and `entity`. `POST /api/heartbeats` accepts `registre_space_id`,
+  `opus_task_id` and `title`. Drafts carry a `suggestion`.
+
+### Changed
+
+- The sidebar space switcher and its page reload are gone.
+- Each owner gets their own "Agent work" catch-all project instead of one shared project.
+
 ## [1.13.2] - 2026-11-07
 
 ### Security
