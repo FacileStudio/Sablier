@@ -6,6 +6,8 @@
 	import { PERSONAL, filterScope, spaceFilter } from '$lib/space-context.svelte';
 	import SpaceFilter from '$lib/components/SpaceFilter.svelte';
 	import {
+		IconPicker,
+		solarIconId,
 		Button,
 		Card,
 		Drawer,
@@ -17,8 +19,6 @@
 	} from '@facile/muse';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
-	import IconPicker from '$lib/components/IconPicker.svelte';
-	import { toIconify } from '$lib/icons';
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
 	import { getTimeEntryDurationMs } from '$lib/utils';
@@ -175,7 +175,7 @@
 						<div class="flex items-start justify-between gap-2">
 							<div class="flex min-w-0 flex-1 items-start gap-2.5">
 								<iconify-icon
-									icon={toIconify(project.icon)}
+									icon={solarIconId(project.icon)}
 									width="20"
 									height="20"
 									class="mt-0.5 block shrink-0 text-fc-fg-muted"
@@ -232,10 +232,9 @@
 			create();
 		}}
 	>
-		<div class="flex flex-col gap-1.5">
-			<span class="text-fc-sm text-fc-fg">{t('projects.icon')}</span>
-			<IconPicker value={newProjectIcon} onSelect={(icon) => (newProjectIcon = icon)} />
-		</div>
+		<Field label={t('projects.icon')}>
+			<IconPicker bind:value={newProjectIcon} />
+		</Field>
 		<Field label={t('common.name')}>
 			<Input bind:value={name} required />
 		</Field>

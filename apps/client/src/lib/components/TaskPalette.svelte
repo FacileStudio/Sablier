@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { Badge, Modal, cn, controlLine } from '@facile/muse';
+	import { Badge, Modal, cn, controlLine, solarIconId } from '@facile/muse';
 	import { backend, type Project, type TaskSearchResult } from '$lib/backend';
 	import { flatOptions, groupResults, type PaletteOption } from '$lib/task-search';
-	import { toIconify } from '$lib/icons';
 	import { t } from '$lib/i18n/index.svelte';
 
 	type Props = {
@@ -144,7 +143,7 @@
 							onkeydown={handleKeydown}
 						>
 							{#if option.kind === 'task'}
-								<iconify-icon icon={toIconify(option.result.project.icon)} width="16" height="16" class="block shrink-0"></iconify-icon>
+								<iconify-icon icon={solarIconId(option.result.project.icon)} width="16" height="16" class="block shrink-0"></iconify-icon>
 								<span class="min-w-0 flex-1 truncate">
 									<span class="opacity-70">{option.result.project.name} ›</span>
 									{option.result.task.name}

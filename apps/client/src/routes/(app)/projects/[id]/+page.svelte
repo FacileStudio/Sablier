@@ -13,6 +13,8 @@
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskOpusMeta from '$lib/components/TaskOpusMeta.svelte';
 	import {
+		IconPicker,
+		solarIconId,
 		Alert,
 		Badge,
 		Button,
@@ -30,8 +32,6 @@
 		icons
 	} from '@facile/muse';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
-	import IconPicker from '$lib/components/IconPicker.svelte';
-	import { toIconify } from '$lib/icons';
 
 	const ctx = getContext<{ token: string; userEmail: string; user: UserProfile | null }>('app');
 
@@ -448,7 +448,7 @@
 				<div class="flex min-w-0 flex-col gap-1">
 					<div class="flex items-center gap-2.5">
 						<iconify-icon
-							icon={toIconify(project.icon)}
+							icon={solarIconId(project.icon)}
 							width="24"
 							height="24"
 							class="block shrink-0 text-fc-fg-muted"
@@ -840,10 +840,9 @@
 			<Alert tone="danger">{projectActionError}</Alert>
 		{/if}
 
-		<div class="flex flex-col gap-1.5">
-			<span class="text-fc-sm text-fc-fg">{t('projects.icon')}</span>
-			<IconPicker value={editIcon} onSelect={(icon) => (editIcon = icon)} />
-		</div>
+		<Field label={t('projects.icon')}>
+			<IconPicker bind:value={editIcon} />
+		</Field>
 		<Field label={t('common.name')}>
 			<Input bind:value={editName} />
 		</Field>

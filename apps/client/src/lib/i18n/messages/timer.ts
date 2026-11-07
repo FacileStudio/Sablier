@@ -95,9 +95,6 @@ export const timer = {
 	'combobox.create': ['Create "{name}"', 'Créer « {name} »', 'Crear «{name}»', '„{name}“ anlegen'],
 	'combobox.none': ['No matching task', 'Aucune tâche correspondante', 'Ninguna tarea coincide', 'Keine passende Aufgabe'],
 	'combobox.loading': ['Loading tasks…', 'Chargement des tâches…', 'Cargando tareas…', 'Aufgaben werden geladen…'],
-	'iconPicker.select': ['Select icon', 'Choisir une icône', 'Seleccionar icono', 'Symbol auswählen'],
-	'iconPicker.search': ['Search icons...', 'Rechercher des icônes...', 'Buscar iconos...', 'Symbole suchen...'],
-	'iconPicker.label': ['Project icon', 'Icône du projet', 'Icono del proyecto', 'Projektsymbol'],
 	'drafts.dismiss': ['Dismiss', 'Ignorer', 'Descartar', 'Verwerfen'],
 	'drafts.dismissed': [
 		'Suggestion dismissed.',
