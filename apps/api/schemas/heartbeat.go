@@ -13,10 +13,19 @@ type Heartbeat struct {
 	ProjectHint string    `gorm:"column:project_hint;not null;default:''"`
 	ProjectID   *int64    `gorm:"column:project_id"`
 	Write       bool      `gorm:"column:write;not null;default:false"`
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
+	HeartbeatFacts
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 }
 
 func (Heartbeat) TableName() string { return "heartbeats" }
+
+// HeartbeatFacts are the optional attribution hints a tool sends with a heartbeat: the
+// Registre space it works in, the Opus task it works on and a short title.
+type HeartbeatFacts struct {
+	RegistreSpaceID string `gorm:"column:registre_space_id;not null;default:''"`
+	OpusTaskID      string `gorm:"column:opus_task_id;not null;default:''"`
+	Title           string `gorm:"column:title;not null;default:''"`
+}
 
 // DraftDismissal is a range the user rejected; no draft is suggested inside it again.
 type DraftDismissal struct {

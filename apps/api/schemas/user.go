@@ -23,6 +23,7 @@ type User struct {
 	RateType         string    `gorm:"column:rate_type;not null;default:'daily'"`
 	WorkdayHours     float64   `gorm:"column:workday_hours;not null;default:8"`
 	AutoConfirm      bool      `gorm:"column:auto_confirm_drafts;not null;default:true"`
+	ReviewThreshold  float64   `gorm:"column:review_threshold;type:double precision;not null;default:0.8"`
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	Kind             string    `gorm:"column:kind;not null;default:'human'"`
 	OwnerUserID      *int64    `gorm:"column:owner_user_id;index;uniqueIndex:idx_users_owner_agent_key"`
@@ -35,6 +36,8 @@ const (
 	UserKindHuman = "human"
 	// UserKindAgent is an AI agent working for its owner. It never signs in and is never billed.
 	UserKindAgent = "agent"
+	// DefaultReviewThreshold is the confidence below which an attribution waits for review.
+	DefaultReviewThreshold = 0.8
 )
 
 // IsAgent reports whether the account is an agent user rather than a person.

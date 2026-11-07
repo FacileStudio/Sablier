@@ -19,6 +19,16 @@ type TimeEntry struct {
 	UpdatedAt          time.Time  `gorm:"column:updated_at;autoUpdateTime"`
 	LastNotificationAt *time.Time `gorm:"column:last_notification_at"`
 	Cowork             bool       `gorm:"column:cowork;not null;default:false"`
+	Attribution
+}
+
+// Attribution records why an entry landed on its task: the resolver step that chose it,
+// how sure that step was, and whether the owner still has to review it. Reports count
+// flagged entries like any other, so no time is lost while one waits.
+type Attribution struct {
+	AttributionSource     *string  `gorm:"column:attribution_source;type:text"`
+	AttributionConfidence *float64 `gorm:"column:attribution_confidence;type:double precision"`
+	NeedsReview           bool     `gorm:"column:needs_review;not null;default:false;index"`
 }
 
 func (TimeEntry) TableName() string { return "time_entries" }
