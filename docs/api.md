@@ -39,15 +39,14 @@ so the registry cannot quietly drift out of date.
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
 | GET | `/api/auth/config` | no | — | `{"sso_only": bool, "oidc_enabled": bool}` |
-| POST | `/api/auth/register` | no | `{"email","password"}` | 201 `{"user_id","token"}` |
-| POST | `/api/auth/login` | no | `{"email","password"}` | 200 `{"user_id","token"}` |
 | GET | `/api/auth/oidc` | no | — | 302 to the provider, setting an `oidc_state` cookie |
 | GET | `/api/auth/oidc/callback` | no | — | 302 to `OIDC_SUCCESS_URL` with the session token |
 | POST | `/api/auth/sync-profile` | yes | — | Re-pulls name and avatar from the provider |
 
-`register` and `login` are **not registered at all** when `SSO_ONLY=true`, so they answer
-404 rather than 403. The three OIDC routes exist only when `OIDC_ISSUER` is configured
-and the provider's discovery document loaded successfully.
+Sign-in goes through Registre only. There is no register or login route, and no password
+anywhere: the OIDC routes exist only when `OIDC_ISSUER` is configured (required when
+`APP_ENV=production`) and the provider's discovery document loaded successfully. The
+desktop app, the CLI and scripts keep using a named API token (see below).
 
 ## Users
 
@@ -58,17 +57,13 @@ All routes require authentication.
 | GET | `/api/users` | — | `{"users":[User]}` |
 | GET | `/api/users/me` | — | `{"user":User}` |
 | GET | `/api/users/{id}` | — | `{"user":User}` |
-| PATCH | `/api/users/me` | any of `name`, `email`, `password`, `current_password`, `color`, `rate`, `rate_type`, `workday_hours` | `{"user":User}`, plus `token` when the session was rotated |
+| PATCH | `/api/users/me` | any of `name`, `email`, `color`, `rate`, `rate_type`, `workday_hours` | `{"user":User}` |
 | GET | `/api/users/me/api-token` | — | `{"has_token", "name"?, "created_at"?}` |
 | POST | `/api/users/me/api-token` | `{"name"}` | 201 `{"token","name","created_at"}` — the only time the token is returned |
 | DELETE | `/api/users/me/api-token` | — | `{"deleted":true}` |
 
-`password` replaces the account's password and needs `current_password` alongside it.
-Sending it alone is only valid for an account that has no password yet — a single sign-on
-user adding a first one — and anything else is a `400`. A wrong `current_password` is a
-`401`. A confirmed change ends the account's other logins, leaves named API tokens alone,
-and rotates the caller's own session: the new cookie is set on the response and the same
-credential comes back as `token` for clients holding a bearer instead.
+The password is Registre's. `User` carries `locale` (`fr`, `en`, `es` or `de`), set from the
+Registre profile at each sign-in.
 
 `User` is `{id, email, name, avatar_url, avatar_source, color, rate, rate_type,
 workday_hours, created_at}`. `avatar_source` is `oidc` when `avatar_url` is the

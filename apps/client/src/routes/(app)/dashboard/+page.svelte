@@ -190,7 +190,7 @@
 	function formatMinutesAxis(m: number): string {
 		if (m < 60) return `${Math.round(m)}m`;
 		const h = m / 60;
-		return `${h % 1 === 0 ? h : h.toFixed(1)}h`;
+		return `${formatNumber(h, { maximumFractionDigits: 1 })}h`;
 	}
 
 	function startOfDay(d: Date): Date {

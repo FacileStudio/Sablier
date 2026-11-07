@@ -62,8 +62,7 @@ The eight modules are `auth`, `projects`, `timeentries`, `users`, `settings`, `s
 Two token families, both presented as `Authorization: Bearer <token>` and both stored
 hashed:
 
-- **Session tokens** — created by `POST /api/auth/register`, `POST /api/auth/login`, and
-  the OIDC callback. Rows in `sessions`, valid for 30 days.
+- **Session tokens** — created by the OIDC callback. Rows in `sessions`, valid for 30 days.
 - **API tokens** — created by `POST /api/users/me/api-token`, one per user, no expiry.
   Rows in `api_tokens`.
 
@@ -90,8 +89,8 @@ provider `picture` claim is stored as a URL in `oidc_picture_url`, never downloa
 boot backfills `<issuer>/avatars/<subject>` for every identity under the configured issuer,
 so users who have not signed in since still get their Registre picture.
 
-`SSO_ONLY=true` removes `POST /api/auth/register` and `POST /api/auth/login` from the
-router entirely — they 404 rather than 403.
+There is no local sign-up and no password: porte mounts no register or login route while
+`OIDC_ISSUER` is set, and the API refuses to boot in production without it.
 
 ## Data model
 

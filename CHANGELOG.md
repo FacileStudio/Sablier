@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+### Added
+- GDPR deletion: Sablier polls Registre's deletion list and accepts its signed `user.deleted` push at `POST /api/registre/deletions`. A deleted person loses their account, personal projects with their tasks and sessions, every time entry, their agent users, heartbeats, dismissed drafts, push subscription and memberships. Space projects stay with no owner and tasks keep no assignee. The receiver's cursor lives in the new `directory_deletion_state` table.
+- `GET /version` serves the `APP_VERSION` build arg.
+- `users.locale` stores the Registre locale, `users` answers it as `locale`, and the web-push reminder follows it.
+- The client speaks French, English, Spanish and German, from the Registre profile locale, then the picked language, then the browser. Dates, numbers and currency follow it.
+- The landing page uses muse's `LandingHeader` and `LandingFooter`.
+- `.github/workflows/ci.yml` runs gofmt, vet, build, the Go tests on PostgreSQL, the client check, tests and build, and filet.
+
+### Changed
+- `porte` v0.8.0 to v0.12.0, `porte/directory` v0.1.0 to v0.3.0, `tronc` v0.16.0 to v0.17.1, `@facile/muse` v0.11.0 to v0.13.0.
+- Sign-in goes through Registre only. The login page is muse's `AuthScreen`, every "Sign in with Facile" button is `SignInWithFacile`, and the API refuses to boot in production without `OIDC_ISSUER`.
+- An email that already has an account links to a Registre identity only when Registre verified it and the account holds no other subject of the same issuer.
+- Security headers come from tronc: anti-framing is enforced, the full CSP is report-only. The client's inline scripts are hashed, and the connect list allows Ardoise's catalog, the icon API and the browser Journal origin.
+- The Dockerfile build arg is `APP_VERSION` (was `VERSION`); compose passes it through.
+- The status dots of tasks, the progress dots and the login panels carry no border.
+
+### Removed
+- `POST /api/auth/register`, `POST /api/auth/login`, the register and password forms, `SSO_ONLY` and the password half of `PATCH /api/users/me`. Clients that signed in with the account password must use an API token (`POST /api/users/me/api-token`) or `sablier login`.
+- The unused `internal/authcrypto` package.
+
+### Migrations
+- `porte_login_codes.provider` and `.subject`, `users.locale` and the `directory_deletion_state` table, all idempotent and applied at boot.
+
 ## [1.11.0] - 2026-11-06
 
 ### Added

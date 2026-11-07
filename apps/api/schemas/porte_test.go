@@ -279,3 +279,25 @@ func TestBackfillOIDCPicturesDerivesTheRegistreURL(t *testing.T) {
 		}
 	}
 }
+
+func TestMigrateAddsTheLaunchColumnsAndIsRepeatable(t *testing.T) {
+	db := openPostgres(t)
+	for range 2 {
+		if err := Migrate(db, ""); err != nil {
+			t.Fatalf("migrate: %v", err)
+		}
+	}
+	for _, want := range [][2]string{
+		{"porte_login_codes", "provider"},
+		{"porte_login_codes", "subject"},
+		{"users", "locale"},
+		{"directory_deletion_state", "state"},
+	} {
+		var n int64
+		err := db.Raw(`SELECT count(*) FROM information_schema.columns
+			WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?`, want[0], want[1]).Scan(&n).Error
+		if err != nil || n != 1 {
+			t.Errorf("%s.%s: %d columns, %v", want[0], want[1], n, err)
+		}
+	}
+}

@@ -110,7 +110,24 @@ func seedErasure(t *testing.T, db *gorm.DB) erasureFixture {
 }
 
 func TestErasePersonDeletesPersonalDataAndKeepsSpaceData(t *testing.T) {
-	db := openErasureDatabase(t)
+	assertErasure(t, openErasureDatabase(t))
+}
+
+func TestErasePersonOnPostgres(t *testing.T) {
+	db := openPostgres(t)
+	err := db.AutoMigrate(&schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{}, &schemas.Heartbeat{},
+		&schemas.DraftDismissal{}, &schemas.PushSubscription{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := schemas.AdoptPorte(db, ""); err != nil {
+		t.Fatal(err)
+	}
+	assertErasure(t, db)
+}
+
+func assertErasure(t *testing.T, db *gorm.DB) {
+	t.Helper()
 	f := seedErasure(t, db)
 	for range 2 {
 		if err := f.deletions.ErasePerson(context.Background(), erasureIssuer, "sub-gone"); err != nil {

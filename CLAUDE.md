@@ -10,7 +10,7 @@ Self-hosted time tracker for small teams. Go API + SvelteKit frontend + PostgreS
 | Client   | SvelteKit 5 (Svelte 5 runes), Tailwind CSS 4, shadcn-svelte |
 | Build    | `go build` (vendored deps), Bun                             |
 | Deploy   | Docker Compose, one distroless container serving API + client |
-| Auth     | JWT + optional OIDC SSO, `SSO_ONLY` mode                    |
+| Auth     | Sign in with Facile (Registre OIDC) only, no passwords      |
 
 ## Project Structure
 
@@ -75,7 +75,6 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `LOG_LEVEL` -- `debug`, `info`, `warn`, `error`
 - `STORAGE_DIR` -- Legacy uploaded avatars, read-only since Registre owns pictures (default `./data`)
 - `OIDC_*` -- OpenID Connect config (optional)
-- `SSO_ONLY` -- Hide password auth when `true`
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` -- Web push (optional; push stays off while the keys are unset)
 - `JOURNAL_URL`, `JOURNAL_TOKEN` -- Log shipping to Journal (optional; both must be set)
 - `JOURNAL_BROWSER_URL`, `JOURNAL_BROWSER_KEY` -- Browser error reporting. The URL is **not**
@@ -93,7 +92,8 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `GET /health`, `GET /ready` -- Health and readiness probes
 - `GET /docs` -- Auto-generated JSON API documentation
 - `GET /files/*` -- Static file serving (legacy uploaded avatars)
-- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/config`, `/api/auth/oidc/*`
+- Auth: `/api/auth/config`, `/api/auth/oidc/*` (no register or login route)
+- `GET /version` -- the `APP_VERSION` build arg; `POST /api/registre/sync` and `POST /api/registre/deletions` are Registre's pushes
 - Resources: `/api/projects`, `/api/time-entries`, `/api/users`, `/api/settings`
 - Spaces (read-only, Registre owns them): `/api/spaces`, `/api/spaces/{id}`, `/api/spaces/{id}/members`
 - `POST /api/registre/sync` -- Registre's anonymous nudge, answers 202; mounted only with OIDC

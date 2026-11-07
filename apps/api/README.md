@@ -28,8 +28,6 @@ The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
 - `GET /ready`
 - `GET /docs`
 - `GET /auth/config`
-- `POST /auth/register`
-- `POST /auth/login`
 - `GET /users/me`
 - `GET /projects`
 - `GET /projects/{id}/tasks`
@@ -46,7 +44,7 @@ The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
 - `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`
 - `STORAGE_DIR`: root of legacy uploaded avatars, default `./data`
 - `OIDC_*`: enables OpenID Connect login
-- `SSO_ONLY=true`: disables password auth routes
+- `APP_VERSION` (build arg): served at `GET /version`
 
 See [`./.env.example`](./.env.example) for the local template.
 

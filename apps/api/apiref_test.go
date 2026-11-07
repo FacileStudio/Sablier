@@ -115,3 +115,13 @@ func TestVersionIsServed(t *testing.T) {
 		t.Fatalf("GET /version = %d %q", recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestConnectSourcesCarryTheJournalOrigin(t *testing.T) {
+	got := connectSources("https://journal.example.test/api")
+	if got[len(got)-1] != "https://journal.example.test" {
+		t.Fatalf("want the Journal origin last, got %v", got)
+	}
+	if len(connectSources("")) != len(externalConnect) {
+		t.Fatalf("an unset Journal URL must add nothing")
+	}
+}
