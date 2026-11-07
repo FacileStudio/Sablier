@@ -138,6 +138,10 @@ Use muse components. Follow the Svelte 5 runes rules. The client has four langua
 - C1. `POST /api/ai/decide`: it takes the Jev `{state, questions}` and returns the answers. It reuses `core/jev`, with the key and model in Bulle's config. It is rate-limited per caller and logs usage.
 - C2. In `runner/timetracking.go` and `suite/sablier.go`, `AgentSession` gains these fields: `registre_space_id` and `opus_workspace` (from the session's space), `opus_task_ids` (collected from `opus_task` / `opus_update_task` / `opus_create_task` tool calls during the run), and `title`. The `recordPresence` heartbeat gains `registre_space_id`.
 - C3. Tests: the Opus task ids collected from a fake run, and the decide handler with a stub Jev server.
+- C4. Before merging, added 2026-11-07:
+  - Rebase `feat/ai-decide` on Bulle v3.28.0. That release adds migration 00024 (`forfait_state`) and the plans-gate wiring in `main.go`, so expect a small conflict in `main.go`.
+  - In `/api/ai/decide`, call `Gate.CheckAI(ctx, userID)` for the acting-for user, right after the service-key auth. Refuse with 402, code `payment_required`. Add a handler test for this case.
+  - Sablier treats the 402 like any other non-200 and sends the session to Review.
 
 ## Auth for Sablier calling Bulle (settled 2026-11-07 with the Bulle session)
 
