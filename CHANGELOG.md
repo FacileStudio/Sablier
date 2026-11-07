@@ -16,10 +16,10 @@
 - An email that already has an account links to a Registre identity only when Registre verified it and the account holds no other subject of the same issuer.
 - Security headers come from tronc: anti-framing is enforced, the full CSP is report-only. The client's inline scripts are hashed, and the connect list allows Ardoise's catalog, the icon API and the browser Journal origin.
 - The Dockerfile build arg is `APP_VERSION` (was `VERSION`); compose passes it through.
-- The status dots of tasks, the progress dots and the login panels carry no border.
+- The task status dots and the sign-in screen carry no border.
 
 ### Removed
-- `POST /api/auth/register`, `POST /api/auth/login`, the register and password forms, `SSO_ONLY` and the password half of `PATCH /api/users/me`. Clients that signed in with the account password must use an API token (`POST /api/users/me/api-token`) or `sablier login`.
+- `POST /api/auth/register`, `POST /api/auth/login`, the register and password forms, `SSO_ONLY` and the password half of `PATCH /api/users/me`. Clients that signed in with the account password must switch to an API token (`POST /api/users/me/api-token`).
 - The unused `internal/authcrypto` package.
 
 ### Migrations
