@@ -89,3 +89,15 @@ func TestSecondSubjectOfTheSameIssuerIsRefused(t *testing.T) {
 		t.Fatalf("the owner must still sign in: %d %v", id, err)
 	}
 }
+
+func TestVerifiedEmailLinksAMixedCaseStoredAddress(t *testing.T) {
+	store, orm := linkingStore(t)
+	existing := schemas.User{Email: "Ada@Example.test", Name: "Ada"}
+	if err := orm.Create(&existing).Error; err != nil {
+		t.Fatal(err)
+	}
+	id, err := store.UpsertFromOIDC(context.Background(), claimsFor("sub-1", "ada@example.test", true))
+	if err != nil || id != existing.ID {
+		t.Fatalf("want the existing account %d, got %d, %v", existing.ID, id, err)
+	}
+}
