@@ -442,6 +442,9 @@ func run() error {
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
 	antenneService := antenne.NewService(db, appLogger)
 	decider, backend := decide.New(decide.ConfigFromEnv(), nil)
+	if decider != nil {
+		decider = decide.Cached(decider)
+	}
 	resolver := attribution.Resolver{Decider: decider}
 	antenneService.SetResolver(resolver)
 	appLogger.Info("attribution: AI backend chosen", slog.String("backend", backend))
