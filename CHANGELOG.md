@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-11-07
+
 ### Changed
 
 - `@facile/muse` v0.14.1 to v0.14.2. The user menu stays inside the viewport at the right edge of the header.
