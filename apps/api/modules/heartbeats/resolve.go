@@ -17,7 +17,7 @@ type projectIndex struct {
 // plus the projects of the spaces the user belongs to.
 func (service *Service) loadProjects(ctx context.Context, userID int64) (projectIndex, error) {
 	var projects []schemas.Project
-	err := schemas.VisibleSpaces(service.orm.WithContext(ctx).Model(&schemas.Project{}), "projects.space_id", userID).
+	err := schemas.VisibleSpaces(service.orm.WithContext(ctx).Model(&schemas.Project{}), schemas.Projects, userID).
 		Order("id asc").Find(&projects).Error
 	if err != nil {
 		return projectIndex{}, errors.Internal("failed to list projects", err)

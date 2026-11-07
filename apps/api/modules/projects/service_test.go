@@ -63,8 +63,8 @@ func TestListProjectsReturnsOnlyOwnedProjects(t *testing.T) {
 		t.Fatalf("list projects: %v", err)
 	}
 
-	if len(projects) != 2 {
-		t.Fatalf("expected 2 projects, got %d", len(projects))
+	if len(projects) != 1 || projects[0].Name != "Mine" {
+		t.Fatalf("personal projects are private: want only Mine, got %+v", projects)
 	}
 }
 

@@ -56,7 +56,7 @@ func Record(ctx context.Context, db *gorm.DB, resolver attribution.Resolver, ses
 		if err != nil {
 			return err
 		}
-		target, err := bookTarget(tx, resolved[0], facts.ProjectHint)
+		target, err := bookTarget(tx, session.OwnerID, resolved[0], facts.ProjectHint)
 		if err != nil {
 			return err
 		}

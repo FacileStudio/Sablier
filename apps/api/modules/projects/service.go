@@ -82,7 +82,7 @@ func spaceError(err error) error {
 
 func (service *Service) listProjects(ctx context.Context, userID int64, spaceID string) ([]schemas.Project, error) {
 	var records []schemas.Project
-	query, err := schemas.ScopeSpace(service.orm.WithContext(ctx), "projects.space_id", userID, spaceID)
+	query, err := schemas.ScopeSpace(service.orm.WithContext(ctx), schemas.Projects, userID, spaceID)
 	if err != nil {
 		return nil, spaceError(err)
 	}

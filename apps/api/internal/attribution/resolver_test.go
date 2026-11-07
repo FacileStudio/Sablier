@@ -59,9 +59,9 @@ func seedWorld(t *testing.T) world {
 	create(t, db, &schemas.SpaceMember{SpaceID: space.ID, UserID: 1})
 	w := world{db: db, owner: Owner{ID: 1, Email: "sara@example.test", Threshold: schemas.DefaultReviewThreshold}}
 	w.team = schemas.Project{Name: "Team", SpaceID: &space.ID}
-	w.named = schemas.Project{Name: "Sablier"}
+	w.named = schemas.Project{Name: "Sablier", OwnerID: 1}
 	w.inTeam = schemas.Project{Name: "Sablier", SpaceID: &space.ID}
-	w.other = schemas.Project{Name: "Running"}
+	w.other = schemas.Project{Name: "Running", OwnerID: 1}
 	w.hidden = schemas.Project{Name: "Hidden", SpaceID: &foreign.ID}
 	create(t, db, &w.team, &w.named, &w.inTeam, &w.other, &w.hidden)
 	w.opusTask = schemas.Task{ProjectID: w.team.ID, Name: "Spec", FacileID: &teamFacile}

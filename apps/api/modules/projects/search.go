@@ -91,7 +91,7 @@ func (service *Service) searchTasks(ctx context.Context, userID int64, q string,
 	query := service.orm.WithContext(ctx).Table("tasks").Select(searchSelect, userID).
 		Joins("JOIN projects ON projects.id = tasks.project_id").
 		Joins("LEFT JOIN spaces ON spaces.id = CAST(projects.space_id AS TEXT)")
-	query = schemas.VisibleSpaces(query, "projects.space_id", userID).
+	query = schemas.VisibleSpaces(query, schemas.Projects, userID).
 		Where("(lower(tasks.name) LIKE ? ESCAPE '\\' OR lower(projects.name) LIKE ? ESCAPE '\\')", pattern, pattern).
 		Order(clause.OrderBy{Expression: gorm.Expr(searchRank+", "+lastUsedExpr+" DESC, tasks.name asc, tasks.id asc",
 			userID, schemas.StatusDone, pattern, userID)}).

@@ -14,7 +14,6 @@ const (
 	SessionsTaskName = "Agent sessions"
 	// CatchAllProject parks sessions that matched no project, under a task named after the hint.
 	CatchAllProject      = "Agent work"
-	catchAllOwnerID      = 1
 	catchAllProjectNotes = "Agent sessions without a matching Sablier project"
 )
 
@@ -29,9 +28,9 @@ type Target struct {
 }
 
 // bookTarget turns the resolver's answer into rows to book on: the task it found, else
-// the "Agent sessions" task of its project, else the shared "Agent work" catch-all under
-// a task named after the hint.
-func bookTarget(tx *gorm.DB, result attribution.Result, hint string) (*Target, error) {
+// the "Agent sessions" task of its project, else the owner's own "Agent work" catch-all
+// under a task named after the hint.
+func bookTarget(tx *gorm.DB, ownerID int64, result attribution.Result, hint string) (*Target, error) {
 	source, confidence := result.Source, result.Confidence
 	booked := schemas.Attribution{AttributionSource: &source, AttributionConfidence: &confidence, NeedsReview: result.NeedsReview}
 	var target *Target
@@ -42,7 +41,7 @@ func bookTarget(tx *gorm.DB, result attribution.Result, hint string) (*Target, e
 	case result.Project != nil:
 		target, err = withTask(tx, *result.Project, SessionsTaskName)
 	default:
-		target, err = catchAllTarget(tx, hint)
+		target, err = catchAllTarget(tx, ownerID, hint)
 	}
 	if err != nil {
 		return nil, err
@@ -51,13 +50,13 @@ func bookTarget(tx *gorm.DB, result attribution.Result, hint string) (*Target, e
 	return target, nil
 }
 
-func catchAllTarget(tx *gorm.DB, hint string) (*Target, error) {
+func catchAllTarget(tx *gorm.DB, ownerID int64, hint string) (*Target, error) {
 	taskName := hint
 	if taskName == "" {
 		taskName = SessionsTaskName
 	}
 	var project schemas.Project
-	err := tx.Where("lower(name) = lower(?)", CatchAllProject).Order("id asc").First(&project).Error
+	err := tx.Where("space_id IS NULL AND owner_id = ? AND lower(name) = lower(?)", ownerID, CatchAllProject).Order("id asc").First(&project).Error
 	if err == nil {
 		return withTask(tx, project, taskName)
 	}
@@ -68,7 +67,7 @@ func catchAllTarget(tx *gorm.DB, hint string) (*Target, error) {
 	project = schemas.Project{
 		Name:        CatchAllProject,
 		Description: catchAllProjectNotes,
-		OwnerID:     catchAllOwnerID,
+		OwnerID:     ownerID,
 		FacileID:    &facileID,
 	}
 	if err := tx.Create(&project).Error; err != nil {

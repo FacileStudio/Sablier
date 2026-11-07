@@ -50,7 +50,7 @@ func spaceError(err error) error {
 }
 
 func (service *Service) listEntries(ctx context.Context, callerID int64, filter listFilter) ([]timeEntryRow, error) {
-	query, err := schemas.ScopeSpace(service.rows(ctx), "time_entries.space_id", callerID, filter.Space)
+	query, err := schemas.ScopeSpace(service.rows(ctx), schemas.Entries, callerID, filter.Space)
 	if err != nil {
 		return nil, spaceError(err)
 	}

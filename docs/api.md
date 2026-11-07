@@ -124,8 +124,10 @@ All routes require authentication. Tasks are nested under their project.
 | PUT | `/api/projects/{id}/tasks/{taskId}` | `{"name","status"}` | `Task` |
 | DELETE | `/api/projects/{id}/tasks/{taskId}` | — | `{"deleted":true,"sessions_unlinked":n}` |
 
-`?space_id=` on the project and time-entry lists: absent keeps personal rows (no space),
-`all` keeps personal rows plus every space you belong to, and a space id keeps that space.
+`?space_id=` on the project and time-entry lists: absent keeps your personal rows (no space),
+`all` keeps your personal rows plus every space you belong to, and a space id keeps that space.
+Personal rows are private: a project is yours when you own it, an entry when you or one of
+your agents booked it. Every `/api/projects/{id}` route answers 404 for a project you cannot see.
 A space you are not a member of returns 404, and so does creating a project in one.
 
 `GET /api/tasks/search?q=&limit=` searches the tasks you can see (`limit` 1 to 50, default

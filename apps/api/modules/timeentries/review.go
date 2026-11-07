@@ -68,7 +68,7 @@ func (service *Service) moveToTask(ctx context.Context, ownerID int64, entry *sc
 	var task schemas.Task
 	query := service.orm.WithContext(ctx).Model(&schemas.Task{}).Select("tasks.*").
 		Joins("JOIN projects ON projects.id = tasks.project_id").Where("tasks.id = ?", taskID)
-	err := schemas.VisibleSpaces(query, "projects.space_id", ownerID).First(&task).Error
+	err := schemas.VisibleSpaces(query, schemas.Projects, ownerID).First(&task).Error
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.Invalid("task_id is not a task you can see")
 	}

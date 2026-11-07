@@ -18,11 +18,11 @@ type step func(db *gorm.DB, ownerID int64, item Facts, space *string) (*Result, 
 
 func visibleTasks(db *gorm.DB, ownerID int64) *gorm.DB {
 	query := db.Model(&schemas.Task{}).Select("tasks.*").Joins("JOIN projects ON projects.id = tasks.project_id")
-	return schemas.VisibleSpaces(query, "projects.space_id", ownerID)
+	return schemas.VisibleSpaces(query, schemas.Projects, ownerID)
 }
 
 func visibleProjects(db *gorm.DB, ownerID int64) *gorm.DB {
-	return schemas.VisibleSpaces(db.Model(&schemas.Project{}), "projects.space_id", ownerID)
+	return schemas.VisibleSpaces(db.Model(&schemas.Project{}), schemas.Projects, ownerID)
 }
 
 func found(source string, confidence float64, project *schemas.Project, task *schemas.Task) *Result {

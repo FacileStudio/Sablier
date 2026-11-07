@@ -1,6 +1,7 @@
 package schemas
 
 import (
+	"database/sql"
 	"errors"
 
 	"gorm.io/gorm"
@@ -21,26 +22,43 @@ func MemberSpaces(db *gorm.DB, userID int64) *gorm.DB {
 		Model(&SpaceMember{}).Select("space_id").Where("user_id = ?", userID)
 }
 
-// VisibleSpaces narrows query to the rows whose column is NULL (personal) or names a space
-// userID belongs to. column is a trusted, qualified column name such as "projects.space_id".
-func VisibleSpaces(query *gorm.DB, column string, userID int64) *gorm.DB {
-	return query.Where("("+column+" IS NULL OR CAST("+column+" AS TEXT) IN (?))", MemberSpaces(query, userID))
+// Rows names a table's space column and the condition that makes a personal row, one
+// with no space, belong to the caller. Personal rows are private: a project is the
+// caller's when they own it, an entry when they or one of their agents booked it.
+type Rows struct {
+	Space    string
+	personal string
 }
 
-// ScopeSpace applies a list's space filter: empty keeps personal rows only, AllSpaces keeps
-// every visible row, and any other value keeps that one space after checking that userID
-// belongs to it. A space the user is not in returns ErrSpaceNotVisible.
-func ScopeSpace(query *gorm.DB, column string, userID int64, spaceID string) (*gorm.DB, error) {
+var (
+	// Projects scopes the projects table.
+	Projects = Rows{Space: "projects.space_id", personal: "projects.owner_id = @user"}
+	// Entries scopes the time_entries table.
+	Entries = Rows{Space: "time_entries.space_id", personal: "(time_entries.user_id = @user OR time_entries.user_id IN " +
+		"(SELECT id FROM users WHERE kind = 'agent' AND owner_user_id = @user))"}
+)
+
+// VisibleSpaces narrows query to the caller's personal rows and the rows of every space
+// userID belongs to.
+func VisibleSpaces(query *gorm.DB, rows Rows, userID int64) *gorm.DB {
+	return query.Where("(("+rows.Space+" IS NULL AND "+rows.personal+") OR CAST("+rows.Space+" AS TEXT) IN (@members))",
+		sql.Named("user", userID), sql.Named("members", MemberSpaces(query, userID)))
+}
+
+// ScopeSpace applies a list's space filter: empty keeps the caller's personal rows,
+// AllSpaces keeps every visible row, and any other value keeps that one space after
+// checking that userID belongs to it. A space the user is not in returns ErrSpaceNotVisible.
+func ScopeSpace(query *gorm.DB, rows Rows, userID int64, spaceID string) (*gorm.DB, error) {
 	switch spaceID {
 	case "":
-		return query.Where(column + " IS NULL"), nil
+		return query.Where(rows.Space+" IS NULL AND "+rows.personal, sql.Named("user", userID)), nil
 	case AllSpaces:
-		return VisibleSpaces(query, column, userID), nil
+		return VisibleSpaces(query, rows, userID), nil
 	}
 	if err := RequireMember(query, userID, spaceID); err != nil {
 		return nil, err
 	}
-	return query.Where("CAST("+column+" AS TEXT) = ?", spaceID), nil
+	return query.Where("CAST("+rows.Space+" AS TEXT) = ?", spaceID), nil
 }
 
 // RequireMember returns ErrSpaceNotVisible unless userID belongs to spaceID.
@@ -60,7 +78,7 @@ func RequireMember(db *gorm.DB, userID int64, spaceID string) error {
 // VisibleProject loads projectID when userID can see it, or returns gorm.ErrRecordNotFound.
 func VisibleProject(db *gorm.DB, userID, projectID int64) (*Project, error) {
 	var project Project
-	err := VisibleSpaces(db.Model(&Project{}), "projects.space_id", userID).
+	err := VisibleSpaces(db.Model(&Project{}), Projects, userID).
 		Where("projects.id = ?", projectID).First(&project).Error
 	if err != nil {
 		return nil, err
