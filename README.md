@@ -9,7 +9,7 @@ Live at [sablier.facile.studio](https://sablier.facile.studio).
 
 ## What it does
 
-- Email/password auth with optional OIDC SSO and an `SSO_ONLY` mode
+- Sign in with Facile (Registre) only; the desktop app, the CLI and scripts use API tokens
 - Spaces that scope projects, tasks, and time entries to a group of members
 - Live timers with pause and resume, plus manually entered sessions
 - Per-project task boards with `to-do`, `in-progress`, `in-review`, and `done` statuses

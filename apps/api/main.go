@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"syscall"
@@ -222,7 +224,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		CORS: troncmiddleware.CORSConfig{
 			AllowedOrigins: appEnv.CORSAllowedOrigins,
 		},
-		Security: securityConfig(clientDir, appLogger),
+		Security: securityConfig(clientDir, appEnv.JournalBrowserURL, appLogger),
 	})
 
 	health.Mount(router, sqlDB.PingContext)
@@ -330,16 +332,27 @@ func newDeletions(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) *spac
 	return spaces.NewDeletions(db, client, portepg.New(sqlDB).EraseIdentity, appEnv.StorageDir, appLogger)
 }
 
-// externalConnect lists the origins the built client calls besides itself: the icon API
-// behind iconify-icon.
-var externalConnect = []string{"https://api.iconify.design"}
+// externalConnect lists the origins the built client always calls besides itself: Ardoise's
+// public plan catalog behind the landing page's pricing, and the icon API behind
+// iconify-icon.
+var externalConnect = []string{"https://api-ardoise.facile.studio", "https://api.iconify.design"}
+
+// connectSources adds the browser's Journal origin, which is deployment configuration and
+// not a constant, to the origins above.
+func connectSources(journalBrowserURL string) []string {
+	sources := slices.Clone(externalConnect)
+	if parsed, err := url.Parse(journalBrowserURL); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		sources = append(sources, parsed.Scheme+"://"+parsed.Host)
+	}
+	return sources
+}
 
 // securityConfig extends tronc's default security headers with what the built client
 // needs: the inline scripts adapter-static writes into its pages, which script-src 'self'
 // would otherwise block, and the external origins above. A client directory that cannot be
 // hashed is logged and leaves the default script policy, which only reports.
-func securityConfig(clientDir string, appLogger *slog.Logger) troncmiddleware.SecurityConfig {
-	sources := map[string][]string{"connect-src": externalConnect}
+func securityConfig(clientDir, journalBrowserURL string, appLogger *slog.Logger) troncmiddleware.SecurityConfig {
+	sources := map[string][]string{"connect-src": connectSources(journalBrowserURL)}
 	if spa.Available(clientDir) {
 		hashes, err := spa.InlineScriptHashes(clientDir)
 		if err != nil {

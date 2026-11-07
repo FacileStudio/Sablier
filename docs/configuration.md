@@ -42,7 +42,6 @@ origin, and fatal in dev, where Vite runs on `:5173`.
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `STORAGE_DIR` | no | `./data` | Root of avatars uploaded before Registre owned pictures, served under `/files/`. Nothing writes there any more |
-| `SSO_ONLY` | no | `false` | When true, the register and login routes are not registered at all |
 | `CLIENT_DIR` | no | `./client` | Directory holding the built SPA. The image sets `/client` explicitly |
 
 `CLIENT_DIR` is read by `tronc/spa`. If the directory has no `index.html`, the SPA

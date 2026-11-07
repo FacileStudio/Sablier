@@ -95,6 +95,7 @@ func (s *Service) deleteSubscription(ctx context.Context) error {
 func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed int) {
 	var entries []struct {
 		UserID   int64  `gorm:"column:user_id"`
+		Locale   string `gorm:"column:locale"`
 		Endpoint string `gorm:"column:endpoint"`
 		P256DH   string `gorm:"column:p256dh"`
 		Auth     string `gorm:"column:auth"`
@@ -102,8 +103,9 @@ func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed in
 
 	deltaNotifyTime := "NOW() - INTERVAL '1 HOUR'"
 	if err := s.orm.WithContext(ctx).Table("time_entries").
-		Distinct("time_entries.user_id, push_subscriptions.endpoint, push_subscriptions.p256dh, push_subscriptions.auth").
+		Distinct("time_entries.user_id, users.locale, push_subscriptions.endpoint, push_subscriptions.p256dh, push_subscriptions.auth").
 		Joins("JOIN push_subscriptions ON time_entries.user_id = push_subscriptions.user_id").
+		Joins("JOIN users ON users.id = time_entries.user_id").
 		Where("time_entries.stopped_at IS NULL").
 		Where("(time_entries.last_notification_at IS NULL AND time_entries.started_at <= ? OR time_entries.last_notification_at <= ?)", gorm.Expr(deltaNotifyTime), gorm.Expr(deltaNotifyTime)).
 		Scan(&entries).Error; err != nil {
@@ -114,18 +116,13 @@ func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed in
 
 	opts := newWebPushOptions(s)
 
-	payload, err := json.Marshal(map[string]string{
-		"title": "Are you working Son?",
-		"body":  "You have an active timer. Don't forget to stop it when you're done!",
-		"icon":  "/favicon.svg",
-	})
-
-	if err != nil {
-		s.logger.Error("failed to marshal notification payload", "error", err)
-		return 0, 0
-	}
-
 	for _, entry := range entries {
+		payload, err := reminderPayload(entry.Locale)
+		if err != nil {
+			s.logger.Error("failed to marshal notification payload", "error", err)
+			failed++
+			continue
+		}
 		resp, err := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{
 			Endpoint: entry.Endpoint,
 			Keys: webpush.Keys{
