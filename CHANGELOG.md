@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `@facile/muse` v0.14.1 to v0.14.2. The user menu stays inside the viewport at the right edge of the header.
+- The API tokens section drops the expiry field: Sablier tokens do not expire.
+- The user menu gains a Subscription row that opens the plans on Facile (`https://sso.facile.studio/spaces`).
+
 ## [1.13.0] - 2026-11-07
 
 ### Changed

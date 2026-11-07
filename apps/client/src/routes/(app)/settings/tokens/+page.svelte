@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { TokensSection, toast } from '@facile/muse';
+	import { TokensSection, toast, type TokenDraft } from '@facile/muse';
 	import { backend, type UserProfile } from '$lib/backend';
 	import { t } from '$lib/i18n/index.svelte';
 	import { formatDate } from '$lib/i18n/format';
@@ -34,7 +34,7 @@
 		}
 	}
 
-	async function create(draft: { name: string }) {
+	async function create(draft: Omit<TokenDraft, 'days'>) {
 		const result = await backend.createApiToken(ctx.token, draft.name);
 		hasToken = true;
 		tokenName = result.name;
@@ -64,7 +64,8 @@
 
 <TokensSection
 	{tokens}
-	expiryDays={[]}
+	expiry={false}
+	lastUsed={false}
 	title={t('api.cli.title')}
 	description={t('api.cli.description')}
 	onCreate={create}

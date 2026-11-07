@@ -58,6 +58,7 @@
 
 	const userMenu = $derived({
 		items: isApp() ? [] : [{ label: t('nav.downloads'), icon: icons.download, href: '/downloads' }],
+		subscription: { plan: '', href: 'https://sso.facile.studio/spaces' },
 		onSignOut: signOut,
 		theme: theme.preference,
 		onThemeChange: (next: ThemePreference) => theme.set(next),
