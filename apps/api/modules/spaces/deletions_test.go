@@ -142,7 +142,7 @@ func assertErasure(t *testing.T, db *gorm.DB) {
 		`SELECT count(*) FROM tasks WHERE name = 't1'`:                         0,
 		`SELECT count(*) FROM push_subscriptions WHERE user_id = ?`:            0,
 		`SELECT count(*) FROM space_members WHERE user_id = ?`:                 0,
-		`SELECT count(*) FROM projects WHERE name = 'Equipe' AND owner_id = 0`: 1,
+		`SELECT count(*) FROM projects WHERE name = 'Equipe' AND owner_id = 0`: 0,
 		`SELECT count(*) FROM tasks WHERE name = 't2' AND actor_id IS NULL`:    1,
 	} {
 		args := []any{f.gone}
@@ -154,6 +154,9 @@ func assertErasure(t *testing.T, db *gorm.DB) {
 		if got := count(t, db, query, args...); got != want {
 			t.Errorf("%s = %d, want %d", query, got, want)
 		}
+	}
+	if n := count(t, db, `SELECT count(*) FROM projects WHERE name = 'Equipe' AND owner_id = ?`, f.other); n != 1 {
+		t.Errorf("the space project did not pass to the space owner")
 	}
 	if n := count(t, db, `SELECT count(*) FROM users WHERE id = ?`, f.other); n != 1 {
 		t.Errorf("another account was touched")
@@ -183,5 +186,48 @@ func TestDeletionStateSurvivesARestart(t *testing.T) {
 	}
 	if saved, err := state.Load(context.Background()); err != nil || string(saved) != "two" {
 		t.Fatalf("Load = %q, %v; want two", saved, err)
+	}
+}
+
+func TestErasePersonTransfersSpaceProjectsToTheLongestStandingAdmin(t *testing.T) {
+	db := openErasureDatabase(t)
+	gone := person(t, db, "gone")
+	oldMember, youngAdmin, oldAdmin := person(t, db, "oldmember"), person(t, db, "youngadmin"), person(t, db, "oldadmin")
+	robot := schemas.User{Email: "robot@facile.studio", Kind: schemas.UserKindAgent}
+	mustCreate(t, db, &robot)
+
+	crowded, soloMembers, empty := schemas.Space{Name: "Crowded"}, schemas.Space{Name: "Solo"}, schemas.Space{Name: "Empty"}
+	for _, space := range []*schemas.Space{&crowded, &soloMembers, &empty} {
+		mustCreate(t, db, space)
+	}
+	seed := func(space schemas.Space, user int64, role, joined string) {
+		seedMember(t, db, space.ID, user, role)
+		mustExec(t, db, `UPDATE space_members SET joined_at = ? WHERE space_id = ? AND user_id = ?`, joined, space.ID, user)
+	}
+	seed(crowded, gone, schemas.RoleAdmin, "2020-01-01 00:00:00")
+	seed(crowded, robot.ID, schemas.RoleAdmin, "2020-01-02 00:00:00")
+	seed(crowded, oldMember, schemas.RoleMember, "2021-01-01 00:00:00")
+	seed(crowded, youngAdmin, schemas.RoleAdmin, "2024-01-01 00:00:00")
+	seed(crowded, oldAdmin, schemas.RoleAdmin, "2022-01-01 00:00:00")
+	seed(soloMembers, gone, schemas.RoleAdmin, "2020-01-01 00:00:00")
+	seed(soloMembers, youngAdmin, schemas.RoleMember, "2024-01-01 00:00:00")
+	seed(soloMembers, oldMember, schemas.RoleMember, "2021-01-01 00:00:00")
+	seed(empty, gone, schemas.RoleOwner, "2020-01-01 00:00:00")
+
+	for name, space := range map[string]schemas.Space{"P-crowded": crowded, "P-solo": soloMembers, "P-empty": empty} {
+		mustCreate(t, db, &schemas.Project{Name: name, OwnerID: gone, SpaceID: &space.ID})
+	}
+	deletions := NewDeletions(db, directory.Client{Issuer: erasureIssuer}, nil, t.TempDir(),
+		slog.New(slog.NewTextHandler(io.Discard, nil)))
+	for range 2 {
+		if err := deletions.ErasePerson(context.Background(), erasureIssuer, "sub-gone"); err != nil {
+			t.Fatalf("erase: %v", err)
+		}
+	}
+
+	for name, want := range map[string]int64{"P-crowded": oldAdmin, "P-solo": oldMember, "P-empty": 0} {
+		if got := count(t, db, `SELECT owner_id FROM projects WHERE name = ?`, name); got != want {
+			t.Errorf("%s owner = %d, want %d", name, got, want)
+		}
 	}
 }

@@ -90,7 +90,7 @@ func (s *UserStore) resolve(ctx context.Context, claims porte.Claims, email stri
 		return nil, errors.Internal("failed to resolve the identity", err)
 	}
 
-	err = s.orm.WithContext(ctx).Where("email = ?", email).First(&user).Error
+	err = s.orm.WithContext(ctx).Where("lower(email) = ?", email).Order("id").First(&user).Error
 	switch {
 	case err == nil:
 		return &user, s.checkLinkable(ctx, user.ID, claims)

@@ -4,6 +4,7 @@ import (
 	"context"
 	stderrors "errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
@@ -87,7 +88,7 @@ func (service *Service) updateUser(context context.Context, userID string, name 
 		updates["name"] = *name
 	}
 	if email != nil {
-		updates["email"] = *email
+		updates["email"] = strings.ToLower(strings.TrimSpace(*email))
 	}
 	if color != nil {
 		updates["color"] = *color

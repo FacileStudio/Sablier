@@ -57,7 +57,12 @@ const (
 	deletePersonalProjects = `DELETE FROM projects WHERE space_id IS NULL AND owner_id IN @ids`
 	deleteOwnEntries       = `DELETE FROM time_entries WHERE user_id IN @ids`
 	anonymiseTaskActor     = `UPDATE tasks SET actor_id = NULL WHERE actor_id IN @ids`
-	anonymiseProjectOwner  = `UPDATE projects SET owner_id = 0 WHERE owner_id IN @ids`
+	transferSpaceProjects  = `UPDATE projects SET owner_id = COALESCE((
+		SELECT m.user_id FROM space_members m JOIN users u ON u.id = m.user_id
+		WHERE m.space_id = projects.space_id AND m.user_id NOT IN @ids AND u.kind <> 'agent'
+		ORDER BY CASE WHEN m.role IN ('owner', 'admin') THEN 0 ELSE 1 END, m.joined_at, m.id
+		LIMIT 1), 0)
+		WHERE space_id IS NOT NULL AND owner_id IN @ids`
 	deleteHeartbeats       = `DELETE FROM heartbeats WHERE user_id IN @ids`
 	deleteDismissals       = `DELETE FROM draft_dismissals WHERE user_id IN @ids`
 	deletePushSubscription = `DELETE FROM push_subscriptions WHERE user_id IN @ids`
@@ -68,8 +73,10 @@ const (
 // ErasePerson deletes the account behind a Registre identity and what it owns:
 // its personal projects with their tasks and time entries, every time entry it
 // logged, its agent users, heartbeats, dismissed drafts, push subscription and
-// memberships. A space project it owned stays with no owner, and a task it was
-// assigned stays with no assignee. A subject that is already gone is a no-op,
+// memberships. A space project it owned passes to the space's longest-standing
+// admin (owner or admin role), else its longest-standing member, agents excluded;
+// only a space left with nobody keeps owner_id 0. A task it was assigned stays
+// with no assignee. A subject that is already gone is a no-op,
 // so a replayed notice changes nothing.
 func (d *Deletions) ErasePerson(ctx context.Context, provider, subject string) error {
 	var account struct {
@@ -92,7 +99,7 @@ func (d *Deletions) ErasePerson(ctx context.Context, provider, subject string) e
 		args := map[string]any{"ids": append(ids, agents...)}
 		for _, statement := range []string{
 			deletePersonalEntries, deletePersonalTasks, deletePersonalProjects, deleteOwnEntries,
-			anonymiseTaskActor, anonymiseProjectOwner, deleteHeartbeats, deleteDismissals,
+			anonymiseTaskActor, transferSpaceProjects, deleteHeartbeats, deleteDismissals,
 			deletePushSubscription, deleteMemberships, deleteAccounts,
 		} {
 			if err := tx.Exec(statement, args).Error; err != nil {
