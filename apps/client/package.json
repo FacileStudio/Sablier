@@ -33,7 +33,7 @@
 		"@capacitor/core": "8.6.0",
 		"@capacitor/preferences": "8.0.1",
 		"@facile/journal": "github:FacileStudio/Journal#ts",
-		"@facile/muse": "github:FacileStudio/muse#v0.14.2",
+		"@facile/muse": "github:FacileStudio/muse#v0.14.4",
 		"@tauri-apps/api": "^2",
 		"@tauri-apps/plugin-deep-link": "^2",
 		"@tauri-apps/plugin-opener": "^2",
