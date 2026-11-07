@@ -59,9 +59,7 @@ export const shell = {
 	'nav.dashboard': ['Dashboard', 'Tableau de bord', 'Panel', 'Übersicht'],
 	'nav.projects': ['Projects', 'Projets', 'Proyectos', 'Projekte'],
 	'nav.spaces': ['Spaces', 'Espaces', 'Espacios', 'Bereiche'],
-	'nav.settings': ['Settings', 'Paramètres', 'Ajustes', 'Einstellungen'],
 	'nav.downloads': ['Download the apps', 'Télécharger les applications', 'Descargar las apps', 'Apps herunterladen'],
-	'nav.signOut': ['Sign out', 'Se déconnecter', 'Cerrar sesión', 'Abmelden'],
 	'login.title': ['Sign in — Sablier', 'Connexion — Sablier', 'Iniciar sesión — Sablier', 'Anmelden — Sablier'],
 	'login.tagline': [
 		'Track time. Ship faster.',

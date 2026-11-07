@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `@facile/muse` v0.13.0 to v0.14.1. The user menu is one options object on the sidebar and the mobile bar: Facile account, Downloads (browser only), Settings, language, theme and Sign out. Settings and Sign out are no longer entries of the app's own list.
+- Settings use muse's `SettingsLayout` in the order Profile, Preferences, Time tracking, Integrations, API tokens, Advanced. Profile is read-only and links to the Facile account; the identity colour stays. Rates and the auto-confirm switch moved to Time tracking. The Appearance tab became Preferences (language and theme), the API tab became API tokens with `TokensSection`, and the Advanced danger zone uses `DangerZone`. The in-settings Sign out is gone.
+- `/settings/appearance` redirects to `/settings/preferences` and `/settings/api` to `/settings/tokens`.
+- Choosing a theme no longer fails when the browser blocks local storage.
+
+### Removed
+
+- The local display name edit and the profile meta card, and the unused strings behind them.
+
 ## [1.12.1] - 2026-11-07
 
 ### Fixed

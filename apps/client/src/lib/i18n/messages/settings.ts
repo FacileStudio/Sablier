@@ -3,15 +3,15 @@ import type { Row } from '../row';
 /** The settings area, the spaces pages and the suggested-session switch. */
 export const settings = {
 	'settings.tab.profile': ['Profile', 'Profil', 'Perfil', 'Profil'],
-	'settings.tab.appearance': ['Appearance', 'Apparence', 'Apariencia', 'Darstellung'],
-	'settings.tab.api': ['API', 'API', 'API', 'API'],
+	'settings.tab.preferences': ['Preferences', 'Préférences', 'Preferencias', 'Einstellungen'],
+	'settings.tab.tracking': ['Time tracking', 'Suivi du temps', 'Control del tiempo', 'Zeiterfassung'],
+	'settings.tab.tokens': ['API tokens', 'Jetons d’API', 'Tokens de API', 'API-Tokens'],
 	'settings.tab.integrations': ['Integrations', 'Intégrations', 'Integraciones', 'Integrationen'],
 	'settings.tab.advanced': ['Advanced', 'Avancé', 'Avanzado', 'Erweitert'],
 	'profile.title': ['Profile — Sablier', 'Profil — Sablier', 'Perfil — Sablier', 'Profil — Sablier'],
 	'profile.rate': ['Rate', 'Tarif', 'Tarifa', 'Satz'],
 	'profile.rateDaily': ['{rate} €/day', '{rate} €/jour', '{rate} €/día', '{rate} €/Tag'],
 	'profile.rateHourly': ['{rate} €/h', '{rate} €/h', '{rate} €/h', '{rate} €/Std.'],
-	'profile.memberSince': ['Member since', 'Membre depuis', 'Miembro desde', 'Mitglied seit'],
 	'profile.saved': ['Profile saved.', 'Profil enregistré.', 'Perfil guardado.', 'Profil gespeichert.'],
 	'profile.saveFailed': [
 		'Failed to save profile.',
@@ -26,47 +26,13 @@ export const settings = {
 		'No se pudo guardar la tarifa.',
 		'Der Satz konnte nicht gespeichert werden.'
 	],
-	'profile.identity.title': ['Identity', 'Identité', 'Identidad', 'Identität'],
-	'profile.identity.description': [
-		'How you appear across Sablier and in shared reports.',
-		'Comment vous apparaissez dans Sablier et dans les rapports partagés.',
-		'Cómo apareces en Sablier y en los informes compartidos.',
-		'Wie du in Sablier und in geteilten Berichten erscheinst.'
-	],
 	'profile.saveProfile': ['Save profile', 'Enregistrer le profil', 'Guardar perfil', 'Profil speichern'],
-	'profile.displayName': ['Display name', 'Nom affiché', 'Nombre visible', 'Anzeigename'],
-	'profile.displayNameHelper': [
-		'Up to 80 characters.',
-		'80 caractères au maximum.',
-		'Hasta 80 caracteres.',
-		'Bis zu 80 Zeichen.'
-	],
-	'profile.email': ['Email', 'E-mail', 'Correo electrónico', 'E-Mail'],
-	'profile.emailHelper': [
-		'Managed by single sign-on — change it with your identity provider.',
-		'Géré par l’authentification unique : modifiez-le chez votre fournisseur d’identité.',
-		'Gestionado por el inicio de sesión único: cámbialo en tu proveedor de identidad.',
-		'Wird per Single Sign-on verwaltet — ändere ihn bei deinem Identitätsanbieter.'
-	],
 	'profile.colour': ['Identity colour', 'Couleur d’identité', 'Color de identidad', 'Identitätsfarbe'],
 	'profile.colourDescription': [
 		'Your dot in member lists and your slice of shared charts.',
 		'Votre pastille dans les listes de membres et votre part des graphiques partagés.',
 		'Tu punto en las listas de miembros y tu parte de los gráficos compartidos.',
 		'Dein Punkt in Mitgliederlisten und dein Anteil an gemeinsamen Diagrammen.'
-	],
-	'profile.picture.title': ['Profile picture', 'Photo de profil', 'Foto de perfil', 'Profilbild'],
-	'profile.picture.description': [
-		'Set once in Registre, shown in every Facile app.',
-		'Définie une fois dans Registre, affichée dans toutes les applications Facile.',
-		'Se define una vez en Registre y se muestra en todas las apps de Facile.',
-		'Einmal in Registre festgelegt, in jeder Facile-App sichtbar.'
-	],
-	'profile.picture.alert': [
-		'Your picture comes from your Facile account. Change it at {link} and it shows here on the next page load.',
-		'Votre photo vient de votre compte Facile. Modifiez-la sur {link} et elle apparaîtra ici au prochain chargement de la page.',
-		'Tu foto viene de tu cuenta Facile. Cámbiala en {link} y se mostrará aquí en la próxima carga de la página.',
-		'Dein Bild stammt aus deinem Facile-Konto. Ändere es unter {link}, dann erscheint es hier beim nächsten Laden der Seite.'
 	],
 	'profile.rate.title': ['Billable rate', 'Tarif facturable', 'Tarifa facturable', 'Abrechenbarer Satz'],
 	'profile.rate.description': [
@@ -121,20 +87,6 @@ export const settings = {
 		'El divisor detrás de la tarifa diaria.',
 		'Der Teiler hinter dem Tagessatz.'
 	],
-	'profile.session.title': ['Session', 'Session', 'Sesión', 'Sitzung'],
-	'profile.session.description': [
-		'This browser only.',
-		'Ce navigateur uniquement.',
-		'Solo este navegador.',
-		'Nur dieser Browser.'
-	],
-	'profile.logout': ['Log out', 'Se déconnecter', 'Cerrar sesión', 'Abmelden'],
-	'profile.logoutDescription': [
-		'Ends this session and returns you to the sign-in page.',
-		'Termine cette session et vous ramène à la page de connexion.',
-		'Termina esta sesión y te lleva a la página de inicio de sesión.',
-		'Beendet diese Sitzung und führt dich zur Anmeldeseite zurück.'
-	],
 	'suggested.title': ['Suggested sessions', 'Sessions suggérées', 'Sesiones sugeridas', 'Vorgeschlagene Sitzungen'],
 	'suggested.description': [
 		'Built from the activity your tools report to Sablier.',
@@ -173,24 +125,8 @@ export const settings = {
 		'No se pudo guardar el ajuste.',
 		'Die Einstellung konnte nicht gespeichert werden.'
 	],
-	'appearance.title': ['Appearance — Sablier', 'Apparence — Sablier', 'Apariencia — Sablier', 'Darstellung — Sablier'],
-	'appearance.heading': ['Appearance', 'Apparence', 'Apariencia', 'Darstellung'],
-	'appearance.description': [
-		'Applied to this browser only.',
-		'Appliqué à ce navigateur uniquement.',
-		'Se aplica solo a este navegador.',
-		'Gilt nur für diesen Browser.'
-	],
-	'appearance.scheme': ['Colour scheme', 'Thème de couleurs', 'Esquema de color', 'Farbschema'],
-	'appearance.schemeDescription': [
-		'System follows your operating system setting and changes with it.',
-		'« Système » suit le réglage de votre système d’exploitation et change avec lui.',
-		'«Sistema» sigue el ajuste de tu sistema operativo y cambia con él.',
-		'„System“ folgt der Einstellung deines Betriebssystems und ändert sich mit ihr.'
-	],
-	'appearance.system': ['System', 'Système', 'Sistema', 'System'],
-	'appearance.light': ['Light', 'Clair', 'Claro', 'Hell'],
-	'appearance.dark': ['Dark', 'Sombre', 'Oscuro', 'Dunkel'],
+	'preferences.title': ['Preferences — Sablier', 'Préférences — Sablier', 'Preferencias — Sablier', 'Einstellungen — Sablier'],
+	'tracking.title': ['Time tracking — Sablier', 'Suivi du temps — Sablier', 'Control del tiempo — Sablier', 'Zeiterfassung — Sablier'],
 	'api.title': ['API — Sablier', 'API — Sablier', 'API — Sablier', 'API — Sablier'],
 	'api.cli.title': ['CLI token', 'Jeton CLI', 'Token de CLI', 'CLI-Token'],
 	'api.cli.description': [
@@ -199,15 +135,6 @@ export const settings = {
 		'Un token por cuenta: generar uno nuevo revoca el anterior.',
 		'Ein Token pro Konto — ein neuer widerruft den bisherigen.'
 	],
-	'api.generate': ['Generate token', 'Générer un jeton', 'Generar token', 'Token erzeugen'],
-	'api.regenerate': ['Regenerate token', 'Régénérer le jeton', 'Regenerar token', 'Token neu erzeugen'],
-	'api.generating': ['Generating…', 'Génération…', 'Generando…', 'Wird erzeugt…'],
-	'api.generateFailed': [
-		'Failed to generate token.',
-		'Impossible de générer le jeton.',
-		'No se pudo generar el token.',
-		'Der Token konnte nicht erzeugt werden.'
-	],
 	'api.revokeFailed': [
 		'Failed to revoke token.',
 		'Impossible de révoquer le jeton.',
@@ -215,65 +142,7 @@ export const settings = {
 		'Der Token konnte nicht widerrufen werden.'
 	],
 	'api.revoked': ['Token revoked.', 'Jeton révoqué.', 'Token revocado.', 'Token widerrufen.'],
-	'api.copyNow': ['Copy it now', 'Copiez-le maintenant', 'Cópialo ahora', 'Jetzt kopieren'],
-	'api.copyNowBody': [
-		'This is the only time the token is shown. Paste it into your {file} before you leave this page.',
-		'C’est la seule fois que le jeton s’affiche. Collez-le dans votre {file} avant de quitter cette page.',
-		'Esta es la única vez que se muestra el token. Pégalo en tu {file} antes de salir de esta página.',
-		'Der Token wird nur dieses eine Mal angezeigt. Füge ihn in deine {file} ein, bevor du die Seite verlässt.'
-	],
-	'api.newToken': ['New token', 'Nouveau jeton', 'Token nuevo', 'Neuer Token'],
-	'api.newTokenHelper': [
-		'Treat it like a password — it authenticates as you.',
-		'Traitez-le comme un mot de passe : il vous authentifie.',
-		'Trátalo como una contraseña: te autentica como tú.',
-		'Behandle ihn wie ein Passwort — er authentifiziert dich.'
-	],
-	'api.doneCopying': ['Done copying?', 'Copie terminée ?', '¿Ya lo has copiado?', 'Fertig kopiert?'],
-	'api.doneCopyingDescription': [
-		'Hides the token for good. Regenerate if you lose it.',
-		'Masque définitivement le jeton. Régénérez-le si vous le perdez.',
-		'Oculta el token para siempre. Regenéralo si lo pierdes.',
-		'Blendet den Token endgültig aus. Erzeuge ihn neu, wenn du ihn verlierst.'
-	],
-	'api.copied': ['I’ve copied it', 'Je l’ai copié', 'Ya lo he copiado', 'Ich habe ihn kopiert'],
-	'api.active': ['Active token', 'Jeton actif', 'Token activo', 'Aktiver Token'],
-	'api.activeDescription': [
-		'Name given when the token was issued.',
-		'Nom donné lors de l’émission du jeton.',
-		'Nombre dado al emitir el token.',
-		'Name, der bei der Ausstellung vergeben wurde.'
-	],
-	'api.created': ['Created', 'Créé', 'Creado', 'Erstellt'],
-	'api.createdDescription': [
-		'The token itself is never shown again.',
-		'Le jeton lui-même n’est plus jamais affiché.',
-		'El token no se vuelve a mostrar.',
-		'Der Token selbst wird nie wieder angezeigt.'
-	],
 	'api.revoke': ['Revoke', 'Révoquer', 'Revocar', 'Widerrufen'],
-	'api.revoking': ['Revoking…', 'Révocation…', 'Revocando…', 'Wird widerrufen…'],
-	'api.revokeDescription': [
-		'Immediately stops this token from authenticating.',
-		'Empêche immédiatement ce jeton de s’authentifier.',
-		'Impide de inmediato que este token se autentique.',
-		'Verhindert sofort, dass sich dieser Token authentifiziert.'
-	],
-	'api.empty.title': ['No API token', 'Aucun jeton d’API', 'Sin token de API', 'Kein API-Token'],
-	'api.empty.description': [
-		'Generate one to use the Sablier CLI or any API client.',
-		'Générez-en un pour utiliser la CLI Sablier ou tout client d’API.',
-		'Genera uno para usar la CLI de Sablier o cualquier cliente de API.',
-		'Erzeuge einen, um die Sablier-CLI oder einen beliebigen API-Client zu nutzen.'
-	],
-	'api.revoke.title': ['Revoke this token?', 'Révoquer ce jeton ?', '¿Revocar este token?', 'Diesen Token widerrufen?'],
-	'api.revoke.description': [
-		'Any CLI or pipeline still using it starts failing, and it cannot be un-revoked.',
-		'Toute CLI ou tout pipeline qui l’utilise encore échouera, et la révocation est irréversible.',
-		'Cualquier CLI o pipeline que aún lo use empezará a fallar, y no se puede deshacer.',
-		'Jede CLI oder Pipeline, die ihn noch nutzt, schlägt fehl, und der Widerruf ist endgültig.'
-	],
-	'api.revoke.confirm': ['Revoke token', 'Révoquer le jeton', 'Revocar token', 'Token widerrufen'],
 	'advanced.title': ['Advanced — Sablier', 'Avancé — Sablier', 'Avanzado — Sablier', 'Erweitert — Sablier'],
 	'advanced.instance.title': ['Instance', 'Instance', 'Instancia', 'Instanz'],
 	'advanced.instance.description': [

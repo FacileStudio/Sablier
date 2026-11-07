@@ -16,7 +16,12 @@ class ThemeState {
 	restore() {
 		if (!browser) return;
 
-		const stored = localStorage.getItem(STORAGE_KEY);
+		let stored: string | null = null;
+		try {
+			stored = localStorage.getItem(STORAGE_KEY);
+		} catch {
+			stored = null;
+		}
 		this.preference = isPreference(stored) ? stored : 'system';
 		this.apply();
 
@@ -29,7 +34,11 @@ class ThemeState {
 	set(next: ThemePreference) {
 		this.preference = next;
 		if (!browser) return;
-		localStorage.setItem(STORAGE_KEY, next);
+		try {
+			localStorage.setItem(STORAGE_KEY, next);
+		} catch {
+			return this.apply();
+		}
 		this.apply();
 	}
 

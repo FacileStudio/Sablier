@@ -10,7 +10,8 @@
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
 	import { isApp } from '$lib/platform';
-	import { setSessionLocale, t } from '$lib/i18n/index.svelte';
+	import { rememberLocale, setSessionLocale, t } from '$lib/i18n/index.svelte';
+	import { theme, type ThemePreference } from '$lib/theme.svelte';
 
 	let { children } = $props();
 
@@ -42,7 +43,9 @@
 	]);
 
 	const navUser = $derived(
-		user ? { name: user.name?.trim() || user.email, avatar: user.avatar_url || undefined } : undefined
+		user
+			? { name: user.name?.trim() || user.email, email: user.email, avatar: user.avatar_url || undefined }
+			: undefined
 	);
 	const settingsActive = $derived(isActive('/settings'));
 
@@ -53,11 +56,13 @@
 		goto('/login');
 	}
 
-	const userMenu = $derived([
-		{ label: t('nav.settings'), icon: icons.settings, href: '/settings' },
-		...(isApp() ? [] : [{ label: t('nav.downloads'), icon: icons.download, href: '/downloads' }]),
-		{ label: t('nav.signOut'), icon: icons.logout, tone: 'danger' as const, onSelect: signOut }
-	]);
+	const userMenu = $derived({
+		items: isApp() ? [] : [{ label: t('nav.downloads'), icon: icons.download, href: '/downloads' }],
+		onSignOut: signOut,
+		theme: theme.preference,
+		onThemeChange: (next: ThemePreference) => theme.set(next),
+		onLocaleChange: rememberLocale
+	});
 
 	function selectSpace(id: string | null) {
 		setActiveSpaceId(id);
@@ -111,6 +116,7 @@
 				bind:collapsed
 				pages={navPages}
 				user={navUser}
+				userHref="/settings"
 				{userMenu}
 				userActive={settingsActive}
 				spaces={userSpaces}
@@ -128,7 +134,7 @@
 				</PageTransition>
 			</div>
 		</main>
-		<MobileNav items={navPages} user={navUser} profileHref="/settings" profileActive={settingsActive} />
+		<MobileNav items={navPages} user={navUser} profileHref="/settings" profileActive={settingsActive} {userMenu} />
 	</div>
 	<TimerControl {projects} />
 {/if}
