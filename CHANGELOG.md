@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.16.0] - 2026-11-07
+
+### Changed
+
+- `@facile/muse` v0.14.4 to v0.16.0. The project icon picker is now muse's `IconPicker`, with the same
+  1,451 linear Solar icons, labelled by its `Field`, with 44px cells; typing in the grid jumps to the search
+  and Enter picks a single match. Icon names come from muse's `solarIconId`; Sablier's own picker, icon list
+  and picker strings are gone.
+
 ## [1.15.0] - 2026-11-07
 
 ### Added
