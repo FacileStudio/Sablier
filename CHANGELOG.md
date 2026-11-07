@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.15.0] - 2026-11-07
+
+### Added
+
+- The project icon picker offers every Solar icon in its linear style: 1,451 instead of 1,231. Names match
+  Opus, so a project icon reads the same in both apps; names Solar has since renamed keep rendering.
+
+### Fixed
+
+- The project icon picker opens in the top layer above the project drawer, so the drawer no longer clips it
+  or pushes it over the form. It stays inside the viewport, opens upward only when there is more room
+  there, fits its grid to its width and closes on any click outside.
+
 ## [1.14.1] - 2026-11-07
 
 ### Changed
