@@ -3,7 +3,6 @@ package users
 import (
 	"context"
 	stderrors "errors"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -17,19 +16,10 @@ import (
 )
 
 // TokenIssuer is the slice of the auth service this module needs: minting a
-// labelled session, reaching the manager that lists and revokes them, and the
-// two halves of the password write.
-//
-// SetPassword and ChangePassword are two methods because porte made them two:
-// one gives a first password to an account that has none, the other replaces
-// an existing one and cannot be called without it. One method serving both is
-// how this app shipped a settings screen that changed a password without ever
-// asking for the old one.
+// labelled session and reaching the manager that lists and revokes them.
 type TokenIssuer interface {
 	Issue(ctx context.Context, userID int64, label string) (string, porte.Session, error)
 	Sessions() *session.Manager
-	SetPassword(ctx context.Context, userID int64, password string) error
-	ChangePassword(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int64, current, next string) (string, int64, error)
 }
 
 // Service backs the users module: reading, updating and deleting accounts,
@@ -85,34 +75,7 @@ func (service *Service) listUsers(context context.Context) ([]User, error) {
 	return users, nil
 }
 
-// applyPassword writes the password half of PATCH /users/me and returns the
-// rotated session token, empty when nothing was rotated.
-//
-// The password is porte's, not a column on this row: writing users.password_hash
-// would look like it worked and change nothing, because porte reads the identity
-// table — so the old password would keep signing in and the new one would never
-// work.
-//
-// Which of porte's two calls applies is decided by the current password alone.
-// Without one this can only be a first password, and an account that already
-// has one lands on porte.ErrPasswordSet — answered here as a 400 naming the
-// field the caller left out, rather than as porte's conflict, because the
-// caller's mistake is an omission and not a lost race.
-func (service *Service) applyPassword(context context.Context, w http.ResponseWriter, r *http.Request, userID int64, current string, next string) (string, error) {
-	if current == "" {
-		err := service.tokens.SetPassword(context, userID, next)
-		if stderrors.Is(err, porte.ErrPasswordSet) {
-			return "", errors.Invalid("current_password is required to change an existing password")
-		}
-		return "", err
-	}
-	token, _, err := service.tokens.ChangePassword(context, w, r, userID, current, next)
-	return token, err
-}
-
-// updateUser applies the non-nil profile fields. The password is not among
-// them: it lives in porte's identity table and goes through applyPassword,
-// which needs the response writer this method does not have.
+// updateUser applies the non-nil profile fields.
 func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, color *string, rate *float64, rateType *string, workdayHours *float64) (*User, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
@@ -197,6 +160,7 @@ func mapUser(record schemas.User) *User {
 		AvatarURL:    record.Avatar(),
 		AvatarSource: record.AvatarOrigin(),
 		Color:        record.Color,
+		Locale:       record.Locale,
 		Rate:         record.Rate,
 		RateType:     rateType,
 		WorkdayHours: workdayHours,

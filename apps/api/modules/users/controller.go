@@ -3,7 +3,6 @@ package users
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"time"
@@ -61,12 +60,8 @@ func (controller *Controller) me(context context.Context) (*MeResponse, error) {
 	return &MeResponse{User: *user}, nil
 }
 
-// updateMe applies a subset of the profile, and the password with it.
-//
-// It takes the writer and the request rather than a context because a password
-// change rotates the caller's session and porte sets the replacement cookie
-// itself. Nothing else on this route needs them.
-func (controller *Controller) updateMe(w http.ResponseWriter, r *http.Request, req *UpdateRequest) (*MeResponse, error) {
+// updateMe applies a subset of the profile.
+func (controller *Controller) updateMe(r *http.Request, req *UpdateRequest) (*MeResponse, error) {
 	context := r.Context()
 	identity, ok := authcontext.IdentityFromContext(context)
 	if !ok {
@@ -89,14 +84,6 @@ func (controller *Controller) updateMe(w http.ResponseWriter, r *http.Request, r
 			return nil, errors.Invalid("invalid email")
 		}
 		email = &normalized
-	}
-
-	var password *string
-	if req.Password != nil {
-		if len(*req.Password) < 8 {
-			return nil, errors.Invalid("password must be at least 8 characters")
-		}
-		password = req.Password
 	}
 
 	var color *string
@@ -135,24 +122,8 @@ func (controller *Controller) updateMe(w http.ResponseWriter, r *http.Request, r
 		workdayHours = &h
 	}
 
-	if name == nil && email == nil && password == nil && color == nil && rate == nil && rateType == nil && workdayHours == nil {
+	if name == nil && email == nil && color == nil && rate == nil && rateType == nil && workdayHours == nil {
 		return nil, errors.Invalid("at least one field must be provided")
-	}
-
-	rotated := ""
-	if password != nil {
-		id, err := strconv.ParseInt(identity.UserID, 10, 64)
-		if err != nil {
-			return nil, errors.Internal("failed to parse user id", err)
-		}
-		current := ""
-		if req.CurrentPassword != nil {
-			current = *req.CurrentPassword
-		}
-		rotated, err = controller.service.applyPassword(context, w, r, id, current, *password)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	user, err := controller.service.updateUser(context, identity.UserID, name, email, color, rate, rateType, workdayHours)
@@ -160,7 +131,7 @@ func (controller *Controller) updateMe(w http.ResponseWriter, r *http.Request, r
 		return nil, err
 	}
 
-	return &MeResponse{User: *user, Token: rotated}, nil
+	return &MeResponse{User: *user}, nil
 }
 
 func (controller *Controller) getApiToken(context context.Context) (*ApiTokenStatusResponse, error) {

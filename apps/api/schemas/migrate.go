@@ -21,6 +21,9 @@ func Migrate(db *gorm.DB, issuer string) error {
 	if err := db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}); err != nil {
 		return err
 	}
+	if err := migrateDeletionState(db); err != nil {
+		return err
+	}
 	if err := AdoptPorte(db, issuer); err != nil {
 		return err
 	}
@@ -40,6 +43,22 @@ func Migrate(db *gorm.DB, issuer string) error {
 		return err
 	}
 	return backfillAgentEntries(db)
+}
+
+// migrateDeletionState creates the single row that holds the GDPR deletion
+// receiver's cursor and handled subjects, so a restart never replays or skips
+// a notice. PostgreSQL only: the in-memory SQLite the unit tests use has no
+// receiver to feed.
+func migrateDeletionState(db *gorm.DB) error {
+	if db.Dialector.Name() != "postgres" {
+		return nil
+	}
+	return db.Exec(`
+CREATE TABLE IF NOT EXISTS directory_deletion_state (
+	id         smallint PRIMARY KEY CHECK (id = 1),
+	state      bytea NOT NULL,
+	updated_at timestamptz NOT NULL DEFAULT now()
+)`).Error
 }
 
 // backfillOIDCPictures stores the picture URL Registre would hand over at the next

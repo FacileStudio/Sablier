@@ -7,14 +7,14 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
-	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
+	"github.com/FacileStudio/Sablier/apps/api/modules/spaces"
 	"github.com/FacileStudio/porte/directory"
-	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
@@ -42,22 +42,14 @@ func testRouter(t *testing.T) chi.Router {
 	if err != nil {
 		t.Fatalf("oidc.New: %v", err)
 	}
-	passwords, err := local.New(local.Config{}, local.Deps{
-		Users:      auth.NewUserStore(nil),
-		Identities: store.Identities(),
-		Sessions:   sessions,
-		Count:      func(context.Context) (int64, error) { return 0, nil },
-	})
-	if err != nil {
-		t.Fatalf("local.New: %v", err)
-	}
-	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService, &directory.Syncer{})
+	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, appEnv.StorageDir, appLogger)
+	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions)
 }
 
 // The registry is hand-written, so it rots the moment someone registers a route
-// and forgets it. /files is excluded: it is a static file server, not an API.
+// and forgets it. /files (a static file server) and /version are excluded: neither is part of the API.
 func TestEveryRouteIsDocumented(t *testing.T) {
-	if missing := apiref.Undocumented(testRouter(t), referenceConfig(), "/files"); len(missing) > 0 {
+	if missing := apiref.Undocumented(testRouter(t), referenceConfig(), "/files", "/version"); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
 	}
 }
@@ -94,5 +86,32 @@ func TestReferenceIsServedAtDocs(t *testing.T) {
 	}
 	if document.OpenAPI == "" || len(document.Paths) == 0 {
 		t.Fatalf("spec is empty: %+v", document)
+	}
+}
+
+func TestNoPasswordRouteExists(t *testing.T) {
+	router := testRouter(t)
+	for _, path := range []string{"/api/auth/login", "/api/auth/register"} {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, nil))
+		if recorder.Code == http.StatusOK || recorder.Code == http.StatusCreated {
+			t.Errorf("POST %s = %d, want it gone", path, recorder.Code)
+		}
+	}
+}
+
+func TestTheDeletionPushNeedsNoSessionButMustBeSigned(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	testRouter(t).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, directory.DeletionsPath, nil))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("POST %s without a signed notice = %d, want 400", directory.DeletionsPath, recorder.Code)
+	}
+}
+
+func TestVersionIsServed(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	testRouter(t).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/version", nil))
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"version"`) {
+		t.Fatalf("GET /version = %d %q", recorder.Code, recorder.Body.String())
 	}
 }

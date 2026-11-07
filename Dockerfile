@@ -24,13 +24,13 @@ COPY apps/api/go.mod apps/api/go.sum ./
 COPY apps/api/vendor ./vendor
 COPY apps/api ./
 
-# The version arrives as a build arg (CI passes the git tag); no .git in the
-# build context. A git-based stamp failed silently here twice: the failure
+# The version arrives as a build arg (CI passes the git tag, compose passes
+# APP_VERSION); no .git in the build context. A git-based stamp failed silently here twice: the failure
 # hides inside a command substitution and ships an empty main.version.
-ARG VERSION=dev
+ARG APP_VERSION=dev
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} \
     go build -mod=vendor -trimpath \
-    -ldflags="-s -w -X main.version=$(echo "$VERSION" | sed 's/^v//')" \
+    -ldflags="-s -w -X main.version=$(echo "$APP_VERSION" | sed 's/^v//')" \
     -o bin/api .
 
 FROM api-build AS dirs

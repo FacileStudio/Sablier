@@ -31,7 +31,6 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/users"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte/directory"
-	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
@@ -74,16 +73,6 @@ func referenceConfig() apiref.Config {
 	}
 }
 
-// buildAuth constructs porte: one session manager, shared by the OIDC kit and
-// the local login, over the identity tables.
-//
-// One manager and not two: they would each keep their own idea of the clock
-// and of whether the cookie is Secure, and porte refuses a kit whose config
-// disagrees with its manager's for exactly that reason. Discovery runs here,
-// so an unreachable or half-configured issuer fails at boot rather than on
-// somebody's first login — which is a change from what this app did, where a
-// discovery failure at route-registration time silently left SSO 404ing until
-// the next restart.
 // journalConfigExtra hangs the browser's Journal settings off /auth/config.
 //
 // The client is adapter-static served by this binary, so it has no environment
@@ -112,17 +101,14 @@ func journalConfigExtra(appEnv *env.Config) func() map[string]any {
 	}
 }
 
-// buildAuth wires up the session manager and the local-password and OIDC
-// auth kits.
-//
-// MinPasswordLength is pinned at 8 rather than porte's default of twelve:
-// Sablier's floor has always been eight characters, and raising it here
-// would reject a password this app accepted yesterday, which is a product
-// decision and not a migration.
-func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *local.Kit, *oidc.Kit, error) {
+// buildAuth constructs porte: one session manager and the OIDC kit over the
+// identity tables. Sign-in goes through Registre only; there is no local
+// password kit. Discovery runs here, so an unreachable or half-configured
+// issuer fails at boot rather than on somebody's first login.
+func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *oidc.Kit, error) {
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	store := portepg.New(sqlDB)
 	users := auth.NewUserStore(db)
@@ -130,7 +116,7 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 
 	sessions, err := session.New(cfg, session.Deps{Sessions: store.Sessions(), Logger: appLogger})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	kit, err := oidc.New(ctx, cfg, oidc.Deps{
 		Users:       users,
@@ -141,19 +127,9 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 		ConfigExtra: journalConfigExtra(appEnv),
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	passwords, err := local.New(local.Config{AllowRegistration: !appEnv.SSOOnly, MinPasswordLength: 8}, local.Deps{
-		Users:      users,
-		Identities: store.Identities(),
-		Sessions:   sessions,
-		Logger:     appLogger,
-		Count:      users.CountUsers,
-	})
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return sessions, passwords, kit, nil
+	return sessions, kit, nil
 }
 
 // uploadSourceMaps ships this build's maps to Journal so a browser stack trace
@@ -225,8 +201,8 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, passwords *local.Kit, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer) chi.Router {
-	authService := auth.NewService(db, sessions, passwords, appLogger)
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions) chi.Router {
+	authService := auth.NewService(db, sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, authService)
@@ -237,6 +213,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	timeEntryService.SetPoolService(antenneService)
 	heartbeatService := heartbeats.NewService(db, timeEntryService)
 
+	clientDir := spa.DirFromEnv()
 	router := httpx.NewRouter(httpx.Config{
 		TrustedProxies: appEnv.TrustedProxies,
 		CDNProxies:     appEnv.CDNProxies,
@@ -245,16 +222,16 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		CORS: troncmiddleware.CORSConfig{
 			AllowedOrigins: appEnv.CORSAllowedOrigins,
 		},
+		Security: securityConfig(clientDir, appLogger),
 	})
 
 	health.Mount(router, sqlDB.PingContext)
+	router.Get("/version", versionHandler)
 	apiref.Mount(router, referenceConfig())
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
 	router.Route("/api", func(api chi.Router) {
-		sessions.Mount(api)
-		kit.Mount(api)
-		auth.RegisterRoutes(api, authService, *appEnv)
+		auth.RegisterRoutes(api, sessions, kit)
 		projects.RegisterRoutes(api, projectService, authService)
 		timeentries.RegisterRoutes(api, timeEntryService, authService)
 		users.RegisterRoutes(api, userService, authService)
@@ -263,13 +240,15 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		if syncer != nil {
 			spaces.RegisterSync(api, syncer)
 		}
+		if deletions != nil {
+			spaces.RegisterDeletions(api, deletions)
+		}
 		antenne.RegisterRoutes(api, antenneService, authService)
 		notifications.RegisterRoutes(api, notificationsService, authService)
 		agents.RegisterRoutes(api, agentService, authService)
 		heartbeats.RegisterRoutes(api, heartbeatService, authService)
 	})
 
-	clientDir := spa.DirFromEnv()
 	if spa.Available(clientDir) {
 		router.Handle("/*", spa.Handler(spa.Config{Dir: clientDir}))
 		appLogger.Info("serving client", slog.String("dir", clientDir))
@@ -278,12 +257,12 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	return router
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer) (*http.Server, error) {
-	sessions, passwords, kit, err := buildAuth(context.Background(), db, appEnv, appLogger)
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions) (*http.Server, error) {
+	sessions, kit, err := buildAuth(context.Background(), db, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
-	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, passwords, kit, notificationsService, antenneService, syncer)
+	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, kit, notificationsService, antenneService, syncer, deletions)
 
 	antenneService.AutoConnect(context.Background())
 
@@ -329,6 +308,47 @@ func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger, ready
 		Logger: appLogger,
 	}
 	return registre, syncer
+}
+
+// newDeletions builds the GDPR deletion receiver when OIDC is configured, polling Registre
+// with the same client credentials as the snapshot sync. Sablier runs one replica, so this
+// is the one poller. Without Registre there is nobody to erase and it returns nil.
+func newDeletions(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) *spaces.Deletions {
+	if appEnv.OIDC == nil {
+		return nil
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		appLogger.Error("deletion receiver not started", slog.Any("error", err))
+		return nil
+	}
+	client := directory.Client{
+		Issuer:       appEnv.OIDC.Issuer,
+		ClientID:     appEnv.OIDC.ClientID,
+		ClientSecret: appEnv.OIDC.ClientSecret,
+	}
+	return spaces.NewDeletions(db, client, portepg.New(sqlDB).EraseIdentity, appEnv.StorageDir, appLogger)
+}
+
+// externalConnect lists the origins the built client calls besides itself: the icon API
+// behind iconify-icon.
+var externalConnect = []string{"https://api.iconify.design"}
+
+// securityConfig extends tronc's default security headers with what the built client
+// needs: the inline scripts adapter-static writes into its pages, which script-src 'self'
+// would otherwise block, and the external origins above. A client directory that cannot be
+// hashed is logged and leaves the default script policy, which only reports.
+func securityConfig(clientDir string, appLogger *slog.Logger) troncmiddleware.SecurityConfig {
+	sources := map[string][]string{"connect-src": externalConnect}
+	if spa.Available(clientDir) {
+		hashes, err := spa.InlineScriptHashes(clientDir)
+		if err != nil {
+			appLogger.Warn("failed to hash the client's inline scripts", slog.Any("error", err))
+		} else {
+			sources["script-src"] = hashes
+		}
+	}
+	return troncmiddleware.SecurityConfig{CSPSources: sources}
 }
 
 // Stamped at Docker build time with git describe (leading v stripped),
@@ -404,7 +424,8 @@ func run() error {
 		antenneService.SetIssuer(appEnv.OIDC.Issuer)
 	}
 	registre, syncer := newDirectory(db, &appEnv, appLogger, antenneService.ReconcileAtBoot)
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer)
+	deletions := newDeletions(db, &appEnv, appLogger)
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err
@@ -427,6 +448,10 @@ func run() error {
 	appLogger.Info("notification worker started")
 
 	go antenneService.RunOutboxWorker(shutdownSignal)
+
+	if deletions != nil {
+		go deletions.Run(shutdownSignal)
+	}
 
 	if registre != nil {
 		go registre.Run(shutdownSignal, syncer)
