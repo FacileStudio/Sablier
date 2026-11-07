@@ -5,6 +5,7 @@
 	import {
 		Button,
 		ConfirmModal,
+		DangerZone,
 		SecretField,
 		SettingsRow,
 		SettingsSection,
@@ -68,19 +69,15 @@
 	</SettingsRow>
 </SettingsSection>
 
-<SettingsSection
-	title={t('advanced.danger.title')}
-	description={t('advanced.danger.description')}
->
-	<SettingsRow
-		label={t('advanced.clear')}
-		description={t('advanced.clearDescription')}
-	>
-		<Button variant="danger" icon={icons.remove} onclick={() => (confirmClear = true)}>
-			{t('advanced.clear')}
-		</Button>
-	</SettingsRow>
-</SettingsSection>
+<DangerZone title={t('advanced.danger.title')} description={t('advanced.danger.description')}>
+	<div class="flex min-w-0 flex-1 flex-col gap-1">
+		<span class="text-fc-sm font-medium text-fc-fg">{t('advanced.clear')}</span>
+		<span class="text-fc-sm text-fc-fg-muted">{t('advanced.clearDescription')}</span>
+	</div>
+	<Button variant="danger" icon={icons.remove} onclick={() => (confirmClear = true)}>
+		{t('advanced.clear')}
+	</Button>
+</DangerZone>
 
 <ConfirmModal
 	bind:open={confirmClear}
