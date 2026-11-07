@@ -2,6 +2,8 @@
 	import { page } from '$app/state';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { backend, type UserProfile, type TimeEntry, type Project } from '$lib/backend';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate, formatNumber, weekdayShort } from '$lib/i18n/format';
 	import {
 		Alert,
 		Badge,
@@ -28,21 +30,12 @@
 	let now = $state(Date.now());
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+	function formatStarted(iso: string): string {
+		return formatDate(iso, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
 
 	function formatDateLong(iso: string): string {
-		return new Date(iso).toLocaleDateString(undefined, {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
+		return formatDate(iso, { year: 'numeric', month: 'long', day: 'numeric' });
 	}
 
 	function entryMs(e: TimeEntry): number {
@@ -62,7 +55,7 @@
 	}
 
 	function formatMinutes(m: number): string {
-		if (m === 0) return 'No activity';
+		if (m === 0) return t('dash.activity.none');
 		const h = Math.floor(m / 60);
 		const min = Math.round(m % 60);
 		if (h === 0) return `${min}m`;
@@ -102,8 +95,12 @@
 		return u.rate_type === 'hourly' ? hours * u.rate : (hours / wh) * u.rate;
 	}
 
+	function formatEuroRate(rate: number): string {
+		return formatNumber(rate, { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
+	}
+
 	function formatEarnings(eur: number): string {
-		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(eur);
+		return formatNumber(eur, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 	}
 
 	function sumMsWhere(predicate: (e: (typeof entries)[0]) => boolean): number {
@@ -150,21 +147,21 @@
 	const profileMeta = $derived.by(() => {
 		if (!user) return [];
 		const rows: { label: string; value: string }[] = [
-			{ label: 'Member since', value: formatDateLong(user.created_at) }
+			{ label: t('userPage.memberSince'), value: formatDateLong(user.created_at) }
 		];
 		if ((user.rate ?? 0) > 0) {
 			rows.push({
-				label: 'Rate',
+				label: t('userPage.rate'),
 				value:
 					user.rate_type === 'daily'
-						? `${user.rate} €/day · ${user.workday_hours > 0 ? user.workday_hours : 8}h workday`
-						: `${user.rate} €/h`
+						? t('userPage.rateDaily', { rate: formatEuroRate(user.rate), hours: user.workday_hours > 0 ? user.workday_hours : 8 })
+						: t('userPage.rateHourly', { rate: formatEuroRate(user.rate) })
 			});
 		}
-		rows.push({ label: 'Total time', value: formatDuration(totalMs) });
+		rows.push({ label: t('userPage.totalTime'), value: formatDuration(totalMs) });
 		rows.push({
-			label: 'Sessions',
-			value: `${entries.length} ${entries.length === 1 ? 'session' : 'sessions'}`
+			label: t('userPage.sessions'),
+			value: t('count.sessions', { count: entries.length })
 		});
 		return rows;
 	});
@@ -244,7 +241,7 @@
 				if (!isFuture && minutes >= 300) level = 4;
 				week.push({
 					key,
-					label: cur.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+					label: formatDate(cur, { month: 'short', day: 'numeric' }),
 					level,
 					minutes: Math.round(minutes),
 					isFuture
@@ -257,7 +254,7 @@
 		const monthHeaders = weeks.map((week) => {
 			const first = week.find((day) => new Date(day.key).getDate() === 1);
 			if (first) {
-				return new Date(first.key).toLocaleString(undefined, { month: 'short' });
+				return formatDate(first.key, { month: 'short' });
 			}
 			return '';
 		});
@@ -278,7 +275,7 @@
 		try {
 			const id = page.params.id;
 			if (!id) {
-				throw new Error('Missing user id.');
+				throw new Error(t('userPage.missingId'));
 			}
 			const [userRes, entriesRes, projectsRes] = await Promise.all([
 				backend.getUser(ctx.token, id),
@@ -292,7 +289,7 @@
 				now = Date.now();
 			}, 1000);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load user.';
+			error = e instanceof Error ? e.message : t('userPage.loadFailed');
 		} finally {
 			loading = false;
 		}
@@ -304,16 +301,16 @@
 </script>
 
 <svelte:head>
-	<title>{user?.name || 'User'} — Sablier</title>
+	<title>{user?.name || t('userPage.titleFallback')} — Sablier</title>
 </svelte:head>
 
 <div class="flex flex-col gap-10">
 	<Button variant="ghost" size="sm" href="/users" icon={icons.chevronLeft} class="w-fit pl-2">
-		Users
+		{t('userPage.back')}
 	</Button>
 
 	{#if loading}
-		<p class="text-fc-sm text-fc-fg-muted">Loading…</p>
+		<p class="text-fc-sm text-fc-fg-muted">{t('common.loadingDots')}</p>
 	{:else if error}
 		<Alert tone="danger">{error}</Alert>
 	{:else if user}
@@ -330,14 +327,14 @@
 
 		<section class="flex flex-col gap-4">
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-				<StatCard label="Today" value={formatDuration(workedTimeBreakdown.today)} />
-				<StatCard label="This Week" value={formatDuration(workedTimeBreakdown.week)} />
-				<StatCard label="This Month" value={formatDuration(workedTimeBreakdown.month)} />
-				<StatCard label="Total Time" value={formatDuration(workedTimeBreakdown.total)} />
-				<StatCard label="Avg Session" value={formatDuration(avgMs)} />
+				<StatCard label={t('userPage.today')} value={formatDuration(workedTimeBreakdown.today)} />
+				<StatCard label={t('userPage.week')} value={formatDuration(workedTimeBreakdown.week)} />
+				<StatCard label={t('userPage.month')} value={formatDuration(workedTimeBreakdown.month)} />
+				<StatCard label={t('userPage.totalTime')} value={formatDuration(workedTimeBreakdown.total)} />
+				<StatCard label={t('userPage.average')} value={formatDuration(avgMs)} />
 				<StatCard
-					label="Last Session"
-					value={lastEntry ? formatDate(lastEntry.started_at) : 'Never'}
+					label={t('userPage.last')}
+					value={lastEntry ? formatStarted(lastEntry.started_at) : t('userPage.never')}
 				/>
 			</div>
 		</section>
@@ -345,30 +342,30 @@
 		{#if earningsBreakdown !== null}
 			<section class="flex flex-col gap-4">
 				<div class="flex flex-col gap-1">
-					<h2 class="text-fc-lg font-semibold text-fc-fg">Virtual Earnings</h2>
+					<h2 class="text-fc-lg font-semibold text-fc-fg">{t('userPage.earnings')}</h2>
 					<p class="text-fc-sm text-fc-fg-muted">
 						{#if user.rate_type === 'daily'}
-							At {user.rate} €/day · {user.workday_hours > 0 ? user.workday_hours : 8}h workday.
+							{t('userPage.earningsDaily', { rate: formatEuroRate(user.rate), hours: user.workday_hours > 0 ? user.workday_hours : 8 })}
 						{:else}
-							At {user.rate} €/h.
+							{t('userPage.earningsHourly', { rate: formatEuroRate(user.rate) })}
 						{/if}
 					</p>
 				</div>
 				<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
 					<StatCard
-						label="Today"
+						label={t('userPage.today')}
 						value={earningsBreakdown.today !== null ? formatEarnings(earningsBreakdown.today) : '—'}
 					/>
 					<StatCard
-						label="This Week"
+						label={t('userPage.week')}
 						value={earningsBreakdown.week !== null ? formatEarnings(earningsBreakdown.week) : '—'}
 					/>
 					<StatCard
-						label="This Month"
+						label={t('userPage.month')}
 						value={earningsBreakdown.month !== null ? formatEarnings(earningsBreakdown.month) : '—'}
 					/>
 					<StatCard
-						label="Total"
+						label={t('userPage.total')}
 						value={earningsBreakdown.total !== null ? formatEarnings(earningsBreakdown.total) : '—'}
 					/>
 				</div>
@@ -378,10 +375,12 @@
 		<section class="flex flex-col gap-4">
 			<Card class="flex flex-col gap-4">
 				<div class="flex flex-col gap-1">
-					<h2 class="text-fc-lg font-semibold text-fc-fg">Activity</h2>
+					<h2 class="text-fc-lg font-semibold text-fc-fg">{t('dash.activity.heading')}</h2>
 					<p class="text-fc-xs text-fc-fg-muted">
-						{activityData.activeDays} active {activityData.activeDays === 1 ? 'day' : 'days'} ·
-						{formatMinutes(activityData.totalMinutes)} tracked in the last year
+						{t('dash.activity.summary', {
+							days: t('count.activeDays', { count: activityData.activeDays }),
+							total: formatMinutes(activityData.totalMinutes)
+						})}
 					</p>
 				</div>
 
@@ -389,8 +388,8 @@
 					<div
 						class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-fc-xs text-fc-fg-muted"
 					>
-						{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel, i (i)}
-							<span>{dayLabel}</span>
+						{#each [-1, 1, -1, 3, -1, 5, -1] as dayIndex, i (i)}
+							<span>{dayIndex < 0 ? '' : weekdayShort(dayIndex)}</span>
 						{/each}
 					</div>
 					<div class="min-w-0 flex-1">
@@ -430,7 +429,7 @@
 				</div>
 
 				<div class="flex items-center gap-1.5 text-fc-xs text-fc-fg-muted">
-					<span>Less</span>
+					<span>{t('dash.activity.less')}</span>
 					<span class="h-3 w-3 rounded-fc-xs bg-fc-surface"></span>
 					{#each activityRamp as step, i (i)}
 						<span
@@ -439,15 +438,15 @@
 							style:opacity={step}
 						></span>
 					{/each}
-					<span>More</span>
+					<span>{t('dash.activity.more')}</span>
 				</div>
 			</Card>
 		</section>
 
 		<section class="flex flex-col gap-4">
-			<h2 class="text-fc-lg font-semibold text-fc-fg">Project Breakdown</h2>
+			<h2 class="text-fc-lg font-semibold text-fc-fg">{t('userPage.projects')}</h2>
 			{#if projectStats.length === 0}
-				<EmptyState icon={icons.folder} title="No project time yet." />
+				<EmptyState icon={icons.folder} title={t('userPage.projects.empty')} />
 			{:else}
 				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{#each projectStats as stat (stat.projectId)}
@@ -456,8 +455,7 @@
 								<div class="flex min-w-0 flex-col gap-1">
 									<span class="truncate text-fc-sm font-medium text-fc-fg">{stat.name}</span>
 									<span class="text-fc-xs text-fc-fg-muted">
-										{stat.sessionCount}
-										{stat.sessionCount === 1 ? 'session' : 'sessions'}
+										{t('count.sessions', { count: stat.sessionCount })}
 									</span>
 								</div>
 								<span class="shrink-0 text-fc-sm font-semibold tabular-nums text-fc-fg">
@@ -465,7 +463,7 @@
 								</span>
 							</div>
 							<p class="text-fc-xs text-fc-fg-muted">
-								Last session {formatDate(stat.lastStartedAt)}
+								{t('userPage.lastSession', { date: formatStarted(stat.lastStartedAt) })}
 							</p>
 						</Card>
 					{/each}
@@ -474,17 +472,17 @@
 		</section>
 
 		<section class="flex flex-col gap-4">
-			<h2 class="text-fc-lg font-semibold text-fc-fg">Recent Sessions</h2>
+			<h2 class="text-fc-lg font-semibold text-fc-fg">{t('userPage.recent')}</h2>
 			{#if recentEntries.length === 0}
-				<EmptyState icon={icons.clock} title="No sessions yet." />
+				<EmptyState icon={icons.clock} title={t('userPage.recent.empty')} />
 			{:else}
 				<Table>
 					<thead>
 						<tr>
-							<th>Project</th>
-							<th>Task</th>
-							<th>Started</th>
-							<th class="text-right">Duration</th>
+							<th>{t('dash.recent.col.project')}</th>
+							<th>{t('dash.recent.col.task')}</th>
+							<th>{t('dash.recent.col.started')}</th>
+							<th class="text-right">{t('dash.recent.col.duration')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -499,16 +497,16 @@
 									</a>
 								</td>
 								<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
-								<td class="whitespace-nowrap text-fc-fg-muted">{formatDate(entry.started_at)}</td>
+								<td class="whitespace-nowrap text-fc-fg-muted">{formatStarted(entry.started_at)}</td>
 								<td class="text-right">
 									{#if entry.stopped_at === null}
 										{@const paused = isTimeEntryPaused(entry)}
 										{#if paused}
-											<Badge tone="warning" class="ml-auto">Paused</Badge>
+											<Badge tone="warning" class="ml-auto">{t('dash.paused')}</Badge>
 										{:else}
 											<Badge tone="success" class="ml-auto">
 												<StatusDot tone="success" pulse />
-												Running
+												{t('dash.running')}
 											</Badge>
 										{/if}
 									{:else}

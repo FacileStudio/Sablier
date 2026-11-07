@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { Divider, Tabs, icons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 
 	let { children } = $props();
 
-	const sections = [
-		{ id: 'profile', label: 'Profile', icon: icons.userCircle, href: '/settings/profile' },
-		{ id: 'appearance', label: 'Appearance', icon: icons.palette, href: '/settings/appearance' },
-		{ id: 'api', label: 'API', icon: icons.key, href: '/settings/api' },
-		{ id: 'integrations', label: 'Integrations', icon: icons.plug, href: '/settings/integrations' },
-		{ id: 'advanced', label: 'Advanced', icon: icons.settings, href: '/settings/advanced' }
-	];
+	const sections = $derived([
+		{ id: 'profile', label: t('settings.tab.profile'), icon: icons.userCircle, href: '/settings/profile' },
+		{ id: 'appearance', label: t('settings.tab.appearance'), icon: icons.palette, href: '/settings/appearance' },
+		{ id: 'api', label: t('settings.tab.api'), icon: icons.key, href: '/settings/api' },
+		{ id: 'integrations', label: t('settings.tab.integrations'), icon: icons.plug, href: '/settings/integrations' },
+		{ id: 'advanced', label: t('settings.tab.advanced'), icon: icons.settings, href: '/settings/advanced' }
+	]);
 
 	const active = $derived(
 		sections.find((section) => page.url.pathname.startsWith(section.href))?.id ?? 'profile'

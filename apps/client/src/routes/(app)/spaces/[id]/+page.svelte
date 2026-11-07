@@ -5,6 +5,8 @@
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import { registreSpaceUrl } from '$lib/registre';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate } from '$lib/i18n/format';
 	import { Badge, Button, Card, EmptyState, Table, icons } from '@facile/muse';
 
 	const ctx = getContext<{ token: string }>('app');
@@ -21,15 +23,13 @@
 	}
 
 	function roleLabel(role: string): string {
-		return role.charAt(0).toUpperCase() + role.slice(1);
+		if (role === 'owner') return t('role.owner');
+		if (role === 'admin') return t('role.admin');
+		return t('role.member');
 	}
 
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleDateString('fr-FR', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
+	function formatJoined(iso: string): string {
+		return formatDate(iso, { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
 	onMount(async () => {
@@ -43,13 +43,13 @@
 </script>
 
 <svelte:head>
-	<title>{space?.name ?? 'Espace'} — Sablier</title>
+	<title>{space?.name ?? t('space.titleFallback')} — Sablier</title>
 </svelte:head>
 
 <div class="flex flex-col gap-10">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<Button variant="ghost" size="sm" href="/spaces" icon={icons.chevronLeft} class="pl-2">
-			Espaces
+			{t('spaces.heading')}
 		</Button>
 		{#if space}
 			<Button
@@ -60,7 +60,7 @@
 				rel="noopener noreferrer"
 				icon={icons.space}
 			>
-				Gérer dans Registre
+				{t('common.manageInRegistre')}
 			</Button>
 		{/if}
 	</div>
@@ -81,7 +81,7 @@
 					<div class="flex flex-wrap items-center gap-2">
 						<Badge tone={roleTone(space.role)}>{roleLabel(space.role)}</Badge>
 						<span class="text-fc-xs text-fc-fg-muted">
-							Créé le {formatDate(space.created_at)}
+							{t('spaces.created', { date: formatJoined(space.created_at) })}
 						</span>
 					</div>
 				</div>
@@ -90,18 +90,18 @@
 
 		<section class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Membres ({members.length})</h2>
-				<p class="text-fc-xs text-fc-fg-muted">Invitations, rôles et départs se gèrent dans Registre.</p>
+				<h2 class="text-fc-lg font-semibold text-fc-fg">{t('space.members', { count: members.length })}</h2>
+				<p class="text-fc-xs text-fc-fg-muted">{t('space.membersHint')}</p>
 			</div>
 			{#if members.length === 0}
-				<EmptyState icon={icons.usersGroup} title="Aucun membre." />
+				<EmptyState icon={icons.usersGroup} title={t('space.membersEmpty')} />
 			{:else}
 				<Table>
 					<thead>
 						<tr>
-							<th>Membre</th>
-							<th>Rôle</th>
-							<th>Rejoint le</th>
+							<th>{t('space.col.member')}</th>
+							<th>{t('space.col.role')}</th>
+							<th>{t('space.col.joined')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -131,7 +131,7 @@
 								<td>
 									<Badge tone={roleTone(member.role)}>{roleLabel(member.role)}</Badge>
 								</td>
-								<td class="whitespace-nowrap text-fc-fg-muted">{formatDate(member.joined_at)}</td>
+								<td class="whitespace-nowrap text-fc-fg-muted">{formatJoined(member.joined_at)}</td>
 							</tr>
 						{/each}
 					</tbody>

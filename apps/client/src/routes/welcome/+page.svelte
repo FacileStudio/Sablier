@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Button, icons } from '@facile/muse';
+	import { Button, SignInWithFacile, icons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
+	import { apiBase } from '$lib/platform';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { startNativeLogin } from '$lib/native';
 	import Hourglass from '$lib/onboarding/Hourglass.svelte';
@@ -22,6 +24,28 @@
 	let origin: { x: number; y: number } | null = null;
 
 	const step = $derived(STEPS[index]);
+	const copy = $derived({
+		everywhere: {
+			label: t('onboarding.everywhere.label'),
+			title: t('onboarding.everywhere.title'),
+			body: t('onboarding.everywhere.body')
+		},
+		forget: {
+			label: t('onboarding.forget.label'),
+			title: t('onboarding.forget.title'),
+			body: t('onboarding.forget.body')
+		},
+		agents: {
+			label: t('onboarding.agents.label'),
+			title: t('onboarding.agents.title'),
+			body: t('onboarding.agents.body')
+		},
+		signin: {
+			label: t('onboarding.signin.label'),
+			title: t('onboarding.signin.title'),
+			body: t('onboarding.signin.body')
+		}
+	}[step.id]);
 	const last = $derived(isLastStep(index));
 	const counter = $derived(`${String(index + 1).padStart(2, '0')} / ${String(STEPS.length).padStart(2, '0')}`);
 
@@ -65,7 +89,7 @@
 </script>
 
 <svelte:head>
-	<title>Welcome — Sablier</title>
+	<title>{t('welcome.title')}</title>
 </svelte:head>
 
 <svelte:window onkeydown={onKey} />
@@ -76,7 +100,7 @@
 			<span class="font-fc-title text-fc-lg font-semibold tracking-tight">Sablier</span>
 			{#if !last}
 				<Button variant="ghost" size="sm" class="-mr-3 min-h-11" onclick={() => go(STEPS.length - 1)}>
-					Skip to sign in
+					{t('welcome.skip')}
 				</Button>
 			{/if}
 		</header>
@@ -92,24 +116,24 @@
 				<Hourglass fraction={drained(index)} class="h-48 w-auto shrink-0" />
 				<div
 					role="progressbar"
-					aria-label="Onboarding progress"
+					aria-label={t('welcome.progress')}
 					aria-valuemin={1}
 					aria-valuemax={STEPS.length}
 					aria-valuenow={index + 1}
-					aria-valuetext="Step {index + 1} of {STEPS.length}: {step.label}"
+					aria-valuetext={t('welcome.stepOf', { index: index + 1, total: STEPS.length, label: copy.label })}
 					class="flex flex-col gap-1 pb-2 font-fc-mono text-fc-sm text-fc-fg-muted"
 				>
 					<span class="text-fc-fg">{counter}</span>
-					<span>{step.label}</span>
+					<span>{copy.label}</span>
 				</div>
 			</div>
 
 			{#key step.id}
 				<section class="reveal flex min-h-64 flex-col gap-3" aria-live="polite">
 					<h1 data-step-heading tabindex="-1" class="font-fc-title text-fc-3xl font-semibold tracking-tight outline-none">
-						{step.title}
+						{copy.title}
 					</h1>
-					<p class="text-fc-md text-fc-fg-muted">{step.body}</p>
+					<p class="text-fc-md text-fc-fg-muted">{copy.body}</p>
 				</section>
 			{/key}
 		</main>
@@ -117,14 +141,22 @@
 		<footer class="flex shrink-0 gap-3 py-6">
 			{#if index > 0}
 				<Button variant="outline" size="lg" icon={icons.chevronLeft} class="min-h-12" onclick={() => go(index - 1)}>
-					Back
+					{t('welcome.back')}
 				</Button>
 			{/if}
 			{#if last}
-				<Button size="lg" class="min-h-12 flex-1" onclick={signIn}>Sign in with Facile</Button>
+				<SignInWithFacile
+					href="{apiBase()}/api/auth/oidc"
+					fullWidth
+					class="min-h-12 flex-1"
+					onclick={(event) => {
+						event.preventDefault();
+						void signIn();
+					}}
+				/>
 			{:else}
 				<Button size="lg" iconRight={icons.arrow} class="min-h-12 flex-1" onclick={() => go(index + 1)}>
-					Next
+					{t('welcome.next')}
 				</Button>
 			{/if}
 		</footer>

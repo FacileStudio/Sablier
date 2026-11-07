@@ -14,13 +14,15 @@
 	import { backend, type UserProfile } from '$lib/backend';
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate } from '$lib/i18n/format';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
 	let confirmClear = $state(false);
 
 	const memberSince = $derived(
-		ctx.user?.created_at ? new Date(ctx.user.created_at).toLocaleString() : '—'
+		ctx.user?.created_at ? formatDate(ctx.user.created_at, { dateStyle: 'medium', timeStyle: 'short' }) : '—'
 	);
 
 	/* Everything this app persists in the browser is namespaced under `sablier.` — the auth
@@ -33,49 +35,49 @@
 		}
 		localStorage.removeItem(TOKEN_KEY);
 		identify(null);
-		toast.success('Local data cleared.');
+		toast.success(t('advanced.cleared'));
 		goto('/login');
 	}
 </script>
 
 <svelte:head>
-	<title>Advanced — Sablier</title>
+	<title>{t('advanced.title')}</title>
 </svelte:head>
 
-<SettingsSection title="Instance" description="What this browser is talking to.">
+<SettingsSection title={t('advanced.instance.title')} description={t('advanced.instance.description')}>
 	<SettingsRow stacked>
-		<SecretField label="Instance URL" value={page.url.origin} sensitive={false} />
+		<SecretField label={t('advanced.instanceUrl')} value={page.url.origin} sensitive={false} />
 	</SettingsRow>
 
-	<SettingsRow label="API base path" description="Every request is scoped under it.">
+	<SettingsRow label={t('advanced.basePath')} description={t('advanced.basePathDescription')}>
 		<span class="font-fc-mono text-fc-sm text-fc-fg">/api</span>
 	</SettingsRow>
 </SettingsSection>
 
-<SettingsSection title="Account" description="Facts an operator may ask you for.">
+<SettingsSection title={t('advanced.account.title')} description={t('advanced.account.description')}>
 	<SettingsRow stacked>
-		<SecretField label="User ID" value={ctx.user?.id ?? ''} sensitive={false} />
+		<SecretField label={t('advanced.userId')} value={ctx.user?.id ?? ''} sensitive={false} />
 	</SettingsRow>
 
-	<SettingsRow label="Avatar source" description="Where your profile picture comes from.">
-		<span class="font-fc-mono text-fc-sm text-fc-fg">{ctx.user?.avatar_source || 'local'}</span>
+	<SettingsRow label={t('advanced.avatarSource')} description={t('advanced.avatarSourceDescription')}>
+		<span class="font-fc-mono text-fc-sm text-fc-fg">{ctx.user?.avatar_source || t('advanced.avatarLocal')}</span>
 	</SettingsRow>
 
-	<SettingsRow label="Member since" description="When this account was created.">
+	<SettingsRow label={t('advanced.memberSince')} description={t('advanced.memberSinceDescription')}>
 		<span class="text-fc-sm text-fc-fg-muted">{memberSince}</span>
 	</SettingsRow>
 </SettingsSection>
 
 <SettingsSection
-	title="Danger zone"
-	description="Irreversible from this browser. Your account and tracked time are untouched."
+	title={t('advanced.danger.title')}
+	description={t('advanced.danger.description')}
 >
 	<SettingsRow
-		label="Clear local data"
-		description="Removes the stored session, the selected space and the theme preference, then signs you out."
+		label={t('advanced.clear')}
+		description={t('advanced.clearDescription')}
 	>
 		<Button variant="danger" icon={icons.remove} onclick={() => (confirmClear = true)}>
-			Clear local data
+			{t('advanced.clear')}
 		</Button>
 	</SettingsRow>
 </SettingsSection>
@@ -83,8 +85,8 @@
 <ConfirmModal
 	bind:open={confirmClear}
 	tone="danger"
-	title="Clear local data?"
-	description="Every Sablier preference stored in this browser is deleted and you are signed out — there is no undo. Your account, projects and tracked time stay on the server."
-	confirmLabel="Clear and sign out"
+	title={t('advanced.clear.title')}
+	description={t('advanced.clear.body')}
+	confirmLabel={t('advanced.clear.confirm')}
 	onConfirm={clearLocalData}
 />

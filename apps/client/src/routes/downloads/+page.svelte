@@ -14,15 +14,24 @@
 		type DesktopOS
 	} from '$lib/downloads';
 	import { isApp } from '$lib/platform';
+	import { t } from '$lib/i18n/index.svelte';
 
-	const STEPS = [
-		{ title: 'Download the APK', body: 'Tap the button above on your phone.' },
-		{
-			title: 'Allow this source',
-			body: 'Android asks once. Allow your browser to install unknown apps, then come back.'
-		},
-		{ title: 'Open and sign in', body: 'Open the downloaded file, install it, and sign in with your Facile account.' }
-	];
+	const STEPS = $derived([
+		{ title: t('downloads.android.step1.title'), body: t('downloads.android.step1.body') },
+		{ title: t('downloads.android.step2.title'), body: t('downloads.android.step2.body') },
+		{ title: t('downloads.android.step3.title'), body: t('downloads.android.step3.body') }
+	]);
+
+	const BUILDS = $derived({
+		dmg: { label: t('downloads.desktop.macos'), detail: t('downloads.desktop.macosDetail') },
+		deb: { label: t('downloads.desktop.deb'), detail: t('downloads.desktop.debDetail') },
+		rpm: { label: t('downloads.desktop.rpm'), detail: t('downloads.desktop.rpmDetail') }
+	});
+
+	const androidVerify = $derived(t('downloads.android.verify', { command: '\u0000', link: '\u0001' }).split(/[\u0000\u0001]/));
+	const desktopVerify = $derived(
+		t('downloads.desktop.verify', { checksums: '\u0000', releases: '\u0001' }).split(/[\u0000\u0001]/)
+	);
 
 	let os = $state<DesktopOS | null>(null);
 	let android = $state(false);
@@ -35,26 +44,26 @@
 </script>
 
 <svelte:head>
-	<title>Get the app — Sablier</title>
-	<meta name="description" content="Download Sablier for macOS, Linux and Android, or use it in any browser." />
+	<title>{t('downloads.title')}</title>
+	<meta name="description" content={t('downloads.description')} />
 </svelte:head>
 
 <div class="min-h-dvh bg-fc-page text-fc-fg">
 	<header>
 		<div class="mx-auto flex max-w-fc-lg items-center justify-between px-4 py-3 sm:px-6">
-			<a href="/" class="flex min-h-11 items-center gap-2" aria-label="Sablier home">
+			<a href="/" class="flex min-h-11 items-center gap-2" aria-label={t('downloads.home')}>
 				<iconify-icon icon="solar:hourglass-bold-duotone" width="24" height="24" aria-hidden="true"></iconify-icon>
 				<span class="font-fc-title text-fc-lg font-semibold tracking-tight">Sablier</span>
 			</a>
-			<Button href="/login" variant="ghost" class="min-h-11">Open Sablier</Button>
+			<Button href="/login" variant="ghost" class="min-h-11">{t('downloads.open')}</Button>
 		</div>
 	</header>
 
 	<main class="mx-auto flex max-w-fc-md flex-col gap-10 px-4 py-12 sm:px-6 sm:py-16">
 		<section class="flex flex-col items-center gap-4 text-center">
-			<h1 class="font-fc-title text-fc-3xl font-semibold tracking-tight sm:text-5xl">Get Sablier</h1>
+			<h1 class="font-fc-title text-fc-3xl font-semibold tracking-tight sm:text-5xl">{t('downloads.heading')}</h1>
 			<p class="max-w-md text-fc-md text-fc-fg-muted">
-				The apps track the same projects and timers as the web. Sign in once with your Facile account.
+				{t('downloads.intro')}
 			</p>
 		</section>
 
@@ -63,7 +72,7 @@
 				<iconify-icon icon="solar:smartphone-linear" width="24" height="24" aria-hidden="true"></iconify-icon>
 				<div class="flex flex-col gap-1">
 					<h2 class="font-fc-title text-fc-lg font-semibold">Android</h2>
-					<p class="text-fc-sm text-fc-fg-muted">Signed APK, Android 7 or later.</p>
+					<p class="text-fc-sm text-fc-fg-muted">{t('downloads.android.detail')}</p>
 				</div>
 			</div>
 			<Button
@@ -73,7 +82,7 @@
 				icon={icons.download}
 				class="h-12 w-full rounded-fc-md sm:w-auto sm:self-start"
 			>
-				Download the APK
+				{t('downloads.android.download')}
 			</Button>
 			<ol class="flex flex-col gap-4">
 				{#each STEPS as step, i (step.title)}
@@ -91,8 +100,7 @@
 			</ol>
 			<Divider class="my-0" />
 			<p class="text-fc-sm text-fc-fg-muted">
-				To check the file, compare <code class="font-mono">sha256sum {APK_ASSET}</code> with the
-				<a href={APK_SHA256_URL} class="underline hover:text-fc-fg">published checksum</a>.
+				{androidVerify[0]}<code class="font-mono">sha256sum {APK_ASSET}</code>{androidVerify[1]}<a href={APK_SHA256_URL} class="underline hover:text-fc-fg">{t('downloads.android.checksum')}</a>{androidVerify[2] ?? ''}
 			</p>
 		</Card>
 
@@ -100,9 +108,9 @@
 			<div class="flex items-start gap-3">
 				<iconify-icon icon={icons.monitor} width="24" height="24" aria-hidden="true"></iconify-icon>
 				<div class="flex flex-col gap-1">
-					<h2 class="font-fc-title text-fc-lg font-semibold">Desktop</h2>
+					<h2 class="font-fc-title text-fc-lg font-semibold">{t('downloads.desktop.heading')}</h2>
 					<p class="text-fc-sm text-fc-fg-muted">
-						A tray app that tracks your time, with signed installers that update themselves.
+						{t('downloads.desktop.detail')}
 					</p>
 				</div>
 			</div>
@@ -110,8 +118,8 @@
 				{#each DESKTOP_BUILDS as build (build.id)}
 					<li class="flex flex-wrap items-center justify-between gap-3 rounded-fc-md bg-fc-surface px-3 py-2">
 						<div class="flex flex-col">
-							<span class="text-fc-sm font-medium">{build.label}</span>
-							<span class="text-fc-xs text-fc-fg-muted">{build.detail}</span>
+							<span class="text-fc-sm font-medium">{BUILDS[build.id].label}</span>
+							<span class="text-fc-xs text-fc-fg-muted">{BUILDS[build.id].detail}</span>
 						</div>
 						<Button
 							href={build.url}
@@ -119,26 +127,24 @@
 							icon={icons.download}
 							class="min-h-11"
 						>
-							Download
+							{t('downloads.desktop.download')}
 						</Button>
 					</li>
 				{/each}
 			</ul>
 			<p class="text-fc-sm text-fc-fg-muted">
-				To check a file, compare it with the
-				<a href={DESKTOP_CHECKSUMS_URL} class="underline hover:text-fc-fg">published checksums</a>. Older
-				versions are on the <a href={RELEASES_URL} class="underline hover:text-fc-fg">releases page</a>.
+				{desktopVerify[0]}<a href={DESKTOP_CHECKSUMS_URL} class="underline hover:text-fc-fg">{t('downloads.desktop.checksums')}</a>{desktopVerify[1]}<a href={RELEASES_URL} class="underline hover:text-fc-fg">{t('downloads.desktop.releases')}</a>{desktopVerify[2] ?? ''}
 			</p>
 		</Card>
 
 		<Card class="flex items-start gap-3">
 			<iconify-icon icon={icons.globe} width="24" height="24" aria-hidden="true"></iconify-icon>
 			<div class="flex flex-col gap-1">
-				<h2 class="font-fc-title text-fc-lg font-semibold">Any browser</h2>
+				<h2 class="font-fc-title text-fc-lg font-semibold">{t('downloads.web.heading')}</h2>
 				<p class="text-fc-sm text-fc-fg-muted">
-					No install needed: Sablier works in any modern browser, on any computer or phone.
+					{t('downloads.web.detail')}
 				</p>
-				<div class="mt-2"><Button href="/login" variant="outline" class="min-h-11">Open the web app</Button></div>
+				<div class="mt-2"><Button href="/login" variant="outline" class="min-h-11">{t('downloads.web.open')}</Button></div>
 			</div>
 		</Card>
 	</main>

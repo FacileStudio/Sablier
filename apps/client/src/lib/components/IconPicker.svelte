@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { Input, cn, icons as museIcons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 	import { PROJECT_ICONS, toIconify } from '$lib/icons';
 
 	let { value = 'Layout', onSelect }: { value?: string; onSelect: (icon: string) => void } = $props();
@@ -112,7 +113,7 @@
 {#if open}
 	<button
 		type="button"
-		aria-label="Close icon picker"
+		aria-label={t('iconPicker.close')}
 		class="fixed inset-0 z-40 cursor-default"
 		onclick={close}
 	></button>
@@ -128,18 +129,18 @@
 		onclick={toggle}
 	>
 		<iconify-icon icon={toIconify(value)} width="18" height="18" class="block"></iconify-icon>
-		<span class="text-fc-fg-muted">{value || 'Select icon'}</span>
+		<span class="text-fc-fg-muted">{value || t('iconPicker.select')}</span>
 		<iconify-icon icon={museIcons.chevronDown} width="14" height="14" class="block shrink-0"
 		></iconify-icon>
 	</button>
 
 	{#if open}
 		<div class="z-50 w-80 rounded-fc-lg bg-fc-component p-3 shadow-lg" style={dropdownStyle}>
-			<Input type="text" placeholder="Search icons..." bind:value={search} class="mb-2" />
+			<Input type="text" placeholder={t('iconPicker.search')} bind:value={search} class="mb-2" />
 			<div
 				role="radiogroup"
 				tabindex={-1}
-				aria-label="Project icon"
+				aria-label={t('iconPicker.label')}
 				class="grid max-h-60 grid-cols-8 gap-1 overflow-y-auto"
 				onkeydown={handleKeydown}
 			>

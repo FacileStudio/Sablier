@@ -19,6 +19,8 @@
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
 	import AutoConfirmSetting from '$lib/components/AutoConfirmSetting.svelte';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate, formatNumber } from '$lib/i18n/format';
 
 	const ctx = getContext<{
 		token: string;
@@ -50,14 +52,16 @@
 	}
 
 	const rateSummary = $derived(
-		rateType === 'daily' ? `${Number(rate) || 0} €/day` : `${Number(rate) || 0} €/h`
+		t(rateType === 'daily' ? 'profile.rateDaily' : 'profile.rateHourly', {
+			rate: formatNumber(Number(rate) || 0)
+		})
 	);
 
 	const meta = $derived([
-		{ label: 'Rate', value: rateSummary },
+		{ label: t('profile.rate'), value: rateSummary },
 		{
-			label: 'Member since',
-			value: ctx.user?.created_at ? new Date(ctx.user.created_at).toLocaleDateString() : '—'
+			label: t('profile.memberSince'),
+			value: ctx.user?.created_at ? formatDate(ctx.user.created_at) : '—'
 		}
 	]);
 
@@ -69,9 +73,9 @@
 				color: normalizeUserColor(color)
 			});
 			ctx.setUser(result.user);
-			toast.success('Profile saved.');
+			toast.success(t('profile.saved'));
 		} catch (err) {
-			toast.danger(err instanceof Error ? err.message : 'Failed to save profile.');
+			toast.danger(err instanceof Error ? err.message : t('profile.saveFailed'));
 		} finally {
 			saving = false;
 		}
@@ -86,9 +90,9 @@
 				workday_hours: rateType === 'daily' ? Number(workdayHours) || 0 : undefined
 			});
 			ctx.setUser(result.user);
-			toast.success('Rate saved.');
+			toast.success(t('profile.rateSaved'));
 		} catch (err) {
-			toast.danger(err instanceof Error ? err.message : 'Failed to save rate.');
+			toast.danger(err instanceof Error ? err.message : t('profile.rateSaveFailed'));
 		} finally {
 			rateSaving = false;
 		}
@@ -103,7 +107,7 @@
 </script>
 
 <svelte:head>
-	<title>Profile — Sablier</title>
+	<title>{t('profile.title')}</title>
 </svelte:head>
 
 <ProfileCard
@@ -115,72 +119,69 @@
 />
 
 <SettingsSection
-	title="Identity"
-	description="How you appear across Sablier and in shared reports."
+	title={t('profile.identity.title')}
+	description={t('profile.identity.description')}
 >
 	{#snippet actions()}
 		<Button icon={icons.check} disabled={saving} onclick={saveProfile}>
-			{saving ? 'Saving…' : 'Save profile'}
+			{saving ? t('common.saving') : t('profile.saveProfile')}
 		</Button>
 	{/snippet}
 
 	<SettingsRow stacked>
-		<Field label="Display name" helper="Up to 80 characters.">
+		<Field label={t('profile.displayName')} helper={t('profile.displayNameHelper')}>
 			<Input bind:value={name} maxlength={80} placeholder="Jane Doe" />
 		</Field>
 	</SettingsRow>
 
 	<SettingsRow stacked>
-		<Field label="Email" helper="Managed by single sign-on — change it with your identity provider.">
+		<Field label={t('profile.email')} helper={t('profile.emailHelper')}>
 			<Input value={ctx.user?.email ?? ''} readonly disabled class="font-fc-mono" />
 		</Field>
 	</SettingsRow>
 
 	<SettingsRow
 		stacked
-		label="Identity colour"
-		description="Your dot in member lists and your slice of shared charts."
+		label={t('profile.colour')}
+		description={t('profile.colourDescription')}
 	>
-		<SwatchPicker bind:value={color} showLabels label="Identity colour" />
+		<SwatchPicker bind:value={color} showLabels label={t('profile.colour')} />
 	</SettingsRow>
 </SettingsSection>
 
-<SettingsSection title="Profile picture" description="Set once in Registre, shown in every Facile app.">
+<SettingsSection title={t('profile.picture.title')} description={t('profile.picture.description')}>
 	<Alert tone="info">
-		Your picture comes from your Facile account. Change it at
-		<a class="font-medium text-fc-accent underline" href={ACCOUNT_URL} target="_blank" rel="noopener noreferrer">sso.facile.studio/account</a>
-		and it shows here on the next page load.
+		{@const parts = t('profile.picture.alert', { link: '\u0000' }).split('\u0000')}
+		{parts[0]}<a class="font-medium text-fc-accent underline" href={ACCOUNT_URL} target="_blank" rel="noopener noreferrer">sso.facile.studio/account</a>{parts[1]}
 	</Alert>
 </SettingsSection>
 
 <SettingsSection
-	title="Billable rate"
-	description="Used to calculate the virtual value of your tracked time."
+	title={t('profile.rate.title')}
+	description={t('profile.rate.description')}
 >
 	{#snippet actions()}
 		<Button icon={icons.check} disabled={rateSaving} onclick={saveRate}>
-			{rateSaving ? 'Saving…' : 'Save rate'}
+			{rateSaving ? t('common.saving') : t('profile.rate.save')}
 		</Button>
 	{/snippet}
 
-	<SettingsRow stacked label="Rate type" description="How your tracked time is priced.">
+	<SettingsRow stacked label={t('profile.rateType')} description={t('profile.rateTypeDescription')}>
 		<OptionCards
-			label="Rate type"
+			label={t('profile.rateType')}
 			value={rateType}
 			onSelect={(next) => (rateType = next as 'daily' | 'hourly')}
 			options={[
-				{ value: 'daily', label: 'Daily rate', icon: icons.calendar },
-				{ value: 'hourly', label: 'Hourly rate', icon: icons.clock }
+				{ value: 'daily', label: t('profile.rateDailyOption'), icon: icons.calendar },
+				{ value: 'hourly', label: t('profile.rateHourlyOption'), icon: icons.clock }
 			]}
 		/>
 	</SettingsRow>
 
 	<SettingsRow stacked>
 		<Field
-			label={rateType === 'daily' ? 'Daily rate (€/day)' : 'Hourly rate (€/h)'}
-			helper={rateType === 'daily'
-				? 'Earnings = (tracked hours ÷ workday hours) × daily rate.'
-				: 'Applied directly to your tracked hours.'}
+			label={rateType === 'daily' ? t('profile.rateDailyLabel') : t('profile.rateHourlyLabel')}
+			helper={rateType === 'daily' ? t('profile.rateDailyHelper') : t('profile.rateHourlyHelper')}
 		>
 			<Input
 				type="number"
@@ -194,7 +195,7 @@
 
 	{#if rateType === 'daily'}
 		<SettingsRow stacked>
-			<Field label="Workday duration (hours)" helper="The divisor behind the daily rate.">
+			<Field label={t('profile.workday')} helper={t('profile.workdayHelper')}>
 				<Input type="number" min="1" max="24" step="0.5" placeholder="8" bind:value={workdayHours} />
 			</Field>
 		</SettingsRow>
@@ -203,8 +204,8 @@
 
 <AutoConfirmSetting token={ctx.token} />
 
-<SettingsSection title="Session" description="This browser only.">
-	<SettingsRow label="Log out" description="Ends this session and returns you to the sign-in page.">
-		<Button variant="ghost-danger" icon={icons.logout} onclick={logout}>Log out</Button>
+<SettingsSection title={t('profile.session.title')} description={t('profile.session.description')}>
+	<SettingsRow label={t('profile.logout')} description={t('profile.logoutDescription')}>
+		<Button variant="ghost-danger" icon={icons.logout} onclick={logout}>{t('profile.logout')}</Button>
 	</SettingsRow>
 </SettingsSection>

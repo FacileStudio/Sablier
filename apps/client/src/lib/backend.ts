@@ -1,15 +1,12 @@
 import { normalizeUserColor } from '$lib/user-colors';
+import { t } from '$lib/i18n/index.svelte';
 import { apiBase, clearToken, getToken, isApp, isNative } from '$lib/platform';
 
 const backendBaseUrl = apiBase();
 
-export type AuthResponse = {
-	user_id: string;
-	token: string;
-};
-
 export type UserProfile = {
 	id: string;
+	locale?: string;
 	email: string;
 	name: string;
 	avatar_url: string;
@@ -201,7 +198,7 @@ async function requestError(response: Response) {
 	} catch {
 		payload = undefined;
 	}
-	throw new ApiError(response.status, payload?.error?.message || `Request failed with status ${response.status}`);
+	throw new ApiError(response.status, payload?.error?.message || t('error.request', { status: response.status }));
 }
 
 async function nativeRequest(options: RequestInit, token?: string): Promise<RequestInit> {
@@ -257,18 +254,6 @@ function normalizeEntry(entry: TimeEntry): TimeEntry {
 export const backend = {
 	baseUrl: backendBaseUrl,
 
-	register(email: string, password: string) {
-		return apiFetch<AuthResponse>('/api/auth/register', {
-			method: 'POST',
-			body: JSON.stringify({ email, password })
-		});
-	},
-	login(email: string, password: string) {
-		return apiFetch<AuthResponse>('/api/auth/login', {
-			method: 'POST',
-			body: JSON.stringify({ email, password })
-		});
-	},
 	async logout(token?: string) {
 		try {
 			return await apiFetch<{ logged_out: boolean }>('/api/auth/logout', { method: 'POST' }, token);
@@ -291,7 +276,7 @@ export const backend = {
 			user: normalizeUser(result.user)
 		}));
 	},
-	updateMe(token: string, payload: { name?: string; email?: string; password?: string; current_password?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly'; workday_hours?: number }) {
+	updateMe(token: string, payload: { name?: string; email?: string; color?: string; rate?: number; rate_type?: 'daily' | 'hourly'; workday_hours?: number }) {
 		return apiFetch<MeResponse>('/api/users/me', {
 			method: 'PATCH',
 			body: JSON.stringify(payload)

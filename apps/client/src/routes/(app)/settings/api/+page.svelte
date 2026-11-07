@@ -13,6 +13,8 @@
 	} from '@facile/muse';
 	import { getContext } from 'svelte';
 	import { backend, type UserProfile } from '$lib/backend';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate } from '$lib/i18n/format';
 
 	const ctx = getContext<{ token: string; user: UserProfile | null }>('app');
 
@@ -59,7 +61,7 @@
 			tokenName = result.name;
 			createdAt = result.created_at;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to generate token.';
+			error = err instanceof Error ? err.message : t('api.generateFailed');
 			toast.danger(error);
 		} finally {
 			generating = false;
@@ -75,9 +77,9 @@
 			tokenName = '';
 			createdAt = '';
 			clearRevealed();
-			toast.success('Token revoked.');
+			toast.success(t('api.revoked'));
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to revoke token.';
+			error = err instanceof Error ? err.message : t('api.revokeFailed');
 			toast.danger(error);
 			throw err;
 		} finally {
@@ -89,16 +91,16 @@
 </script>
 
 <svelte:head>
-	<title>API — Sablier</title>
+	<title>{t('api.title')}</title>
 </svelte:head>
 
 <SettingsSection
-	title="CLI token"
-	description="One token per account — generating a new one revokes the previous."
+	title={t('api.cli.title')}
+	description={t('api.cli.description')}
 >
 	{#snippet actions()}
 		<Button icon={icons.key} disabled={generating || loading} onclick={generate}>
-			{generating ? 'Generating…' : hasToken ? 'Regenerate token' : 'Generate token'}
+			{generating ? t('api.generating') : hasToken ? t('api.regenerate') : t('api.generate')}
 		</Button>
 	{/snippet}
 
@@ -109,51 +111,50 @@
 	{#if loading}
 		<Skeleton class="h-11 w-full" />
 	{:else if revealed}
-		<Alert tone="warning" title="Copy it now">
-			This is the only time the token is shown. Paste it into your <span class="font-fc-mono"
-				>~/.sablier.yml</span
-			> before you leave this page.
+		<Alert tone="warning" title={t('api.copyNow')}>
+			{@const parts = t('api.copyNowBody', { file: '\u0000' }).split('\u0000')}
+			{parts[0]}<span class="font-fc-mono">~/.sablier.yml</span>{parts[1]}
 		</Alert>
 		<SecretField
-			label="New token"
+			label={t('api.newToken')}
 			value={revealed}
 			bind:visible={revealedVisible}
 			autoHideMs={0}
-			helper="Treat it like a password — it authenticates as you."
+			helper={t('api.newTokenHelper')}
 		/>
 		<SettingsRow
-			label="Done copying?"
-			description="Hides the token for good. Regenerate if you lose it."
+			label={t('api.doneCopying')}
+			description={t('api.doneCopyingDescription')}
 		>
-			<Button variant="ghost" icon={icons.check} onclick={clearRevealed}>I've copied it</Button>
+			<Button variant="ghost" icon={icons.check} onclick={clearRevealed}>{t('api.copied')}</Button>
 		</SettingsRow>
 	{:else if hasToken}
-		<SettingsRow label="Active token" description="Name given when the token was issued.">
+		<SettingsRow label={t('api.active')} description={t('api.activeDescription')}>
 			<span class="font-fc-mono text-fc-sm text-fc-fg">{tokenName || 'CLI'}</span>
 		</SettingsRow>
-		<SettingsRow label="Created" description="The token itself is never shown again.">
+		<SettingsRow label={t('api.created')} description={t('api.createdDescription')}>
 			<span class="text-fc-sm text-fc-fg-muted">
-				{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}
+				{createdAt ? formatDate(createdAt) : '—'}
 			</span>
 		</SettingsRow>
-		<SettingsRow label="Revoke" description="Immediately stops this token from authenticating.">
+		<SettingsRow label={t('api.revoke')} description={t('api.revokeDescription')}>
 			<Button
 				variant="ghost-danger"
 				icon={icons.revoke}
 				disabled={revoking}
 				onclick={() => (confirmRevoke = true)}
 			>
-				{revoking ? 'Revoking…' : 'Revoke'}
+				{revoking ? t('api.revoking') : t('api.revoke')}
 			</Button>
 		</SettingsRow>
 	{:else}
 		<EmptyState
 			bare
 			icon={icons.key}
-			title="No API token"
-			description="Generate one to use the Sablier CLI or any API client."
+			title={t('api.empty.title')}
+			description={t('api.empty.description')}
 		>
-			<Button icon={icons.key} disabled={generating} onclick={generate}>Generate token</Button>
+			<Button icon={icons.key} disabled={generating} onclick={generate}>{t('api.generate')}</Button>
 		</EmptyState>
 	{/if}
 </SettingsSection>
@@ -161,8 +162,8 @@
 <ConfirmModal
 	bind:open={confirmRevoke}
 	tone="danger"
-	title="Revoke this token?"
-	description="Any CLI or pipeline still using it starts failing, and it cannot be un-revoked."
-	confirmLabel="Revoke token"
+	title={t('api.revoke.title')}
+	description={t('api.revoke.description')}
+	confirmLabel={t('api.revoke.confirm')}
 	onConfirm={revoke}
 />

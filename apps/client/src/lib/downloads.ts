@@ -9,28 +9,22 @@ export const DESKTOP_CHECKSUMS_URL = `${LATEST}/desktop-checksums.txt`;
 
 export type DesktopOS = 'macos' | 'linux';
 
-export type DesktopBuild = { id: string; os: DesktopOS; label: string; detail: string; url: string };
+export type DesktopBuild = { id: 'dmg' | 'deb' | 'rpm'; os: DesktopOS; url: string };
 
 export const DESKTOP_BUILDS: readonly DesktopBuild[] = [
 	{
 		id: 'dmg',
 		os: 'macos',
-		label: 'macOS',
-		detail: 'Apple silicon and Intel, .dmg',
 		url: `${LATEST}/Sablier-macos-universal.dmg`
 	},
 	{
 		id: 'deb',
 		os: 'linux',
-		label: 'Linux (Debian, Ubuntu)',
-		detail: 'x86-64, .deb',
 		url: `${LATEST}/Sablier-linux-x64.deb`
 	},
 	{
 		id: 'rpm',
 		os: 'linux',
-		label: 'Linux (Fedora, openSUSE)',
-		detail: 'x86-64, .rpm',
 		url: `${LATEST}/Sablier-linux-x64.rpm`
 	}
 ];

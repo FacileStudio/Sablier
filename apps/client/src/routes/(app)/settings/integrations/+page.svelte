@@ -16,6 +16,7 @@
 	} from '@facile/muse';
 	import { backend, type PoolEventToggle } from '$lib/backend';
 	import AntenneIcon from '$lib/components/icons/AntenneIcon.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 
 	const ctx = getContext<{ token: string }>('app');
 
@@ -45,12 +46,12 @@
 	 * pulses. Reconnect attempts and an outbox depth are not reported by /api/antenne yet.
 	 */
 	const connection = $derived.by(() => {
-		if (!poolLoaded) return { tone: 'neutral' as const, label: 'Checking…', pulse: true };
-		if (poolSaving) return { tone: 'warning' as const, label: 'Connecting…', pulse: true };
-		if (!poolEnabled) return { tone: 'neutral' as const, label: 'Disabled', pulse: false };
-		if (poolConnected) return { tone: 'success' as const, label: 'Connected', pulse: false };
-		if (poolError) return { tone: 'danger' as const, label: `Gave up — ${poolError}`, pulse: false };
-		return { tone: 'warning' as const, label: 'Not connected', pulse: false };
+		if (!poolLoaded) return { tone: 'neutral' as const, label: t('pool.checking'), pulse: true };
+		if (poolSaving) return { tone: 'warning' as const, label: t('pool.connecting'), pulse: true };
+		if (!poolEnabled) return { tone: 'neutral' as const, label: t('pool.disabled'), pulse: false };
+		if (poolConnected) return { tone: 'success' as const, label: t('pool.connected'), pulse: false };
+		if (poolError) return { tone: 'danger' as const, label: t('pool.gaveUp', { error: poolError }), pulse: false };
+		return { tone: 'warning' as const, label: t('pool.notConnected'), pulse: false };
 	});
 
 	onMount(async () => {
@@ -60,7 +61,7 @@
 			webhookSecretHeader = result.settings.webhook_secret_header;
 			webhookSecretValue = result.settings.webhook_secret_value;
 		} catch (e) {
-			webhookError = e instanceof Error ? e.message : 'Failed to load settings';
+			webhookError = e instanceof Error ? e.message : t('webhook.failed.load');
 		}
 
 		try {
@@ -71,7 +72,7 @@
 			poolConnected = poolResult.connected;
 			poolFromEnv = poolResult.from_env ?? false;
 		} catch (e) {
-			poolError = e instanceof Error ? e.message : 'Failed to load pool settings';
+			poolError = e instanceof Error ? e.message : t('pool.failed.load');
 		} finally {
 			poolLoaded = true;
 		}
@@ -97,9 +98,9 @@
 			webhookUrl = result.settings.webhook_url;
 			webhookSecretHeader = result.settings.webhook_secret_header;
 			webhookSecretValue = result.settings.webhook_secret_value;
-			toast.success('Webhook settings saved');
+			toast.success(t('webhook.saved'));
 		} catch (e) {
-			webhookError = e instanceof Error ? e.message : 'Failed to save settings';
+			webhookError = e instanceof Error ? e.message : t('webhook.failed.save');
 			toast.danger(webhookError);
 		} finally {
 			webhookSaving = false;
@@ -125,10 +126,10 @@
 				poolError = result.connect_error;
 				toast.danger(poolError);
 			} else {
-				toast.success(poolConnected ? 'Connected to Antenne' : 'Pool settings saved');
+				toast.success(poolConnected ? t('pool.connectedToast') : t('pool.savedToast'));
 			}
 		} catch (e) {
-			poolError = e instanceof Error ? e.message : 'Failed to save pool settings';
+			poolError = e instanceof Error ? e.message : t('pool.failed.save');
 			toast.danger(poolError);
 		} finally {
 			poolSaving = false;
@@ -141,28 +142,37 @@
 		try {
 			syncResult = await backend.triggerSync(ctx.token);
 			toast.success(
-				`Synced ${syncResult.projects_synced} projects and ${syncResult.tasks_synced} tasks`
+				t('pool.synced', {
+					projects: t('count.projects', { count: syncResult.projects_synced }),
+					tasks: t('count.tasks', { count: syncResult.tasks_synced })
+				})
 			);
 		} catch (e) {
-			poolError = e instanceof Error ? e.message : 'Sync failed';
+			poolError = e instanceof Error ? e.message : t('pool.failed.sync');
 			toast.danger(poolError);
 		} finally {
 			syncing = false;
 		}
 	}
 
-	const eventLabels: Record<string, string> = {
-		'time_entry.created': 'Time entry created',
-		'time_entry.updated': 'Time entry updated',
-		'agent_session.created': 'Agent session recorded (Mycelium)',
-		'agent_session.updated': 'Agent session updated (Mycelium)',
-		'project.created': 'Project created',
-		'project.updated': 'Project updated',
-		'project.deleted': 'Project deleted',
-		'task.created': 'Task created',
-		'task.updated': 'Task updated',
-		'task.deleted': 'Task deleted'
-	};
+	const eventKeys = [
+		'time_entry.created',
+		'time_entry.updated',
+		'agent_session.created',
+		'agent_session.updated',
+		'project.created',
+		'project.updated',
+		'project.deleted',
+		'task.created',
+		'task.updated',
+		'task.deleted'
+	] as const;
+
+	function eventLabel(event: string): string {
+		return (eventKeys as readonly string[]).includes(event)
+			? t(`pool.event.${event as (typeof eventKeys)[number]}`)
+			: event;
+	}
 
 	/* Optimistic: the row flips immediately and reverts if the API refuses it. */
 	async function togglePoolEvent(event: string, enabled: boolean) {
@@ -172,7 +182,7 @@
 			poolEvents = result.events;
 		} catch {
 			poolEvents = poolEvents.map((e) => (e.event === event ? { ...e, enabled: !enabled } : e));
-			toast.danger('Failed to update event toggle');
+			toast.danger(t('pool.failed.toggle'));
 		}
 	}
 
@@ -191,17 +201,17 @@
 </script>
 
 <svelte:head>
-	<title>Integrations — Sablier</title>
+	<title>{t('integrations.title')}</title>
 </svelte:head>
 
-<SettingsSection title="Pool" description="Sync projects and tasks with other Facile apps.">
+<SettingsSection title={t('pool.title')} description={t('pool.description')}>
 	{#snippet actions()}
 		<span class="flex items-center gap-2 text-fc-fg-muted">
 			<AntenneIcon size={18} />
 			<StatusDot tone={connection.tone} label={connection.label} pulse={connection.pulse} />
 		</span>
 		<Button icon={icons.check} disabled={poolSaving} onclick={savePool}>
-			{poolSaving ? 'Saving…' : 'Save'}
+			{poolSaving ? t('common.saving') : t('common.save')}
 		</Button>
 	{/snippet}
 
@@ -211,51 +221,51 @@
 
 	<SettingsRow stacked>
 		<SecretField
-			label="Instance URL"
+			label={t('pool.instanceUrl')}
 			bind:value={poolUrl}
 			editable
 			sensitive={false}
 			placeholder="https://antenne.example.com"
-			helper={poolFromEnv ? 'Pre-filled from an environment variable.' : undefined}
+			helper={poolFromEnv ? t('pool.fromEnv') : undefined}
 		/>
 	</SettingsRow>
 
 	<SettingsRow stacked>
 		<SecretField
-			label="Shared secret"
+			label={t('pool.secret')}
 			bind:value={poolSecret}
 			editable
-			placeholder="Shared secret for authentication"
+			placeholder={t('pool.secretPlaceholder')}
 		/>
 	</SettingsRow>
 
-	<SettingsRow label="Enable sync" description="Sablier holds an outbound connection to Antenne.">
-		<Switch bind:checked={poolEnabled} aria-label="Enable Antenne sync" />
+	<SettingsRow label={t('pool.enable')} description={t('pool.enableDescription')}>
+		<Switch bind:checked={poolEnabled} aria-label={t('pool.enableLabel')} />
 	</SettingsRow>
 </SettingsSection>
 
 {#if poolConnected}
 	<SettingsSection
-		title="Pool events"
-		description="Choose which events are sent to Antenne when they happen. Antenne handles routing from there."
+		title={t('pool.events.title')}
+		description={t('pool.events.description')}
 	>
 		{#if poolEvents.length === 0}
 			<EmptyState
 				bare
 				icon={icons.bolt}
-				title="No event channels"
-				description="Antenne has not reported any channels for this instance."
+				title={t('pool.events.empty.title')}
+				description={t('pool.events.empty.description')}
 			/>
 		{:else}
 			{#each poolEvents as evt (evt.event)}
 				<SettingsRow
 					class="[&_p]:font-fc-mono"
-					label={eventLabels[evt.event] ?? evt.event}
+					label={eventLabel(evt.event)}
 					description={evt.event}
 				>
 					<Switch
 						checked={evt.enabled}
-						aria-label="Toggle {evt.event}"
+						aria-label={t('pool.events.toggle', { event: evt.event })}
 						onchange={(e) => togglePoolEvent(evt.event, e.currentTarget.checked)}
 					/>
 				</SettingsRow>
@@ -264,22 +274,22 @@
 	</SettingsSection>
 
 	<SettingsSection
-		title="Initial sync"
-		description="Push all existing projects and tasks to the Pool so other connected apps can see them."
+		title={t('pool.sync.title')}
+		description={t('pool.sync.description')}
 	>
 		<SettingsRow
-			label="Sync existing data"
-			description="Safe to run multiple times — duplicates are automatically skipped."
+			label={t('pool.sync.row')}
+			description={t('pool.sync.rowDescription')}
 		>
 			<Button icon={icons.refresh} disabled={syncing} onclick={triggerSync}>
-				{syncing ? 'Syncing…' : 'Sync all'}
+				{syncing ? t('pool.sync.running') : t('pool.sync.run')}
 			</Button>
 		</SettingsRow>
 
 		{#if syncResult}
-			<SettingsRow label="Last run" description="Counts reported by the last manual sync.">
+			<SettingsRow label={t('pool.sync.lastRun')} description={t('pool.sync.lastRunDescription')}>
 				<span class="text-fc-sm text-fc-fg-muted">
-					{syncResult.projects_synced} projects · {syncResult.tasks_synced} tasks
+					{t('pool.sync.counts', { projects: t('count.projects', { count: syncResult.projects_synced }), tasks: t('count.tasks', { count: syncResult.tasks_synced }) })}
 				</span>
 			</SettingsRow>
 		{/if}
@@ -287,15 +297,15 @@
 {/if}
 
 <SettingsSection
-	title="Webhook"
-	description="Sablier POSTs a JSON event to this URL when a timer starts or stops."
+	title={t('webhook.title')}
+	description={t('webhook.description')}
 >
 	{#snippet actions()}
 		{#if webhookUrl}
-			<Button variant="ghost" onclick={clearWebhook}>Clear</Button>
+			<Button variant="ghost" onclick={clearWebhook}>{t('webhook.clear')}</Button>
 		{/if}
 		<Button icon={icons.check} disabled={webhookSaving} onclick={saveWebhook}>
-			{webhookSaving ? 'Saving…' : 'Save'}
+			{webhookSaving ? t('common.saving') : t('common.save')}
 		</Button>
 	{/snippet}
 
@@ -305,7 +315,7 @@
 
 	<SettingsRow stacked>
 		<SecretField
-			label="Webhook URL"
+			label={t('webhook.url')}
 			bind:value={webhookUrl}
 			editable
 			sensitive={false}
@@ -314,22 +324,22 @@
 	</SettingsRow>
 
 	<SettingsRow stacked>
-		<Field label="Secret header name" helper="Sent with every delivery.">
+		<Field label={t('webhook.headerName')} helper={t('webhook.headerHelper')}>
 			<Input bind:value={webhookSecretHeader} placeholder="x-sablier-signature" class="font-fc-mono" />
 		</Field>
 	</SettingsRow>
 
 	<SettingsRow stacked>
 		<SecretField
-			label="Secret value"
+			label={t('webhook.secretValue')}
 			bind:value={webhookSecretValue}
 			editable
-			placeholder="Leave empty for no authentication"
+			placeholder={t('webhook.secretPlaceholder')}
 		/>
 	</SettingsRow>
 </SettingsSection>
 
-<SettingsSection title="Event payload" description="Shape of the JSON body sent to your webhook.">
+<SettingsSection title={t('webhook.payload.title')} description={t('webhook.payload.description')}>
 	<pre
 		class="overflow-x-auto rounded-fc-md bg-fc-surface p-4 font-fc-mono text-fc-xs leading-relaxed text-fc-fg">{payloadSample}</pre>
 </SettingsSection>

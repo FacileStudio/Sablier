@@ -20,6 +20,8 @@
 	import { getEntryUserDisplayName } from '$lib/user-display';
 	import { normalizeUserColor } from '$lib/user-colors';
 	import { getTimeEntryDurationMs } from '$lib/utils';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate } from '$lib/i18n/format';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -57,14 +59,6 @@
 		color?: string;
 		ms: number;
 	};
-
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
 
 	function entryMs(e: TimeEntry): number {
 		return getTimeEntryDurationMs(e);
@@ -152,23 +146,23 @@
 </script>
 
 <svelte:head>
-	<title>Projects — Sablier</title>
+	<title>{t('projects.title')}</title>
 </svelte:head>
 
 <div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div class="flex items-center justify-between gap-4">
-			<h1 class="text-fc-2xl font-semibold text-fc-fg">Projects</h1>
-			<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>New project</Button>
+			<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('projects.heading')}</h1>
+			<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>{t('projects.new')}</Button>
 		</div>
 
 		{#if projects.length === 0}
 			<EmptyState
 				icon={icons.folder}
-				title="No projects yet."
-				description="Create a project to start tracking time against it."
+				title={t('projects.empty.title')}
+				description={t('projects.empty.description')}
 			>
-				<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>New project</Button>
+				<Button icon={icons.plus} onclick={() => (drawerOpen = true)}>{t('projects.new')}</Button>
 			</EmptyState>
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -186,7 +180,7 @@
 								<div class="flex min-w-0 flex-col gap-1">
 									<p class="truncate text-fc-md font-semibold text-fc-fg">{project.name}</p>
 									<p class="text-fc-xs text-fc-fg-muted">
-										Created {formatDate(project.created_at)}
+										{t('projects.created', { date: formatDate(project.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) })}
 									</p>
 								</div>
 							</div>
@@ -210,13 +204,13 @@
 											</span>
 										{/if}
 									</div>
-									<StatusDot tone="success" pulse label="Working now" />
+									<StatusDot tone="success" pulse label={t('projects.workingNow')} />
 								</div>
 							{/if}
 						</div>
 
 						<p class="min-h-12 text-fc-sm text-fc-fg-muted">
-							{project.description || 'No description yet.'}
+							{project.description || t('projects.noDescriptionYet')}
 						</p>
 
 						<UserColorSplitBar segments={projectSegments[project.id] ?? []} showLegend={false} />
@@ -227,7 +221,7 @@
 	</section>
 </div>
 
-<Drawer bind:open={drawerOpen} title="New project">
+<Drawer bind:open={drawerOpen} title={t('projects.newTitle')}>
 	<form
 		class="flex flex-col gap-4"
 		onsubmit={(e) => {
@@ -236,15 +230,15 @@
 		}}
 	>
 		<div class="flex flex-col gap-1.5">
-			<span class="text-fc-sm text-fc-fg">Icon</span>
+			<span class="text-fc-sm text-fc-fg">{t('projects.icon')}</span>
 			<IconPicker value={newProjectIcon} onSelect={(icon) => (newProjectIcon = icon)} />
 		</div>
-		<Field label="Name">
+		<Field label={t('common.name')}>
 			<Input bind:value={name} required />
 		</Field>
-		<Field label="Description">
-			<Input bind:value={description} placeholder="Optional" />
+		<Field label={t('common.description')}>
+			<Input bind:value={description} placeholder={t('projects.optional')} />
 		</Field>
-		<Button type="submit" size="lg" icon={icons.plus} class="w-full">Create project</Button>
+		<Button type="submit" size="lg" icon={icons.plus} class="w-full">{t('projects.create')}</Button>
 	</form>
 </Drawer>

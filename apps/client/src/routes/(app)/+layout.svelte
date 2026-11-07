@@ -10,6 +10,7 @@
 	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
 	import { isApp } from '$lib/platform';
+	import { setSessionLocale, t } from '$lib/i18n/index.svelte';
 
 	let { children } = $props();
 
@@ -35,9 +36,9 @@
 	}
 
 	const navPages = $derived([
-		{ href: '/dashboard', label: 'Dashboard', icon: icons.dashboard, active: isActive('/dashboard') },
-		{ href: '/projects', label: 'Projects', icon: icons.folder, active: isActive('/projects') },
-		{ href: '/spaces', label: 'Spaces', icon: icons.space, active: isActive('/spaces') }
+		{ href: '/dashboard', label: t('nav.dashboard'), icon: icons.dashboard, active: isActive('/dashboard') },
+		{ href: '/projects', label: t('nav.projects'), icon: icons.folder, active: isActive('/projects') },
+		{ href: '/spaces', label: t('nav.spaces'), icon: icons.space, active: isActive('/spaces') }
 	]);
 
 	const navUser = $derived(
@@ -52,11 +53,11 @@
 		goto('/login');
 	}
 
-	const userMenu = [
-		{ label: 'Settings', icon: icons.settings, href: '/settings' },
-		...(isApp() ? [] : [{ label: 'Download the apps', icon: icons.download, href: '/downloads' }]),
-		{ label: 'Sign out', icon: icons.logout, tone: 'danger' as const, onSelect: signOut }
-	];
+	const userMenu = $derived([
+		{ label: t('nav.settings'), icon: icons.settings, href: '/settings' },
+		...(isApp() ? [] : [{ label: t('nav.downloads'), icon: icons.download, href: '/downloads' }]),
+		{ label: t('nav.signOut'), icon: icons.logout, tone: 'danger' as const, onSelect: signOut }
+	]);
 
 	function selectSpace(id: string | null) {
 		setActiveSpaceId(id);
@@ -69,6 +70,7 @@
 			const result = await backend.me(stored);
 			token = stored;
 			user = result.user;
+			setSessionLocale(result.user.locale ?? null);
 			/* Attribute browser errors to whoever hit them: the first question a
 			   stack trace raises is whether it is everyone or one account. */
 			identify(user);
@@ -84,6 +86,7 @@
 				if (r.synced) {
 					const fresh = await backend.me(stored);
 					user = fresh.user;
+					setSessionLocale(fresh.user.locale ?? null);
 					identify(user);
 				}
 			}).catch(() => {});
@@ -114,8 +117,6 @@
 				activeSpaceId={getActiveSpaceId()}
 				onSpaceSelect={selectSpace}
 				manageSpacesHref="/spaces"
-				personalSpaceLabel="Personnel"
-				manageSpacesLabel="Gérer les espaces"
 			/>
 		</div>
 		<main class="min-w-0 flex-1 overflow-auto overscroll-contain pb-28 md:pb-0">

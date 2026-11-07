@@ -6,6 +6,7 @@
 	import { getActiveSpaceId } from '$lib/space-context.svelte';
 	import { Button, Drawer, Field, Input, Select, icons } from '@facile/muse';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 
 	type Props = {
 		projects: Project[];
@@ -146,7 +147,7 @@
 				if (selectedProjectId !== projectId) {
 					return;
 				}
-				error = e instanceof Error ? e.message : 'Failed to load tasks.';
+				error = e instanceof Error ? e.message : t('timer.failed.tasks');
 				tasks = [];
 			})
 			.finally(() => {
@@ -160,7 +161,7 @@
 	async function resolveTaskId(projectId: number) {
 		const trimmedTaskName = taskName.trim();
 		if (!trimmedTaskName) {
-			throw new Error('Type a task name.');
+			throw new Error(t('timer.typeTask'));
 		}
 		const existingTask = findTaskByName(tasks, trimmedTaskName);
 		if (existingTask) {
@@ -175,21 +176,21 @@
 
 	async function handleSave() {
 		if (!selectedProjectId) {
-			error = 'Pick a project.';
+			error = t('session.pickProject');
 			return;
 		}
 		const startIso = buildIso(startDate, startTime);
 		const stopIso = isRunningEdit ? null : buildIso(endDate, endTime);
 		if (!startIso) {
-			error = 'Start date and time are required.';
+			error = t('session.startRequired');
 			return;
 		}
 		if (!isRunningEdit && !stopIso) {
-			error = 'End date and time are required.';
+			error = t('session.endRequired');
 			return;
 		}
 		if (stopIso && new Date(stopIso) <= new Date(startIso)) {
-			error = 'End time must be after start time.';
+			error = t('session.endAfterStart');
 			return;
 		}
 		error = '';
@@ -201,7 +202,7 @@
 				await backend.updateEntry(ctx.token, editEntry.id, projectId, taskId, startIso, stopIso);
 			} else {
 				if (!stopIso) {
-					throw new Error('End date and time are required.');
+					throw new Error(t('session.endRequired'));
 				}
 				await backend.createEntry(ctx.token, projectId, taskId, startIso, stopIso, getActiveSpaceId());
 			}
@@ -210,7 +211,7 @@
 			notifyTimeEntriesChanged();
 			onchange?.();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to save session.';
+			error = e instanceof Error ? e.message : t('session.failed.save');
 		} finally {
 			saving = false;
 		}
@@ -218,14 +219,14 @@
 </script>
 
 {#if !hideTrigger}
-	<Button variant="outline" icon={icons.plus} onclick={() => (drawerOpen = true)}>Add session</Button>
+	<Button variant="outline" icon={icons.plus} onclick={() => (drawerOpen = true)}>{t('timer.addSession')}</Button>
 {/if}
 
-<Drawer bind:open={drawerOpen} title={isEditMode ? 'Edit session' : 'Add a session'}>
+<Drawer bind:open={drawerOpen} title={isEditMode ? t('session.edit.title') : t('session.add.title')}>
 	<div class="flex flex-col gap-4">
-		<Field label="Project">
+		<Field label={t('common.project')}>
 			<Select bind:value={selectedProjectId}>
-				<option value="">Select a project</option>
+				<option value="">{t('timer.selectProject')}</option>
 				{#each projects as project (project.id)}
 					<option value={String(project.id)}>{project.name}</option>
 				{/each}
@@ -233,25 +234,25 @@
 		</Field>
 
 		<div class={isRunningEdit ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
-			<Field label="Start">
+			<Field label={t('session.start')}>
 				<Input type="date" bind:value={startDate} />
-				<Input id="{uid}-start-time" type="time" bind:value={startTime} aria-label="Start time" />
+				<Input id="{uid}-start-time" type="time" bind:value={startTime} aria-label={t('session.startTime')} />
 			</Field>
 			{#if !isRunningEdit}
-				<Field label="End">
+				<Field label={t('session.end')}>
 					<Input type="date" bind:value={endDate} />
-					<Input id="{uid}-end-time" type="time" bind:value={endTime} aria-label="End time" />
+					<Input id="{uid}-end-time" type="time" bind:value={endTime} aria-label={t('session.endTime')} />
 				</Field>
 			{/if}
 		</div>
 
-		<Field label="Task">
+		<Field label={t('common.task')}>
 			<TaskCombobox
 				{tasks}
 				bind:value={taskName}
 				disabled={!selectedProjectId}
 				loading={taskLoading}
-				placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+				placeholder={!selectedProjectId ? t('timer.selectProjectFirst') : t('timer.taskPlaceholder')}
 			/>
 		</Field>
 
@@ -269,9 +270,9 @@
 			disabled={saving}
 		>
 			{#if isEditMode}
-				{saving ? 'Saving…' : isRunningEdit ? 'Update session' : 'Save changes'}
+				{saving ? t('common.saving') : isRunningEdit ? t('session.update') : t('session.saveChanges')}
 			{:else}
-				{saving ? 'Saving…' : 'Add session'}
+				{saving ? t('common.saving') : t('timer.addSession')}
 			{/if}
 		</Button>
 	{/snippet}

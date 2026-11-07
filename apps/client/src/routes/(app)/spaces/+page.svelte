@@ -3,18 +3,12 @@
 	import { backend, type Space } from '$lib/backend';
 	import { Badge, Button, Card, EmptyState, icons } from '@facile/muse';
 	import { registreSpaceUrl } from '$lib/registre';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate } from '$lib/i18n/format';
 
 	const ctx = getContext<{ token: string }>('app');
 
 	let spaces = $state<Space[]>([]);
-
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleDateString('fr-FR', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
 
 	function roleTone(role: string): 'owner' | 'admin' | 'neutral' {
 		if (role === 'owner') return 'owner';
@@ -23,7 +17,9 @@
 	}
 
 	function roleLabel(role: string): string {
-		return role.charAt(0).toUpperCase() + role.slice(1);
+		if (role === 'owner') return t('role.owner');
+		if (role === 'admin') return t('role.admin');
+		return t('role.member');
 	}
 
 	onMount(async () => {
@@ -33,26 +29,26 @@
 </script>
 
 <svelte:head>
-	<title>Espaces — Sablier</title>
+	<title>{t('spaces.title')}</title>
 </svelte:head>
 
 <div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h1 class="text-fc-xl font-semibold text-fc-fg">Espaces</h1>
+			<h1 class="text-fc-xl font-semibold text-fc-fg">{t('spaces.heading')}</h1>
 			<Button href={registreSpaceUrl()} target="_blank" rel="noopener noreferrer" icon={icons.space}>
-				Gérer dans Registre
+				{t('common.manageInRegistre')}
 			</Button>
 		</div>
 
 		{#if spaces.length === 0}
 			<EmptyState
 				icon={icons.space}
-				title="Aucun espace"
-				description="Les espaces se créent dans Registre et apparaissent ici, avec leurs membres."
+				title={t('spaces.empty.title')}
+				description={t('spaces.empty.description')}
 			>
 				<Button href={registreSpaceUrl()} target="_blank" rel="noopener noreferrer" size="lg" icon={icons.plus}>
-					Créer un espace dans Registre
+					{t('spaces.create')}
 				</Button>
 			</EmptyState>
 		{:else}
@@ -71,10 +67,10 @@
 								<Badge tone={roleTone(space.role)}>{roleLabel(space.role)}</Badge>
 							</div>
 							<p class="truncate text-fc-xs text-fc-fg-muted">
-								{space.description || 'Aucune description'}
+								{space.description || t('spaces.noDescription')}
 							</p>
 							<p class="text-fc-xs text-fc-fg-muted">
-								Créé le {formatDate(space.created_at)}
+								{t('spaces.created', { date: formatDate(space.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) })}
 							</p>
 						</div>
 					</Card>

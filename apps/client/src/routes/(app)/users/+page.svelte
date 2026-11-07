@@ -3,6 +3,8 @@
 	import { backend, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getUserDisplayName } from '$lib/user-display';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate } from '$lib/i18n/format';
 	import { Avatar, Card, EmptyState, Skeleton, StatusDot, icons, normalizeUserColor } from '@facile/muse';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import UserColorDot from '$lib/components/UserColorDot.svelte';
@@ -20,13 +22,9 @@
 		return getUserDisplayName(user);
 	}
 
-	function formatDate(iso: string): string {
+	function formatCreated(iso: string): string {
 		if (!iso) return '—';
-		return new Date(iso).toLocaleDateString(undefined, {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
+		return formatDate(iso, { year: 'numeric', month: 'short', day: 'numeric' });
 	}
 
 	function userColor(user: UserProfile): string {
@@ -63,16 +61,15 @@
 </script>
 
 <svelte:head>
-	<title>Users — Sablier</title>
+	<title>{t('users.title')}</title>
 </svelte:head>
 
 <div class="flex w-full flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h1 class="text-fc-xl font-semibold text-fc-fg">Users</h1>
+			<h1 class="text-fc-xl font-semibold text-fc-fg">{t('users.heading')}</h1>
 			<span class="text-fc-sm text-fc-fg-muted">
-				{users.length}
-				{users.length === 1 ? 'member' : 'members'}
+				{t('count.members', { count: users.length })}
 			</span>
 		</div>
 
@@ -92,7 +89,7 @@
 				{/each}
 			</div>
 		{:else if users.length === 0}
-			<EmptyState icon={icons.usersGroup} title="No users yet." />
+			<EmptyState icon={icons.usersGroup} title={t('users.empty')} />
 		{:else}
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each users as user (user.id)}
@@ -104,8 +101,8 @@
 								tone="success"
 								pulse
 								class="absolute right-3 top-3"
-								title="{name} is currently tracking time"
-								aria-label="{name} is currently tracking time"
+								title={t('users.working', { name })}
+								aria-label={t('users.working', { name })}
 							/>
 						{/if}
 						<div class="flex items-center gap-3">
@@ -125,7 +122,7 @@
 								{/if}
 							</div>
 						</div>
-						<p class="text-fc-xs text-fc-fg-muted">Created {formatDate(user.created_at)}</p>
+						<p class="text-fc-xs text-fc-fg-muted">{t('users.created', { date: formatCreated(user.created_at) })}</p>
 					</Card>
 				{/each}
 			</div>

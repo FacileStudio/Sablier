@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { Input, cn } from '@facile/muse';
 	import type { Task } from '$lib/backend';
+	import { t } from '$lib/i18n/index.svelte';
 
 	type Props = {
 		tasks: Task[];
@@ -15,7 +16,7 @@
 		tasks,
 		value = $bindable(''),
 		disabled = false,
-		placeholder = 'Choose or create a task',
+		placeholder = t('timer.taskPlaceholder'),
 		loading = false
 	}: Props = $props();
 
@@ -206,7 +207,7 @@
 			<div
 				id={listboxId}
 				role="listbox"
-				aria-label="Tasks"
+				aria-label={t('combobox.tasks')}
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
 			>
 				{#each filtered as task, index (task.id)}
@@ -252,15 +253,15 @@
 							select(value.trim());
 						}}
 					>
-						<span class="min-w-0 flex-1 truncate">Create "{value.trim()}"</span>
+						<span class="min-w-0 flex-1 truncate">{t('combobox.create', { name: value.trim() })}</span>
 					</div>
 				{:else if !loading && filtered.length === 0}
 					<div class="px-2.5 py-2 text-fc-sm text-fc-fg-muted">
-						No matching task
+						{t('combobox.none')}
 					</div>
 				{:else if loading}
 					<div class="px-2.5 py-2 text-fc-sm text-fc-fg-muted">
-						Loading tasks…
+						{t('combobox.loading')}
 					</div>
 				{/if}
 			</div>
