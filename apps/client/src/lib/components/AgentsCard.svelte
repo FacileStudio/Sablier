@@ -4,6 +4,7 @@
 	import { backend, type Agent, type AgentPairing } from '$lib/backend';
 	import { formatDuration } from '$lib/utils';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 
 	let { token }: { token: string } = $props();
 
@@ -39,8 +40,8 @@
 {#if agents.length > 0}
 	<Card class="flex flex-col gap-3">
 		<div class="flex items-baseline justify-between gap-2">
-			<h3 class="text-fc-sm font-medium text-fc-fg">Agents</h3>
-			<span class="text-fc-xs text-fc-fg-muted">This week</span>
+			<h3 class="text-fc-sm font-medium text-fc-fg">{t('agents.heading')}</h3>
+			<span class="text-fc-xs text-fc-fg-muted">{t('agents.thisWeek')}</span>
 		</div>
 		<ul class="flex flex-col gap-2">
 			{#each agents as agent (agent.id)}
@@ -49,9 +50,9 @@
 					<UserAvatarBadge name={agent.name} avatarUrl={agent.avatar_url} color={agent.color} agent />
 					<span class="min-w-0 flex-1 truncate text-fc-sm text-fc-fg">{agent.name}</span>
 					<dl class="flex gap-3 text-fc-xs text-fc-fg-muted tabular-nums">
-						<div class="flex gap-1"><dt>Agent</dt><dd class="text-fc-fg">{hours(row?.agent_seconds)}</dd></div>
-						<div class="flex gap-1"><dt>Cowork</dt><dd class="text-fc-fg">{hours(row?.cowork_seconds)}</dd></div>
-						<div class="flex gap-1"><dt>Paired</dt><dd class="text-fc-fg">{hours(row?.paired_seconds)}</dd></div>
+						<div class="flex gap-1"><dt>{t('agents.agent')}</dt><dd class="text-fc-fg">{hours(row?.agent_seconds)}</dd></div>
+						<div class="flex gap-1"><dt>{t('agents.cowork')}</dt><dd class="text-fc-fg">{hours(row?.cowork_seconds)}</dd></div>
+						<div class="flex gap-1"><dt>{t('agents.paired')}</dt><dd class="text-fc-fg">{hours(row?.paired_seconds)}</dd></div>
 					</dl>
 				</li>
 			{/each}

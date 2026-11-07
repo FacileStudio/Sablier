@@ -2,9 +2,6 @@ export type StepId = 'everywhere' | 'forget' | 'agents' | 'signin';
 
 export type Step = {
 	id: StepId;
-	label: string;
-	title: string;
-	body: string;
 };
 
 export type Landing = {
@@ -15,30 +12,10 @@ export type Landing = {
 export const ONBOARDED_KEY = 'sablier.onboarded';
 
 export const STEPS: readonly Step[] = [
-	{
-		id: 'everywhere',
-		label: 'Timer',
-		title: 'Your timer, everywhere',
-		body: 'Start a timer on your phone, stop it from the desktop tray or the terminal. It is one timer, wherever you are.'
-	},
-	{
-		id: 'forget',
-		label: 'Drafts',
-		title: 'It tracks even when you forget',
-		body: 'Your tools send activity to Sablier. Sablier turns it into draft entries you confirm. Drafts you leave alone confirm themselves after 48 hours.'
-	},
-	{
-		id: 'agents',
-		label: 'Agents',
-		title: 'Your agents clock in too',
-		body: 'AI agents show up as teammates, each with its own blob avatar. When an agent works with you, its time sits next to yours.'
-	},
-	{
-		id: 'signin',
-		label: 'Sign in',
-		title: 'Ready when you are',
-		body: 'Sign in with your Facile account and your first timer is one tap away.'
-	}
+	{ id: 'everywhere' },
+	{ id: 'forget' },
+	{ id: 'agents' },
+	{ id: 'signin' }
 ];
 
 /** Keeps a step index inside the step list. */

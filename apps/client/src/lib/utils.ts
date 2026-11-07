@@ -1,4 +1,5 @@
 import type { TimeEntry } from "$lib/backend";
+import { t } from "$lib/i18n/index.svelte";
 
 type DurationFormatOptions = {
 	includeSeconds?: boolean;
@@ -6,7 +7,7 @@ type DurationFormatOptions = {
 };
 
 export function formatDuration(ms: number, options: DurationFormatOptions = {}) {
-	const { includeSeconds = false, underMinuteLabel = 'under a min' } = options;
+	const { includeSeconds = false, underMinuteLabel = t('time.underMinute') } = options;
 	const safeMs = Math.max(0, ms);
 	const totalSeconds = Math.floor(safeMs / 1000);
 

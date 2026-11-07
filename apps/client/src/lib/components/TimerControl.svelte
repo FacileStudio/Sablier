@@ -9,6 +9,7 @@
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskCombobox from '$lib/components/TaskCombobox.svelte';
 	import { NotificationService } from '$lib/notifications';
+	import { t } from '$lib/i18n/index.svelte';
 	import { fly } from 'svelte/transition';
 
 	const timerIcons = {
@@ -104,7 +105,7 @@
 				if (selectedProjectId !== projectId) {
 					return;
 				}
-				error = e instanceof Error ? e.message : 'Failed to load tasks.';
+				error = e instanceof Error ? e.message : t('timer.failed.tasks');
 				tasks = [];
 			})
 			.finally(() => {
@@ -118,7 +119,7 @@
 	async function resolveTaskId(projectId: number) {
 		const trimmedTaskName = taskName.trim();
 		if (!trimmedTaskName) {
-			throw new Error('Type a task name.');
+			throw new Error(t('timer.typeTask'));
 		}
 		const existingTask = findTaskByName(tasks, trimmedTaskName);
 		if (existingTask) {
@@ -133,7 +134,7 @@
 
 	async function startTimer() {
 		if (!selectedProjectId) {
-			error = 'Pick a project first.';
+			error = t('timer.pickProjectFirst');
 			return;
 		}
 		error = '';
@@ -150,7 +151,7 @@
 			NotificationService.triggerTimerStarted(projectName(projectId));
 			onchange?.();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to start timer.';
+			error = e instanceof Error ? e.message : t('timer.failed.start');
 		} finally {
 			starting = false;
 		}
@@ -168,7 +169,7 @@
 			NotificationService.triggerTimerStopped(projectName(stoppedProjectId));
 			onchange?.();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to stop timer.';
+			error = e instanceof Error ? e.message : t('timer.failed.stop');
 		} finally {
 			stopping = false;
 		}
@@ -184,7 +185,7 @@
 			NotificationService.triggerTimerPaused(projectName(running!.project_id));
 			onchange?.();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to pause timer.';
+			error = e instanceof Error ? e.message : t('timer.failed.pause');
 		} finally {
 			pausing = false;
 		}
@@ -200,7 +201,7 @@
 			NotificationService.triggerTimerResumed(projectName(running!.project_id));
 			onchange?.();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to resume timer.';
+			error = e instanceof Error ? e.message : t('timer.failed.resume');
 		} finally {
 			resuming = false;
 		}
@@ -235,16 +236,16 @@
 						disabled={busy}
 					>
 						{#if runningPaused}
-							{resuming ? 'Resuming…' : 'Resume'}
+							{resuming ? t('timer.resuming') : t('timer.resume')}
 						{:else}
-							{pausing ? 'Pausing…' : 'Pause'}
+							{pausing ? t('timer.pausing') : t('timer.pause')}
 						{/if}
 					</Button>
 					<Button variant="danger" icon={timerIcons.stop} onclick={stopTimer} disabled={busy}>
-						{stopping ? 'Stopping…' : 'Stop'}
+						{stopping ? t('timer.stopping') : t('timer.stop')}
 					</Button>
 					<IconButton
-						aria-label="Edit entry"
+						aria-label={t('timer.editEntry')}
 						onclick={() => (editDrawerOpen = true)}
 						disabled={busy}
 					>
@@ -254,8 +255,8 @@
 			</div>
 		{:else}
 			<div class="flex items-center gap-2">
-				<Button icon={timerIcons.play} onclick={() => (drawerOpen = true)}>Start Session</Button>
-				<IconButton aria-label="Add session" onclick={() => (manualDrawerOpen = true)}>
+				<Button icon={timerIcons.play} onclick={() => (drawerOpen = true)}>{t('timer.start')}</Button>
+				<IconButton aria-label={t('timer.addSession')} onclick={() => (manualDrawerOpen = true)}>
 					<iconify-icon icon={icons.plus} width="18" height="18" class="block"></iconify-icon>
 				</IconButton>
 			</div>
@@ -288,7 +289,7 @@
 				<Button
 					size="lg"
 					variant="outline"
-					class="border-transparent bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
+					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={icons.edit}
 					onclick={() => {
 						fabOpen = false;
@@ -296,7 +297,7 @@
 					}}
 					disabled={busy}
 				>
-					Edit entry
+					{t('timer.editEntry')}
 				</Button>
 				<Button
 					size="lg"
@@ -309,15 +310,15 @@
 					disabled={busy}
 				>
 					{#if runningPaused}
-						{resuming ? 'Resuming…' : 'Resume'}
+						{resuming ? t('timer.resuming') : t('timer.resume')}
 					{:else}
-						{pausing ? 'Pausing…' : 'Pause'}
+						{pausing ? t('timer.pausing') : t('timer.pause')}
 					{/if}
 				</Button>
 				<Button
 					size="lg"
 					variant="danger"
-					class="border-transparent bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
+					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={timerIcons.stop}
 					onclick={() => {
 						fabOpen = false;
@@ -325,7 +326,7 @@
 					}}
 					disabled={busy}
 				>
-					{stopping ? 'Stopping…' : 'Stop'}
+					{stopping ? t('timer.stopping') : t('timer.stop')}
 				</Button>
 			</div>
 		{/if}
@@ -334,7 +335,7 @@
 			class="flex h-14 items-center gap-2.5 rounded-fc-pill bg-fc-accent px-5 text-fc-accent-fg shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
 			onclick={() => (fabOpen = !fabOpen)}
 			aria-expanded={fabOpen}
-			aria-label="Timer actions"
+			aria-label={t('timer.actions')}
 		>
 			<span class="size-2 shrink-0 animate-pulse rounded-fc-full bg-fc-success"></span>
 			<span class="font-fc-mono text-fc-lg font-semibold tabular-nums">
@@ -347,14 +348,14 @@
 				<Button
 					size="lg"
 					variant="outline"
-					class="border-transparent bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
+					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
 					icon={icons.plus}
 					onclick={() => {
 						fabOpen = false;
 						manualDrawerOpen = true;
 					}}
 				>
-					Add entry
+					{t('timer.addEntry')}
 				</Button>
 				<Button
 					size="lg"
@@ -365,7 +366,7 @@
 						drawerOpen = true;
 					}}
 				>
-					Start session
+					{t('timer.start')}
 				</Button>
 			</div>
 		{/if}
@@ -374,7 +375,7 @@
 			class="flex size-14 items-center justify-center rounded-fc-pill bg-fc-accent text-fc-accent-fg shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
 			onclick={() => (fabOpen = !fabOpen)}
 			aria-expanded={fabOpen}
-			aria-label="Timer actions"
+			aria-label={t('timer.actions')}
 		>
 			<iconify-icon
 				icon={fabOpen ? icons.close : timerIcons.play}
@@ -387,23 +388,23 @@
 </div>
 
 <!-- Drawers (shared, portal-rendered) -->
-<Drawer bind:open={drawerOpen} title="Start a timer">
+<Drawer bind:open={drawerOpen} title={t('timer.drawer.title')}>
 	<div class="flex flex-col gap-4">
-		<Field label="Project">
+		<Field label={t('common.project')}>
 			<Select bind:value={selectedProjectId}>
-				<option value="">Select a project</option>
+				<option value="">{t('timer.selectProject')}</option>
 				{#each projects as project (project.id)}
 					<option value={String(project.id)}>{project.name}</option>
 				{/each}
 			</Select>
 		</Field>
-		<Field label="Task">
+		<Field label={t('common.task')}>
 			<TaskCombobox
 				{tasks}
 				bind:value={taskName}
 				disabled={!selectedProjectId}
 				loading={taskLoading}
-				placeholder={!selectedProjectId ? 'Select a project first' : 'Choose or create a task'}
+				placeholder={!selectedProjectId ? t('timer.selectProjectFirst') : t('timer.taskPlaceholder')}
 			/>
 		</Field>
 		{#if error}
@@ -419,7 +420,7 @@
 			onclick={startTimer}
 			disabled={starting}
 		>
-			{starting ? 'Starting…' : 'Start timer'}
+			{starting ? t('timer.drawer.starting') : t('timer.drawer.start')}
 		</Button>
 	{/snippet}
 </Drawer>

@@ -25,6 +25,8 @@
 	} from '@facile/muse';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
 	import { NotificationService } from '$lib/notifications';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate, formatNumber, weekdayShort } from '$lib/i18n/format';
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
 
@@ -38,25 +40,14 @@
 	let userRates = $state<Map<number, { rate: number; rate_type: 'daily' | 'hourly'; workday_hours: number }>>(new Map());
 
 	function formatLongDate(iso: string): string {
-		return new Date(iso).toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+		return formatDate(iso, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
 
 	function formatShortDate(iso: string): string {
 		if (isToday(iso)) {
-			return new Date(iso).toLocaleTimeString(undefined, {
-				hour: '2-digit',
-				minute: '2-digit'
-			});
+			return formatDate(iso, { hour: '2-digit', minute: '2-digit' });
 		}
-		return new Date(iso).toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric'
-		});
+		return formatDate(iso, { month: 'short', day: 'numeric' });
 	}
 
 	function projectName(id: number): string {
@@ -102,9 +93,9 @@
 
 	const ensureNotifications = () => {
 		if (Notification.permission !== 'granted') {
-			toast.info('Please enable notifications to receive alerts about your time entries.', {
+			toast.info(t('dash.notifications'), {
 				action: {
-					label: 'Enable',
+					label: t('dash.notifications.enable'),
 					onClick: () => NotificationService.triggerNotificationsPermission()
 				}
 			});
@@ -176,22 +167,19 @@
 			total += userRate.rate_type === 'hourly' ? hours * userRate.rate : (hours / userRate.workday_hours) * userRate.rate;
 		}
 		if (!anyRate) return null;
-		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total);
+		return formatNumber(total, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 	});
 
-	const todayDate = new Date().toLocaleDateString(undefined, {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
-	});
+	const todayDate = $derived(
+		formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+	);
 
 	function localDateKey(d: Date): string {
 		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 	}
 
 	function formatMinutes(m: number): string {
-		if (m === 0) return 'No activity';
+		if (m === 0) return t('dash.activity.none');
 		const h = Math.floor(m / 60);
 		const min = Math.round(m % 60);
 		if (h === 0) return `${min}m`;
@@ -234,7 +222,7 @@
 		cur.setDate(cur.getDate() - 13);
 		for (let i = 0; i < 14; i++) {
 			days.push({
-				label: cur.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+				label: formatDate(cur, { day: 'numeric', month: 'short' }),
 				minutes: Math.round(dayMinutes.get(localDateKey(cur)) ?? 0)
 			});
 			cur.setDate(cur.getDate() + 1);
@@ -284,7 +272,7 @@
 				if (!isFuture && minutes >= 300) level = 4;
 				week.push({
 					key,
-					label: cur.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+					label: formatDate(cur, { month: 'short', day: 'numeric' }),
 					level,
 					minutes: Math.round(minutes),
 					isFuture
@@ -297,7 +285,7 @@
 		const monthHeaders = weeks.map((week) => {
 			const first = week.find((day) => new Date(day.key).getDate() === 1);
 			if (first) {
-				return new Date(first.key).toLocaleString(undefined, { month: 'short' });
+				return formatDate(first.key, { month: 'short' });
 			}
 			return '';
 		});
@@ -318,7 +306,7 @@
 		}));
 		const rest = Math.round(ranked.slice(5).reduce((acc, [, m]) => acc + m, 0));
 		if (rest > 0) {
-			slices.push({ label: 'Other', value: rest, color: 'var(--color-fc-fg-muted)' });
+			slices.push({ label: t('dash.other'), value: rest, color: 'var(--color-fc-fg-muted)' });
 		}
 		return slices;
 	});
@@ -327,27 +315,27 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard — Sablier</title>
+	<title>{t('dash.title')}</title>
 </svelte:head>
 
 <div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">
-			<h1 class="text-fc-2xl font-semibold text-fc-fg">Dashboard</h1>
+			<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('dash.heading')}</h1>
 			<p class="text-fc-sm text-fc-fg-muted">{todayDate}</p>
 		</div>
 
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			<StatCard label="Today's total" value={todayTotal()}>
+			<StatCard label={t('dash.stat.today')} value={todayTotal()}>
 				<Sparkline data={recentDays.map((d) => d.minutes)} class="mt-2" />
 			</StatCard>
 
 			{#if todayEarnings !== null}
-				<StatCard label="Today's value" value={todayEarnings} />
+				<StatCard label={t('dash.stat.value')} value={todayEarnings} />
 			{/if}
 
-			<StatCard label="Sessions today" value={todaySessionCount()} />
-			<StatCard label="Projects" value={projects.length} />
+			<StatCard label={t('dash.stat.sessions')} value={todaySessionCount()} />
+			<StatCard label={t('dash.stat.projects')} value={projects.length} />
 		</div>
 
 		<AgentsCard token={ctx.token} />
@@ -357,10 +345,12 @@
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-fc-lg font-semibold text-fc-fg">Activity</h2>
+			<h2 class="text-fc-lg font-semibold text-fc-fg">{t('dash.activity.heading')}</h2>
 			<p class="text-fc-sm text-fc-fg-muted">
-				{activitySummary.activeDays} active {activitySummary.activeDays === 1 ? 'day' : 'days'} ·
-				{formatMinutes(activitySummary.totalMinutes)} tracked in the last year
+				{t('dash.activity.summary', {
+					days: t('count.activeDays', { count: activitySummary.activeDays }),
+					total: formatMinutes(activitySummary.totalMinutes)
+				})}
 			</p>
 		</div>
 
@@ -369,8 +359,8 @@
 				<div
 					class="flex shrink-0 flex-col justify-around pb-[2px] text-right text-fc-xs text-fc-fg-muted"
 				>
-					{#each ['', 'Mon', '', 'Wed', '', 'Fri', ''] as dayLabel, i (i)}
-						<span>{dayLabel}</span>
+					{#each [-1, 1, -1, 3, -1, 5, -1] as dayIndex, i (i)}
+						<span>{dayIndex < 0 ? '' : weekdayShort(dayIndex)}</span>
 					{/each}
 				</div>
 				<div class="min-w-0 flex-1">
@@ -410,7 +400,7 @@
 			</div>
 
 			<div class="flex items-center gap-1.5 text-fc-xs text-fc-fg-muted">
-				<span>Less</span>
+				<span>{t('dash.activity.less')}</span>
 				<span class="h-3 w-3 rounded-fc-xs bg-fc-surface"></span>
 				{#each activityRamp as step, i (i)}
 					<span
@@ -419,39 +409,39 @@
 						style:opacity={step}
 					></span>
 				{/each}
-				<span>More</span>
+				<span>{t('dash.activity.more')}</span>
 			</div>
 		</Card>
 
 		<div class="grid gap-4 lg:grid-cols-3">
 			<Card class="flex flex-col gap-4 lg:col-span-2">
-				<h3 class="text-fc-sm font-medium text-fc-fg">Last 14 days</h3>
+				<h3 class="text-fc-sm font-medium text-fc-fg">{t('dash.last14')}</h3>
 				<BarChart
 					class="flex-1"
 					labels={recentDays.map((d) => d.label)}
-					series={[{ name: 'Tracked', data: recentDays.map((d) => d.minutes), color: chartColor(0) }]}
+					series={[{ name: t('dash.tracked'), data: recentDays.map((d) => d.minutes), color: chartColor(0) }]}
 					yFormat={formatMinutesAxis}
 					showLegend={false}
 				/>
 			</Card>
 
 			<Card class="flex flex-col gap-4">
-				<h3 class="text-fc-sm font-medium text-fc-fg">By project</h3>
+				<h3 class="text-fc-sm font-medium text-fc-fg">{t('dash.byProject')}</h3>
 				{#if projectShare.length === 0}
 					<EmptyState
 						bare
 						class="flex-1"
 						icon={icons.folder}
-						title="Nothing tracked yet"
-						description="Time logged against a project shows up here."
+						title={t('dash.byProject.empty.title')}
+						description={t('dash.byProject.empty.description')}
 					>
-						<Button icon={icons.plus} href="/projects">New session</Button>
+						<Button icon={icons.plus} href="/projects">{t('dash.newSession')}</Button>
 					</EmptyState>
 				{:else}
 					<DonutChart
 						class="flex-1"
 						data={projectShare}
-						centerLabel="Tracked"
+						centerLabel={t('dash.tracked')}
 						centerValue={formatMinutes(trackedTotal)}
 						valueFormat={formatMinutes}
 					/>
@@ -462,19 +452,19 @@
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-fc-lg font-semibold text-fc-fg">Currently working</h2>
+			<h2 class="text-fc-lg font-semibold text-fc-fg">{t('dash.working.heading')}</h2>
 			<p class="text-fc-sm text-fc-fg-muted">
-				{runningEntries.length} active {runningEntries.length === 1 ? 'session' : 'sessions'}
+				{t('count.activeSessions', { count: runningEntries.length })}
 			</p>
 		</div>
 
 		{#if runningEntries.length === 0}
 			<EmptyState
 				icon={icons.clock}
-				title="No one is currently working"
-				description="Start a timer on a project and it shows up here in real time."
+				title={t('dash.working.empty.title')}
+				description={t('dash.working.empty.description')}
 			>
-				<Button icon={icons.plus} href="/projects">Start a session</Button>
+				<Button icon={icons.plus} href="/projects">{t('dash.working.start')}</Button>
 			</EmptyState>
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -498,7 +488,7 @@
 							<StatusDot
 								tone={paused ? 'warning' : 'success'}
 								pulse={!paused}
-								label={paused ? 'Paused' : 'Running'}
+								label={paused ? t('dash.paused') : t('dash.running')}
 							/>
 							<span class="text-fc-sm tabular-nums text-fc-fg">
 								{formatDuration(getTimeEntryDurationMs(entry, now), { includeSeconds: true })}
@@ -512,28 +502,28 @@
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-fc-lg font-semibold text-fc-fg">Recent sessions</h2>
-			<p class="text-fc-sm text-fc-fg-muted">The last five entries across this space.</p>
+			<h2 class="text-fc-lg font-semibold text-fc-fg">{t('dash.recent.heading')}</h2>
+			<p class="text-fc-sm text-fc-fg-muted">{t('dash.recent.intro')}</p>
 		</div>
 
 		{#if recentEntries.length === 0}
 			<EmptyState
 				icon={icons.history}
-				title="No sessions yet"
-				description="Track time on a project and the latest entries land here."
+				title={t('dash.recent.empty.title')}
+				description={t('dash.recent.empty.description')}
 			>
-				<Button icon={icons.plus} href="/projects">New session</Button>
+				<Button icon={icons.plus} href="/projects">{t('dash.newSession')}</Button>
 			</EmptyState>
 		{:else}
 			<Table>
 				<thead>
 					<tr>
-						<th>Project</th>
-						<th>User</th>
-						<th>Task</th>
-						<th class="hidden md:table-cell">Started</th>
-						<th class="md:hidden">Started</th>
-						<th class="text-right">Duration</th>
+						<th>{t('dash.recent.col.project')}</th>
+						<th>{t('dash.recent.col.user')}</th>
+						<th>{t('dash.recent.col.task')}</th>
+						<th class="hidden md:table-cell">{t('dash.recent.col.started')}</th>
+						<th class="md:hidden">{t('dash.recent.col.started')}</th>
+						<th class="text-right">{t('dash.recent.col.duration')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -569,7 +559,7 @@
 										class="justify-end"
 										tone={paused ? 'warning' : 'success'}
 										pulse={!paused}
-										label={paused ? 'Paused' : 'Running'}
+										label={paused ? t('dash.paused') : t('dash.running')}
 									/>
 								{:else}
 									<span class="tabular-nums">{entryDuration(entry)}</span>

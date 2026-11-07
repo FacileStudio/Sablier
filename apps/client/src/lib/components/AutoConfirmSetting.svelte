@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { SettingsRow, SettingsSection, Switch, toast } from '@facile/muse';
 	import { backend } from '$lib/backend';
+	import { t } from '$lib/i18n/index.svelte';
 
 	let { token }: { token: string } = $props();
 
@@ -20,23 +21,23 @@
 	async function toggle(next: boolean) {
 		try {
 			enabled = (await backend.updateDraftSettings(token, { auto_confirm_drafts: next })).auto_confirm_drafts;
-			toast.success(next ? 'Suggestions will confirm themselves.' : 'Suggestions wait for you.');
+			toast.success(next ? t('suggested.on') : t('suggested.off'));
 		} catch (err) {
 			enabled = !next;
-			toast.danger(err instanceof Error ? err.message : 'Failed to save the setting.');
+			toast.danger(err instanceof Error ? err.message : t('suggested.failed'));
 		}
 	}
 </script>
 
-<SettingsSection title="Suggested sessions" description="Built from the activity your tools report to Sablier.">
+<SettingsSection title={t('suggested.title')} description={t('suggested.description')}>
 	<SettingsRow
-		label="Confirm automatically"
-		description="After 48 hours, a suggestion with a project becomes a session on its own."
+		label={t('suggested.auto')}
+		description={t('suggested.autoDescription')}
 	>
 		<Switch
 			checked={enabled}
 			disabled={!loaded}
-			aria-label="Confirm suggestions automatically"
+			aria-label={t('suggested.autoLabel')}
 			onchange={(e) => toggle(e.currentTarget.checked)}
 		/>
 	</SettingsRow>

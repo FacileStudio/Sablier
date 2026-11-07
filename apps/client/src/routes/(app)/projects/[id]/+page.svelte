@@ -5,6 +5,8 @@
 	import { backend, type Project, type Task, type TimeEntry, type UserProfile } from '$lib/backend';
 	import { onTimeEntriesChanged } from '$lib/time-entry-events';
 	import { getEntryUserDisplayName } from '$lib/user-display';
+	import { t } from '$lib/i18n/index.svelte';
+	import { formatDate, formatNumber } from '$lib/i18n/format';
 	import UserAvatarBadge from '$lib/components/UserAvatarBadge.svelte';
 	import AgentBadge from '$lib/components/AgentBadge.svelte';
 	import UserColorSplitBar from '$lib/components/UserColorSplitBar.svelte';
@@ -77,21 +79,12 @@
 		ms: number;
 	};
 
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+	function formatStarted(iso: string): string {
+		return formatDate(iso, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
 
 	function formatDateShort(iso: string): string {
-		return new Date(iso).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
+		return formatDate(iso, { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
 	function entryMs(e: TimeEntry): number {
@@ -158,7 +151,7 @@
 			total += ur.rate_type === 'hourly' ? hours * ur.rate : (hours / ur.workday_hours) * ur.rate;
 		}
 		if (!anyRate) return null;
-		return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total);
+		return formatNumber(total, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 	});
 
 	const avgMs = $derived(entries.length > 0 ? totalMs / entries.length : 0);
@@ -193,9 +186,9 @@
 	);
 
 	const tabItems = $derived([
-		{ id: 'tasks', label: 'Tasks', icon: icons.check, badge: tasksWithStats.length },
-		{ id: 'sessions', label: 'Sessions', icon: icons.clock, badge: sortedEntries.length },
-		{ id: 'repartition', label: 'User Repartition', icon: icons.usersGroup }
+		{ id: 'tasks', label: t('project.tabs.tasks'), icon: icons.check, badge: tasksWithStats.length },
+		{ id: 'sessions', label: t('project.tabs.sessions'), icon: icons.clock, badge: sortedEntries.length },
+		{ id: 'repartition', label: t('project.tabs.split'), icon: icons.usersGroup }
 	]);
 
 	function openEntryDeleteDialog(entry: TimeEntry) {
@@ -215,7 +208,7 @@
 			await backend.deleteEntry(ctx.token, target.id);
 			entries = entries.filter((entry) => entry.id !== target.id);
 		} catch (e) {
-			deleteError = e instanceof Error ? e.message : 'Failed to remove session.';
+			deleteError = e instanceof Error ? e.message : t('project.sessions.failedRemove');
 			throw e;
 		} finally {
 			deletingEntryId = null;
@@ -258,7 +251,7 @@
 			tasks = tasks.filter((t) => t.id !== target.id);
 			entries = entries.map((e) => e.task_id === target.id ? { ...e, task_id: 0, task_name: '' } : e);
 		} catch (e) {
-			taskDeleteError = e instanceof Error ? e.message : 'Failed to delete task.';
+			taskDeleteError = e instanceof Error ? e.message : t('project.tasks.failedDelete');
 			throw e;
 		} finally {
 			deletingTaskId = null;
@@ -281,7 +274,7 @@
 			);
 			cancelTaskEdit();
 		} catch (e) {
-			taskSaveError = e instanceof Error ? e.message : 'Failed to rename task.';
+			taskSaveError = e instanceof Error ? e.message : t('project.tasks.failedRename');
 		} finally {
 			savingTaskId = null;
 		}
@@ -295,15 +288,20 @@
 	}
 
 	function statusLabel(status: string): string {
-		const labels: Record<string, string> = { 'to-do': 'Not started', 'in-progress': 'In progress', 'in-review': 'In review', 'done': 'Completed' };
-		return labels[status] ?? 'Not started';
+		const labels = {
+			'to-do': t('status.todo'),
+			'in-progress': t('status.inProgress'),
+			'in-review': t('status.inReview'),
+			done: t('status.done')
+		} as Record<string, string>;
+		return labels[status] ?? t('status.todo');
 	}
 
 	function statusDotClass(status: string): string {
-		if (status === 'done') return 'border-fc-success bg-fc-success';
-		if (status === 'in-review') return 'border-fc-info bg-fc-info';
-		if (status === 'in-progress') return 'border-fc-warning bg-fc-warning';
-		return 'border-fc-border hover:border-fc-fg';
+		if (status === 'done') return 'bg-fc-success';
+		if (status === 'in-review') return 'bg-fc-info';
+		if (status === 'in-progress') return 'bg-fc-warning';
+		return 'bg-fc-field hover:bg-fc-fg-muted';
 	}
 
 	function statusTone(status: string): 'success' | 'info' | 'warning' | 'neutral' {
@@ -354,7 +352,7 @@
 			editName = '';
 			editDescription = '';
 		} catch (e) {
-			projectActionError = e instanceof Error ? e.message : 'Failed to save project.';
+			projectActionError = e instanceof Error ? e.message : t('project.save.failed');
 		} finally {
 			savingProject = false;
 		}
@@ -370,7 +368,7 @@
 			await backend.deleteProject(ctx.token, project.id);
 			await goto('/projects');
 		} catch (e) {
-			projectActionError = e instanceof Error ? e.message : 'Failed to delete project.';
+			projectActionError = e instanceof Error ? e.message : t('project.delete.failed');
 			deletingProject = false;
 			throw e;
 		}
@@ -407,7 +405,7 @@
 			userRates = rateMap;
 			usersById = userMap;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load project.';
+			error = e instanceof Error ? e.message : t('project.load.failed');
 		} finally {
 			loading = false;
 		}
@@ -429,19 +427,19 @@
 </script>
 
 <svelte:head>
-	<title>{project?.name ?? 'Project'} — Sablier</title>
+	<title>{project?.name ?? t('project.titleFallback')} — Sablier</title>
 </svelte:head>
 
 <div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
 		<div>
-			<Button variant="ghost" href="/projects" icon={icons.chevronLeft} class="-ml-4">Projects</Button>
+			<Button variant="ghost" href="/projects" icon={icons.chevronLeft} class="-ml-4">{t('project.back')}</Button>
 		</div>
 
 		{#if loading}
 			<div class="flex items-center gap-2 text-fc-sm text-fc-fg-muted">
 				<Spinner size="sm" />
-				Loading…
+				{t('common.loadingDots')}
 			</div>
 		{:else if error}
 			<Alert tone="danger">{error}</Alert>
@@ -458,21 +456,21 @@
 						<h1 class="truncate text-fc-2xl font-semibold text-fc-fg">{project.name}</h1>
 					</div>
 					<p class="text-fc-sm text-fc-fg-muted">
-						{project.description || 'No description'}
+						{project.description || t('projects.noDescription')}
 					</p>
 					<p class="text-fc-xs text-fc-fg-muted">
-						Created {formatDateShort(project.created_at)}
+						{t('projects.created', { date: formatDateShort(project.created_at) })}
 					</p>
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
-					<Button variant="outline" icon={icons.edit} onclick={startProjectEdit}>Edit</Button>
+					<Button variant="outline" icon={icons.edit} onclick={startProjectEdit}>{t('project.edit')}</Button>
 					<Button
 						variant="danger"
 						icon={icons.remove}
 						onclick={() => { projectDeleteDialogOpen = true; }}
 						disabled={deletingProject}
 					>
-						{deletingProject ? 'Deleting…' : 'Delete'}
+						{deletingProject ? t('common.deleting') : t('common.delete')}
 					</Button>
 				</div>
 			</div>
@@ -490,23 +488,23 @@
 				class:sm:grid-cols-3={projectValue === null}
 				class:sm:grid-cols-4={projectValue !== null}
 			>
-				<StatCard label="Total Time" value={formatDuration(totalMs)} class="tabular-nums" />
-				<StatCard label="Tasks" value={tasks.length} class="tabular-nums" />
-				<StatCard label="Avg Session" value={formatDuration(avgMs)} class="tabular-nums" />
+				<StatCard label={t('project.stat.total')} value={formatDuration(totalMs)} class="tabular-nums" />
+				<StatCard label={t('project.stat.tasks')} value={tasks.length} class="tabular-nums" />
+				<StatCard label={t('project.stat.average')} value={formatDuration(avgMs)} class="tabular-nums" />
 				{#if projectValue !== null}
-					<StatCard label="Project Value" value={projectValue} class="tabular-nums" />
+					<StatCard label={t('project.stat.value')} value={projectValue} class="tabular-nums" />
 				{/if}
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-4">
-			<Tabs items={tabItems} bind:value={activeTab} panelId="project-panel" label="Project sections" />
+			<Tabs items={tabItems} bind:value={activeTab} panelId="project-panel" label={t('project.tabs.label')} />
 
 			<div id="project-panel" class="flex flex-col gap-4">
 				{#if activeTab === 'tasks'}
 					<div class="flex flex-col gap-1">
-						<h2 class="text-fc-lg font-semibold text-fc-fg">Tasks</h2>
-						<p class="text-fc-sm text-fc-fg-muted">Every task tracked on this project.</p>
+						<h2 class="text-fc-lg font-semibold text-fc-fg">{t('project.tasks.heading')}</h2>
+						<p class="text-fc-sm text-fc-fg-muted">{t('project.tasks.intro')}</p>
 					</div>
 
 					{#if tasksWithStats.length > 0}
@@ -519,8 +517,8 @@
 							></iconify-icon>
 							<Input
 								bind:value={taskSearch}
-								placeholder="Filter tasks…"
-								aria-label="Filter tasks"
+								placeholder={t('project.tasks.filter')}
+								aria-label={t('project.tasks.filterLabel')}
 								class="pl-9"
 							/>
 						</div>
@@ -533,25 +531,25 @@
 					{#if tasksWithStats.length === 0}
 						<EmptyState
 							icon={icons.check}
-							title="No tasks yet."
-							description="Tasks appear here as soon as a session is tracked against one."
+							title={t('project.tasks.empty.title')}
+							description={t('project.tasks.empty.description')}
 						/>
 					{:else if filteredTasks.length === 0}
 						<EmptyState
 							icon={icons.search}
-							title={`No tasks matching "${taskSearch}".`}
-							description="Try a different filter."
+							title={t('project.tasks.noMatch', { query: taskSearch })}
+							description={t('project.tasks.noMatchHint')}
 						/>
 					{:else}
 						<Table>
 							<thead>
 								<tr>
-									<th aria-label="Toggle status"></th>
-									<th>Task</th>
-									<th>Status</th>
-									<th>Tracked</th>
-									<th aria-label="Assignee"></th>
-									<th aria-label="Actions"></th>
+									<th aria-label={t('project.tasks.col.toggle')}></th>
+									<th>{t('project.tasks.col.task')}</th>
+									<th>{t('project.tasks.col.status')}</th>
+									<th>{t('project.tasks.col.tracked')}</th>
+									<th aria-label={t('project.tasks.col.assignee')}></th>
+									<th aria-label={t('project.tasks.col.actions')}></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -560,8 +558,8 @@
 										<td>
 											<button
 												type="button"
-												class="mt-0.5 block size-4 shrink-0 rounded-fc-pill border transition-colors {statusDotClass(task.status)}"
-												aria-label="Task status: {statusLabel(task.status)} — change"
+												class="mt-0.5 block size-4 shrink-0 rounded-fc-pill transition-colors {statusDotClass(task.status)}"
+												aria-label={t('project.tasks.statusChange', { status: statusLabel(task.status) })}
 												title={statusLabel(task.status)}
 												onclick={() => toggleTaskStatus(task.id)}
 											></button>
@@ -569,7 +567,7 @@
 										<td>
 											{#if editingTaskId === task.id}
 												<div class="flex min-w-56 flex-col gap-2">
-													<Input bind:value={taskDraftName} maxlength={200} aria-label="Task name" />
+													<Input bind:value={taskDraftName} maxlength={200} aria-label={t('project.tasks.name')} />
 													<div class="flex flex-wrap gap-2">
 														<Button
 															size="sm"
@@ -577,7 +575,7 @@
 															onclick={() => saveTaskName(task.id)}
 															disabled={savingTaskId === task.id}
 														>
-															{savingTaskId === task.id ? 'Saving…' : 'Save'}
+															{savingTaskId === task.id ? t('common.saving') : t('common.save')}
 														</Button>
 														<Button
 															variant="outline"
@@ -586,7 +584,7 @@
 															onclick={cancelTaskEdit}
 															disabled={savingTaskId === task.id}
 														>
-															Cancel
+															{t('common.cancel')}
 														</Button>
 													</div>
 												</div>
@@ -635,7 +633,7 @@
 													variant="ghost"
 													size="sm"
 													icon={icons.edit}
-													aria-label="Rename task"
+													aria-label={t('project.tasks.rename')}
 													onclick={() => startTaskEdit(task.id, task.name)}
 													disabled={editingTaskId !== null && editingTaskId !== task.id}
 												/>
@@ -643,7 +641,7 @@
 													variant="ghost-danger"
 													size="sm"
 													icon={icons.remove}
-													aria-label="Delete task"
+													aria-label={t('project.tasks.delete')}
 													onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
 													disabled={deletingTaskId === task.id ||
 														(editingTaskId !== null && editingTaskId !== task.id)}
@@ -657,8 +655,8 @@
 					{/if}
 				{:else if activeTab === 'sessions'}
 					<div class="flex flex-col gap-1">
-						<h2 class="text-fc-lg font-semibold text-fc-fg">Sessions</h2>
-						<p class="text-fc-sm text-fc-fg-muted">Every tracked session on this project.</p>
+						<h2 class="text-fc-lg font-semibold text-fc-fg">{t('project.sessions.heading')}</h2>
+						<p class="text-fc-sm text-fc-fg-muted">{t('project.sessions.intro')}</p>
 					</div>
 
 					{#if deleteError}
@@ -668,18 +666,18 @@
 					{#if sortedEntries.length === 0}
 						<EmptyState
 							icon={icons.clock}
-							title="No sessions yet."
-							description="Start a timer on this project and its sessions land here."
+							title={t('project.sessions.empty.title')}
+							description={t('project.sessions.empty.description')}
 						/>
 					{:else}
 						<Table>
 							<thead>
 								<tr>
-									<th>User</th>
-									<th>Task</th>
-									<th>Started</th>
-									<th>Duration</th>
-									<th aria-label="Actions"></th>
+									<th>{t('project.sessions.col.user')}</th>
+									<th>{t('project.tasks.col.task')}</th>
+									<th>{t('project.sessions.col.started')}</th>
+									<th>{t('project.sessions.col.duration')}</th>
+									<th aria-label={t('project.tasks.col.actions')}></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -701,15 +699,15 @@
 											</div>
 										</td>
 										<td class="text-fc-fg-muted">{entry.task_name || '—'}</td>
-										<td class="whitespace-nowrap text-fc-fg-muted">{formatDate(entry.started_at)}</td>
+										<td class="whitespace-nowrap text-fc-fg-muted">{formatStarted(entry.started_at)}</td>
 										<td>
 											{#if isRunning}
 												{#if paused}
-													<Badge tone="warning">Paused</Badge>
+													<Badge tone="warning">{t('project.sessions.paused')}</Badge>
 												{:else}
 													<Badge tone="success">
 														<StatusDot tone="success" pulse />
-														Running
+														{t('project.sessions.running')}
 													</Badge>
 												{/if}
 											{:else}
@@ -725,14 +723,14 @@
 														variant="ghost"
 														size="sm"
 														icon={icons.edit}
-														aria-label="Edit session"
+														aria-label={t('project.sessions.edit')}
 														onclick={() => openEditDrawer(entry)}
 													/>
 													<Button
 														variant="ghost-danger"
 														size="sm"
 														icon={icons.remove}
-														aria-label="Delete session"
+														aria-label={t('project.sessions.delete')}
 														onclick={() => openEntryDeleteDialog(entry)}
 														disabled={deletingEntryId === entry.id}
 													/>
@@ -746,17 +744,17 @@
 					{/if}
 				{:else}
 					<div class="flex flex-col gap-1">
-						<h2 class="text-fc-lg font-semibold text-fc-fg">User Repartition</h2>
+						<h2 class="text-fc-lg font-semibold text-fc-fg">{t('project.split.heading')}</h2>
 						<p class="text-fc-sm text-fc-fg-muted">
-							Whole-project split by tracked time per user.
+							{t('project.split.intro')}
 						</p>
 					</div>
 
 					{#if projectUserSegments.length === 0}
 						<EmptyState
 							icon={icons.usersGroup}
-							title="No tracked time yet."
-							description="The split appears once someone tracks time on this project."
+							title={t('project.split.empty.title')}
+							description={t('project.split.empty.description')}
 						/>
 					{:else}
 						<Card>
@@ -777,26 +775,30 @@
 <ConfirmModal
 	bind:open={projectDeleteDialogOpen}
 	tone="danger"
-	title="Delete project?"
+	title={t('project.delete.title')}
 	description={project
-		? `${project.name}, its ${tasks.length} task${tasks.length === 1 ? '' : 's'} and its ${entries.length} tracked session${entries.length === 1 ? '' : 's'} are deleted for everyone. This cannot be undone.`
-		: 'This project and everything tracked on it are deleted for everyone. This cannot be undone.'}
-	confirmLabel="Delete project"
+		? t('project.delete.description', {
+				name: project.name,
+				tasks: t('count.tasks', { count: tasks.length }),
+				sessions: t('count.sessions', { count: entries.length })
+			})
+		: t('project.delete.descriptionFallback')}
+	confirmLabel={t('project.delete.confirm')}
 	onConfirm={deleteProject}
 />
 
 <ConfirmModal
 	bind:open={taskDeleteDialogOpen}
 	tone="danger"
-	title="Delete task?"
+	title={t('task.delete.title')}
 	description={deleteTaskTarget
-		? `${deleteTaskTarget.name} is removed from this project.${
+		? `${t('task.delete.description', { name: deleteTaskTarget.name })}${
 				deleteTaskTarget.sessionCount > 0
-					? ` Its ${deleteTaskTarget.sessionCount} tracked session${deleteTaskTarget.sessionCount === 1 ? '' : 's'} stay, but become unassigned.`
+					? ` ${t('task.delete.sessionsStay', { sessions: t('count.sessions', { count: deleteTaskTarget.sessionCount }) })}`
 					: ''
 			}`
 		: undefined}
-	confirmLabel="Delete task"
+	confirmLabel={t('task.delete.confirm')}
 	onConfirm={confirmDeleteTask}
 	onCancel={() => {
 		deleteTaskTarget = null;
@@ -810,11 +812,11 @@
 <ConfirmModal
 	bind:open={entryDeleteDialogOpen}
 	tone="danger"
-	title="Delete session?"
+	title={t('session.delete.title')}
 	description={deleteEntryTarget?.task_name
-		? `The tracked time for ${deleteEntryTarget.task_name} is removed from this project's totals. This cannot be undone.`
-		: "This session's tracked time is removed from this project's totals. This cannot be undone."}
-	confirmLabel="Delete session"
+		? t('session.delete.description', { task: deleteEntryTarget.task_name })
+		: t('session.delete.descriptionAnon')}
+	confirmLabel={t('session.delete.confirm')}
 	onConfirm={confirmDeleteEntry}
 	onCancel={() => {
 		deleteEntryTarget = null;
@@ -827,8 +829,8 @@
 
 <Drawer
 	bind:open={projectEditDrawerOpen}
-	title="Edit project"
-	description="Update the project name and description from here."
+	title={t('project.editTitle')}
+	description={t('project.editDescription')}
 	onClose={() => {
 		projectActionError = '';
 	}}
@@ -839,24 +841,24 @@
 		{/if}
 
 		<div class="flex flex-col gap-1.5">
-			<span class="text-fc-sm text-fc-fg">Icon</span>
+			<span class="text-fc-sm text-fc-fg">{t('projects.icon')}</span>
 			<IconPicker value={editIcon} onSelect={(icon) => (editIcon = icon)} />
 		</div>
-		<Field label="Name">
+		<Field label={t('common.name')}>
 			<Input bind:value={editName} />
 		</Field>
-		<Field label="Description">
-			<Input bind:value={editDescription} placeholder="Optional" />
+		<Field label={t('common.description')}>
+			<Input bind:value={editDescription} placeholder={t('projects.optional')} />
 		</Field>
 	</div>
 
 	{#snippet footer()}
 		<div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 			<Button variant="outline" size="lg" icon={icons.close} onclick={cancelProjectEdit} disabled={savingProject}>
-				Cancel
+				{t('common.cancel')}
 			</Button>
 			<Button size="lg" icon={icons.check} onclick={saveProject} disabled={savingProject}>
-				{savingProject ? 'Saving…' : 'Save'}
+				{savingProject ? t('common.saving') : t('common.save')}
 			</Button>
 		</div>
 	{/snippet}

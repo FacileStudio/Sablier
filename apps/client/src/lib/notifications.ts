@@ -1,6 +1,7 @@
 import { toast } from '@facile/muse';
 import { backend } from '$lib/backend';
 import { urlBase64ToUint8Array } from './utils';
+import { t } from '$lib/i18n/index.svelte';
 
 async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
 	if (!('serviceWorker' in navigator)) return null;
@@ -91,11 +92,9 @@ export class NotificationService {
 		if (Notification.permission === 'granted') return;
 		return Notification.requestPermission().then((permission) => {
 			if (permission === 'granted') {
-				toast.success('Notifications enabled! You will now receive alerts about your time entries.');
+				toast.success(t('notify.enabled'));
 			} else {
-				toast.danger(
-					'Notifications are disabled. Please enable notifications in your browser settings.'
-				);
+				toast.danger(t('notify.disabled'));
 			}
 		});
 	}
@@ -106,18 +105,18 @@ export class NotificationService {
 	}
 
 	static async triggerTimerStarted(projectName: string) {
-		NotificationService.notify('Timer started', `Project: ${projectName}`);
+		NotificationService.notify(t('notify.started'), t('notify.project', { name: projectName }));
 	}
 
 	static async triggerTimerStopped(projectName: string) {
-		NotificationService.notify('Timer stopped', `Project: ${projectName}`);
+		NotificationService.notify(t('notify.stopped'), t('notify.project', { name: projectName }));
 	}
 
 	static async triggerTimerPaused(projectName: string) {
-		NotificationService.notify('Timer paused', `Project: ${projectName}`);
+		NotificationService.notify(t('notify.paused'), t('notify.project', { name: projectName }));
 	}
 
 	static async triggerTimerResumed(projectName: string) {
-		NotificationService.notify('Timer resumed', `Project: ${projectName}`);
+		NotificationService.notify(t('notify.resumed'), t('notify.project', { name: projectName }));
 	}
 }
