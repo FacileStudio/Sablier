@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- `docker-compose.yml` forwards `BULLE_URL`, `BULLE_SERVICE_KEY` and the `JEV_*` variables to the API container.
+  Without them the AI step of attribution stayed off in production even with the keys set in Dokploy.
+
 ## [1.16.1] - 2026-11-07
 
 ### Changed
