@@ -73,6 +73,12 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
+      BULLE_URL: ${BULLE_URL:-}
+      BULLE_SERVICE_KEY: ${BULLE_SERVICE_KEY:-}
+      JEV_API_KEY: ${JEV_API_KEY:-}
+      JEV_ENDPOINT: ${JEV_ENDPOINT:-}
+      JEV_BASE_URL: ${JEV_BASE_URL:-}
+      JEV_MODEL: ${JEV_MODEL:-}
       # Browser error reporting. Separate from JOURNAL_URL above, which is the
       # server SDK's and points inside the Docker network — the browser needs a
       # public address, ending in /api or every report is silently discarded.
