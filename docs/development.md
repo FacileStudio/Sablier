@@ -26,8 +26,9 @@ so a fresh clone needs no separate hook step. `mise run install` runs
 
 Two hooks get installed. `commit-msg` enforces Conventional Commits and comes from the
 shared config in `FacileStudio/hooks`, pinned by tag in `lefthook.yml`, so every suite
-repo applies the same rule and it changes in one place. `pre-push` runs the quality gate
-below.
+repo applies the same rule and it changes in one place. `pre-push` runs `filet gate .`:
+filet's check, `go vet`, staticcheck, the Go, client and desktop tests, and douane, with the
+gate's own `gofmt` step disabled in `filet.yml` because it walks `vendor/`.
 
 ## Running
 
@@ -68,8 +69,8 @@ Client scripts, run from `apps/client`: `bun run dev`, `bun run build`, `bun run
 
 ## The quality gate
 
-`scripts/check.sh` is the gate, and the lefthook `pre-push` job does nothing but exec it.
-The script itself is unchanged by the move to lefthook. It reports and never rewrites,
+`scripts/check.sh` is the quick gate for a working session; the `pre-push` hook and CI run
+filet's (above). It reports and never rewrites,
 except under `--format`. Three steps per Go module, then the client:
 
 1. `gofmt -l .`, ignoring `vendor/`. Any listed file fails the gate.

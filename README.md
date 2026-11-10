@@ -134,7 +134,7 @@ apps/
              spaces, antenne, notifications), schemas/ (GORM models + migrations)
   client/    SvelteKit 5 SPA, built into the API image and served by it
   desktop/   Tauri tray app: timer, idle detection, local window rules
-scripts/     check.sh, the quality gate the pre-push hook runs
+scripts/     check.sh, the quick local quality gate
 docs/        Architecture, configuration, development, deployment, API
 ```
 
