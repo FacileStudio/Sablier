@@ -88,6 +88,7 @@ type Config struct {
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	VAPIDSubject    string
+	BulleURL        string
 
 	// JournalBrowserURL and JournalBrowserKey configure the browser's error
 	// reporting. Both empty leaves the client reporting nothing.
@@ -136,6 +137,7 @@ func Load() (Config, error) {
 		VAPIDPrivateKey: troncenv.String("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
 		OIDCClaimsScope: troncenv.String("OIDC_CLAIMS_SCOPE", ""),
+		BulleURL:        troncenv.String("BULLE_URL", ""),
 
 		JournalBrowserURL: troncenv.String("JOURNAL_BROWSER_URL", ""),
 		JournalBrowserKey: troncenv.String("JOURNAL_BROWSER_KEY", ""),

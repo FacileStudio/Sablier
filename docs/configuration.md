@@ -114,6 +114,17 @@ wins when both are set, and a failed Bulle call never falls back to Jev. Each ca
 work then waits in Review. The AI sees only the session title, the project hint, the
 entity and the candidate labels (`Space › Project › Task`), never message content.
 
+## Ideas
+
+With `BULLE_URL` and `OIDC_ISSUER` set, the API serves `/api/ideas*`, a proxy to Bulle's Ideas
+API. It exchanges the signed-in user's Registre refresh token for a Bulle token (audience
+`bulle`, scopes `bulle.read` and `bulle.write`), so `PORTE_TOKEN_KEY` should be set to seal the
+stored refresh tokens. `?space_id=` takes a Sablier space id the user belongs to and is sent to
+Bulle as the linked Registre space; without it the personal space is used. A plan without
+`ai.access` gets `ai_access: false` on the list and a 402 on generate, run and approve, and
+Bulle is not called. Entitlements come from the Registre directory snapshot and are kept in the
+`forfait_state` row, so a restart never fails open again.
+
 ## Compose-only
 
 `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` are consumed by the `db` service

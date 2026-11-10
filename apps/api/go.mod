@@ -6,13 +6,13 @@ require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665
 	github.com/FacileStudio/antenne-client/go v0.0.0-20260810113516-0458a301c709
 	github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee
-	github.com/FacileStudio/porte v0.13.0
+	github.com/FacileStudio/porte v0.15.1
 	github.com/FacileStudio/porte/directory v0.3.0
-	github.com/FacileStudio/tronc v0.17.1
+	github.com/FacileStudio/porte/forfait v0.1.1
+	github.com/FacileStudio/tronc v0.18.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
-	golang.org/x/crypto v0.54.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.1
@@ -32,9 +32,9 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -22,6 +22,8 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/internal/decide"
 	documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
+	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
+	"github.com/FacileStudio/Sablier/apps/api/internal/plans"
 	"github.com/FacileStudio/Sablier/apps/api/internal/worker"
 	"github.com/FacileStudio/Sablier/apps/api/modules/agents"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
@@ -36,6 +38,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/users"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte/directory"
+	"github.com/FacileStudio/porte/exchange"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
@@ -74,6 +77,7 @@ func referenceConfig() apiref.Config {
 				agents.Documentation,
 				heartbeats.Documentation,
 				review.Documentation,
+				ideasDocumentation,
 			},
 		},
 	}
@@ -111,14 +115,14 @@ func journalConfigExtra(appEnv *env.Config) func() map[string]any {
 // identity tables. Sign-in goes through Registre only; there is no local
 // password kit. Discovery runs here, so an unreachable or half-configured
 // issuer fails at boot rather than on somebody's first login.
-func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *oidc.Kit, error) {
+func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *oidc.Kit, *exchange.Exchanger, error) {
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	store, err := newPorteStore(sqlDB)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	resealInBackground(ctx, store, appLogger)
 	users := auth.NewUserStore(db)
@@ -126,7 +130,11 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 
 	sessions, err := session.New(cfg, session.Deps{Sessions: store.Sessions(), Logger: appLogger})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+	exchanger, err := newExchanger(store.Identities(), appEnv, appLogger)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	kit, err := oidc.New(ctx, cfg, oidc.Deps{
 		Users:       users,
@@ -137,9 +145,9 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 		ConfigExtra: journalConfigExtra(appEnv),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return sessions, kit, nil
+	return sessions, kit, exchanger, nil
 }
 
 // uploadSourceMaps ships this build's maps to Journal so a browser stack trace
@@ -211,7 +219,7 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver) chi.Router {
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig) (chi.Router, error) {
 	authService := auth.NewService(db, sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
@@ -240,6 +248,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	apiref.Mount(router, referenceConfig())
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
+	var ideasErr error
 	router.Route("/api", func(api chi.Router) {
 		auth.RegisterRoutes(api, sessions, kit)
 		projects.RegisterRoutes(api, projectService, authService)
@@ -258,22 +267,29 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		agents.RegisterRoutes(api, agentService, authService)
 		heartbeats.RegisterRoutes(api, heartbeatService, authService)
 		review.RegisterRoutes(api, review.Handlers{Entries: timeEntryService, Drafts: heartbeatService}, authService)
+		ideasErr = mountIdeas(api, db, ideas, middleware.RequireAuth(authService))
 	})
+	if ideasErr != nil {
+		return nil, ideasErr
+	}
 
 	if spa.Available(clientDir) {
 		router.Handle("/*", spa.Handler(spa.Config{Dir: clientDir}))
 		appLogger.Info("serving client", slog.String("dir", clientDir))
 	}
 
-	return router
+	return router, nil
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver) (*http.Server, error) {
-	sessions, kit, err := buildAuth(context.Background(), db, appEnv, appLogger)
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
+	sessions, kit, exchanger, err := buildAuth(context.Background(), db, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
-	router := buildRouter(db, sqlDB, appEnv, appLogger, sessions, kit, notificationsService, antenneService, syncer, deletions, resolver)
+	router, err := buildRouter(db, sqlDB, appEnv, appLogger, sessions, kit, notificationsService, antenneService, syncer, deletions, resolver, newIdeasConfig(exchanger, gate, appEnv))
+	if err != nil {
+		return nil, err
+	}
 
 	antenneService.AutoConnect(context.Background())
 
@@ -297,7 +313,7 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger
 // ready runs once, in the background, after the first snapshot applied: the import has
 // succeeded by then and every imported space carries its Registre id, so the Antenne
 // reconcile can tell which projects are shareable.
-func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger, ready func(context.Context)) (*spaces.Registre, *directory.Syncer) {
+func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger, gate *plans.Gate, ready func(context.Context)) (*spaces.Registre, *directory.Syncer) {
 	if appEnv.OIDC == nil {
 		return nil, nil
 	}
@@ -310,6 +326,9 @@ func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger, ready
 			ClientSecret: appEnv.OIDC.ClientSecret,
 		},
 		Apply: func(ctx context.Context, snapshot directory.Snapshot) error {
+			if err := gate.Apply(ctx, snapshot); err != nil {
+				return err
+			}
 			if err := registre.Apply(ctx, snapshot); err != nil {
 				return err
 			}
@@ -452,9 +471,14 @@ func run() error {
 	if appEnv.OIDC != nil {
 		antenneService.SetIssuer(appEnv.OIDC.Issuer)
 	}
-	registre, syncer := newDirectory(db, &appEnv, appLogger, antenneService.ReconcileAtBoot)
+	gate := plans.New(db, appEnv.Porte().Issuer, appLogger)
+	if err := gate.Load(context.Background()); err != nil {
+		appLogger.Error("failed to load the saved entitlements", slog.Any("error", err))
+		return err
+	}
+	registre, syncer := newDirectory(db, &appEnv, appLogger, gate, antenneService.ReconcileAtBoot)
 	deletions := newDeletions(db, &appEnv, appLogger)
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver)
+	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver, gate)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err

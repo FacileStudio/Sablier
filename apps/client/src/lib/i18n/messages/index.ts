@@ -5,13 +5,15 @@ import { dashboard } from './dashboard';
 import { projects } from './projects';
 import { settings } from './settings';
 import { timer } from './timer';
+import { ideas } from './ideas';
 
 const rows = {
 	...shell,
 	...dashboard,
 	...projects,
 	...settings,
-	...timer
+	...timer,
+	...ideas
 };
 
 export type AppKey = keyof typeof rows;

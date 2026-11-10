@@ -44,7 +44,12 @@ func testRouter(t *testing.T) chi.Router {
 		t.Fatalf("oidc.New: %v", err)
 	}
 	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, appEnv.StorageDir, appLogger)
-	return buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{})
+	ideas := &ideasConfig{URL: "https://bulle.example.test", Token: func(context.Context) (string, error) { return "", nil }}
+	router, err := buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{}, ideas)
+	if err != nil {
+		t.Fatalf("buildRouter: %v", err)
+	}
+	return router
 }
 
 // The registry is hand-written, so it rots the moment someone registers a route
