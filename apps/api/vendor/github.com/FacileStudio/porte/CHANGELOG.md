@@ -5,6 +5,100 @@ session from undoing a deliberate choice.
 
 ## [Unreleased]
 
+## v0.15.1 — 2026-11-10
+
+Root module: **v0.15.1**; nested modules unchanged. Fix; no migration.
+
+**`exchange` picks the identity that holds a refresh token.** A user can carry several identities
+under the Registre issuer: a subject left from a recreated account sits beside the live one, with
+no refresh token. v0.15.0 took the first match, so such a user got `ErrReconnect` without Registre
+being asked. Found on the first live exchange from Nuage. The identity with a refresh token now
+wins, the most recently synced first. Bulle's `internal/suite` has the same first-match rule.
+
+## v0.15.0 — 2026-11-10
+
+Root module: **v0.15.0**; `directory` stays at v0.3.0, `forfait` at v0.1.1 and `mcpauth` at v0.1.0.
+Additive; no migration.
+
+**Token exchange for apps: `porte/exchange`.** Each suite app is getting an Ideas page that calls
+Bulle as the signed-in user, and Plume, Glouton and Bulle already call other apps that way, each
+with its own copy of the same code. `porte/exchange` is that code once:
+
+- **`exchange.New(Config)`** takes the Registre issuer (the same value porte/oidc uses, since it is
+  the provider identities are filed under), the app's client id and secret, and the identity store
+  (`pg.IdentityStore` fits; with a `pg.TokenSealer` the tokens stay sealed at rest).
+- **`Token(ctx, userID, Target{Audience, Scopes})`** returns an exchanged access token. It reuses the
+  stored Registre access token while it is valid, else refreshes it, then exchanges it (RFC 8693)
+  for the target. Exchanged tokens are cached in memory until expiry minus `Margin` (30 s).
+- **Refreshes are serialized per user across every audience.** Registre rotates the refresh token
+  on every refresh, so two in parallel leave one holding a dead token. Bulle keyed its single-flight
+  on (user, force), which let a forced refresh run beside a normal one; here one lock per user
+  covers both, and waiting on it honours the caller's context.
+- **A rotation is never lost.** The refresh and its save run on a context the caller cannot cancel.
+  If the save fails, the new refresh token stays in memory and is used and saved on the next
+  refresh. If Registre answers `invalid_grant` but the stored refresh token has changed since it was
+  read (another replica, or porte's role refresh, rotated it), the exchanger retries once with it.
+- **Errors.** `ErrReconnect` (a tronc `failed_precondition`, so `httpjson.WriteError` shows a usable
+  message) only when there is no Registre identity, no refresh token, or Registre refuses the grant.
+  Glouton also treated `invalid_client` and every 400 as "sign in again", which hides a config
+  error behind a user action; here those are `*RefusedError{Status, Code}` (`invalid_scope` when the
+  seed does not grant the scopes). A network error, a timeout or a 5xx wraps `ErrUnavailable`.
+- **`Do(ctx, userID, target, call)`** runs a downstream call and, on a 401, forgets the token and
+  runs it once more with a fresh one. **`Forget`** and **`ForgetUser`** drop cached tokens.
+- **`Source(target)`** binds a target to the user porte put on the request context, so
+  `src.Token` and `src.Forget` plug into a client that takes `func(ctx) (string, error)`, such as
+  `tronc/bulle`, without that client importing porte.
+
+Upgrade note: additive, no migration. The app's Registre seed entry needs a `token_exchange` grant
+for each audience it calls.
+
+## v0.14.0 — 2026-11-08
+
+Root module: **v0.14.0**; new nested module `mcpauth` at **v0.1.0**; `directory` stays at v0.3.0 and
+`forfait` at v0.1.1. Additive; no migration.
+
+**MCP resource-server auth.** Every suite app is getting its own remote MCP endpoint, authorized by
+Registre, for any compliant client (Claude, ChatGPT, Cursor, VS Code). `porte/mcpauth` is the
+resource-server half, on go-sdk v1.8.0's `auth` package:
+
+- **`Verifier(ctx, Config)`** returns an `auth.TokenVerifier`. It verifies the RS256 access token
+  offline through `porte/oidc/jwt`, requires `aud` to name `Config.Resource` (the RFC 8707 resource
+  URI) byte for byte, and resolves `(iss, sub)` through `oidc.ResolveBearer`, the same mapping the
+  Authorization header path uses, so there is no email fallback and no provisioning. `TokenInfo`
+  carries the local account id, the scopes, `exp`, and `Extra` `client_id`, `actor` and `subject`.
+- **Both token populations verify.** Registre is moving MCP tokens to `aud` = resource URI with a
+  `scope` claim. Tokens Bulle exchanges today name the app's client id instead. `Config.Audience`
+  accepts that id, on delegated tokens (`act` present) only, so a login token Registre issued to the
+  app itself is never an MCP credential. Leave it empty once every token is resource-bound.
+- **Fixed refusals.** Every rejected token is `auth.ErrInvalidToken` with the text `invalid token`,
+  because the SDK writes the error text into the response; the reason goes to the logger at debug
+  level, never the token. An unreachable JWKS or identity store is a 500, not a 401, so a client is
+  not told to sign in again over an outage.
+- **`Require`** wraps `auth.RequireBearerToken` and adds RFC 6750 error codes to its challenge:
+  `error="insufficient_scope"` on a 403 and `error="invalid_token"` on a 401 that carried a token.
+  The SDK sends neither, and MCP clients, the SDK's own included, start step-up authorization only
+  on `insufficient_scope`. The protected handler gets the original writer, so its own responses
+  are untouched. A zero `ClockSkew` becomes 30 s, matching jwt's leeway.
+- **Scopes.** `ScopesFor(prefix)` names `<prefix>.read` and `<prefix>.write`. A write grant implies
+  read, as `Config.ScopePrefix` does on the header path.
+- **Metadata.** `ProtectedResourceMetadata(resource, issuer, scopes)` builds the RFC 9728 document
+  for `auth.ProtectedResourceMetadataHandler`; `MetadataURL(resource)` gives its well-known URL.
+- **Plan gate.** `ThirdParty(info)` is false only for a token Bulle exchanged (`act` present and
+  `client_id` = `bulle`): Bulle has its own `ai.access` gate. `CheckPlan` and the `PlanGate`
+  middleware read `ai.access` from a `forfait.Store` under the token's subject and answer the suite's
+  402 `payment_required` with `upgrade_url` = Registre `/spaces`. A nil store refuses every
+  third-party token.
+
+`mcpauth` is a nested module so go-sdk reaches only the apps that serve MCP, not every porte
+consumer.
+
+Root module changes that support it: `jwt.Claims` gains `Audience`, `ClientID` (`client_id`), `ID`
+(`jti`) and `ExpiresAt`; `jwt.Config.ExtraAudiences` accepts further audiences through the same
+discovery and key cache; `oidc.ResolveBearer` exports the bearer-token account mapping.
+
+Upgrade note: nothing changes for an app that does not import `porte/mcpauth`. An MCP server
+requires `github.com/FacileStudio/porte/mcpauth v0.1.0`, which pulls porte v0.14.0.
+
 ## v0.13.0 — 2026-11-07
 
 Root module: **v0.13.0**; `directory` stays at v0.3.0. Additive; no migration.

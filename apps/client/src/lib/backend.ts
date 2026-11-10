@@ -141,6 +141,37 @@ export type TaskSearchResult = {
 	opus: boolean;
 };
 
+export type BulleIdea = {
+	id: string;
+	kind: string;
+	title: string;
+	why: string;
+	draft: string;
+	sources: { label: string; ref: string }[] | null;
+	status: string;
+	created_at: string;
+	expires_at: string;
+};
+
+export type IdeasPage = {
+	ai_access: boolean;
+	upgrade_url?: string;
+	ideas: BulleIdea[] | null;
+	generating: boolean;
+	last_batch_at: string | null;
+};
+
+export type IdeaRunStart = { run_id: string; session_id: string; idea_id: string };
+
+export type IdeaRunView = {
+	id: string;
+	state: 'running' | 'needs_approval' | 'done' | 'failed';
+	summary: string;
+	outputs: { call_id: string; tool: string; url: string; preview: string }[] | null;
+	pending_approvals: { call_id: string; tool: string; args?: Record<string, unknown> | string }[] | null;
+	continue_url: string;
+};
+
 export type SpaceScope = 'all' | string | null;
 
 export type Draft = {
@@ -259,6 +290,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, token?: stri
 	if (!response.ok) {
 		throw await requestError(response);
 	}
+	if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;
 }
 
@@ -544,6 +576,28 @@ export const backend = {
 		return apiFetch<DraftSettings>('/api/heartbeats/settings', {
 			method: 'PUT',
 			body: JSON.stringify(settings)
+		}, token);
+	},
+
+	listIdeas(token: string, spaceId: string | null) {
+		return apiFetch<IdeasPage>(`/api/ideas${spaceQuery(new URLSearchParams(), spaceId)}`, {}, token);
+	},
+	generateIdeas(token: string, spaceId: string | null) {
+		return apiFetch<{ batch_id: string }>(`/api/ideas/generate${spaceQuery(new URLSearchParams(), spaceId)}`, { method: 'POST', body: '{}' }, token);
+	},
+	runIdea(token: string, spaceId: string | null, ideaId: string) {
+		return apiFetch<IdeaRunStart>(`/api/ideas/${encodeURIComponent(ideaId)}/run${spaceQuery(new URLSearchParams(), spaceId)}`, { method: 'POST', body: '{}' }, token);
+	},
+	dismissIdea(token: string, ideaId: string) {
+		return apiFetch<void>(`/api/ideas/${encodeURIComponent(ideaId)}/dismiss`, { method: 'POST', body: '{}' }, token);
+	},
+	ideaRun(token: string, runId: string) {
+		return apiFetch<IdeaRunView>(`/api/ideas/runs/${encodeURIComponent(runId)}`, {}, token);
+	},
+	decideIdeaApproval(token: string, runId: string, callId: string, approve: boolean) {
+		return apiFetch<void>(`/api/ideas/runs/${encodeURIComponent(runId)}/approvals/${encodeURIComponent(callId)}`, {
+			method: 'POST',
+			body: JSON.stringify({ approve })
 		}, token);
 	},
 

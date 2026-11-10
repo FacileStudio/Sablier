@@ -18,7 +18,7 @@ func Migrate(db *gorm.DB, issuer string) error {
 	if err := renamePoolTables(db); err != nil {
 		return err
 	}
-	if err := db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}, &ForfaitState{}); err != nil {
 		return err
 	}
 	if err := migrateDeletionState(db); err != nil {

@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- An Ideas page, first in the sidebar and the mobile bar with the lightbulb icon and a badge for new ideas.
+  Bulle suggests what to do next for Sablier. You generate ideas, run one in place, answer Bulle's approval
+  cards, then follow the output links or continue in Bulle. A space picker scopes the ideas to a shared space.
+- `/api/ideas*` proxies Bulle's Ideas API (`tronc/bulle`) with a Registre token exchange (`porte/exchange`,
+  audience `bulle`). It needs `BULLE_URL`; Sablier already seals refresh tokens with `PORTE_TOKEN_KEY`.
+- Ideas are an AI feature: a plan without `ai.access` sees an upsell page, and the API answers 402 without
+  calling Bulle. Sablier now reads entitlements from the Registre snapshot (`porte/forfait`) and keeps them in
+  the new `forfait_state` table.
+
+### Changed
+
+- `porte` v0.13.0 to v0.15.1, `tronc` v0.17.1 to v0.18.0 (additive: the `bulle` package), `@facile/muse`
+  v0.16.1 to v0.17.1.
+
 ## [1.16.2] - 2026-11-08
 
 ### Fixed

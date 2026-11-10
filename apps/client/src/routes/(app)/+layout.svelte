@@ -2,9 +2,10 @@
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { SideBar, MobileNav, PageTransition, icons } from '@facile/muse';
+	import { SideBar, MobileNav, PageTransition, icons, ideasNavItem, getI18n } from '@facile/muse';
 	import { ApiError, backend, type UserProfile, type Project } from '$lib/backend';
 	import { setSpaces } from '$lib/space-context.svelte';
+	import { ideasStore } from '$lib/ideas/store.svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { NotificationService } from '$lib/notifications';
 	import { TOKEN_KEY } from '$lib/constants';
@@ -14,6 +15,8 @@
 	import { theme, type ThemePreference } from '$lib/theme.svelte';
 
 	let { children } = $props();
+
+	const i18n = getI18n();
 
 	let token = $state('');
 	let user = $state<UserProfile | null>(null);
@@ -37,6 +40,7 @@
 	}
 
 	const navPages = $derived([
+		ideasNavItem({ href: '/ideas', active: isActive('/ideas'), count: ideasStore.count, running: ideasStore.running, i18n }),
 		{ href: '/dashboard', label: t('nav.dashboard'), icon: icons.dashboard, active: isActive('/dashboard') },
 		{ href: '/projects', label: t('nav.projects'), icon: icons.folder, active: isActive('/projects') },
 		{ href: '/spaces', label: t('nav.spaces'), icon: icons.space, active: isActive('/spaces') }
@@ -91,6 +95,7 @@
 				}
 			}).catch(() => {});
 			NotificationService.init(stored);
+			if (!isActive('/ideas')) void ideasStore.load(stored, null);
 		} catch (err) {
 			if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
 				localStorage.removeItem(TOKEN_KEY);

@@ -7,9 +7,10 @@ github.com/FacileStudio/antenne-client/go
 # github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee
 ## explicit; go 1.24.0
 github.com/FacileStudio/enveloppe/go
-# github.com/FacileStudio/porte v0.13.0
+# github.com/FacileStudio/porte v0.15.1
 ## explicit; go 1.26
 github.com/FacileStudio/porte
+github.com/FacileStudio/porte/exchange
 github.com/FacileStudio/porte/internal/handoff
 github.com/FacileStudio/porte/keys
 github.com/FacileStudio/porte/oidc
@@ -21,9 +22,13 @@ github.com/FacileStudio/porte/spaces/spacestest
 # github.com/FacileStudio/porte/directory v0.3.0
 ## explicit; go 1.22
 github.com/FacileStudio/porte/directory
-# github.com/FacileStudio/tronc v0.17.1
+# github.com/FacileStudio/porte/forfait v0.1.1
+## explicit; go 1.22
+github.com/FacileStudio/porte/forfait
+# github.com/FacileStudio/tronc v0.18.0
 ## explicit; go 1.26
 github.com/FacileStudio/tronc/apiref
+github.com/FacileStudio/tronc/bulle
 github.com/FacileStudio/tronc/env
 github.com/FacileStudio/tronc/errors
 github.com/FacileStudio/tronc/health
@@ -104,8 +109,6 @@ golang.org/x/oauth2/internal
 # golang.org/x/sync v0.22.0
 ## explicit; go 1.25.0
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.47.0
-## explicit; go 1.25.0
 # golang.org/x/text v0.40.0
 ## explicit; go 1.25.0
 golang.org/x/text/cases
