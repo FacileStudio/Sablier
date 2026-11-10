@@ -73,6 +73,20 @@ facile install sablier
 
 `facile login sablier` signs in through Facile SSO in your browser.
 
+## MCP server
+
+Sablier serves a remote MCP server at `https://sablier.facile.studio/mcp`, so Claude, ChatGPT, Cursor or
+any MCP client can read and track time for you. Add it as a remote server, then sign in with Facile
+when the client asks. In Claude Code:
+
+```sh
+claude mcp add --transport http sablier https://sablier.facile.studio/mcp
+```
+
+The tools start and stop the timer, list and add entries, edit or delete your own entries, list
+projects and tasks, and add up a week. Deleting an entry always waits for you: the client asks, or
+hands you a link to the Pending actions page. MCP access is free on every plan.
+
 ## Desktop app
 
 `apps/desktop` is a Tauri tray app. It reuses the CLI's `~/.sablier.yml`, so sign in with

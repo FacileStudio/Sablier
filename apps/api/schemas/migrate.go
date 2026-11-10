@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
+	mcpkit "github.com/FacileStudio/tronc/mcp"
 
 	"gorm.io/gorm"
 )
@@ -12,37 +13,29 @@ import (
 // Migrate brings the schema up to date. issuer is the configured OIDC_ISSUER,
 // needed by AdoptPorte to key the identity rows it backfills.
 func Migrate(db *gorm.DB, issuer string) error {
-	if err := renameNookPoolColumns(db); err != nil {
-		return err
+	steps := []func() error{
+		func() error { return renameNookPoolColumns(db) },
+		func() error { return renamePoolTables(db) },
+		func() error {
+			return db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{},
+				&SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}, &ForfaitState{})
+		},
+		func() error { return migrateDeletionState(db) },
+		func() error { return migrateMCPActions(db) },
+		func() error { return AdoptPorte(db, issuer) },
+		func() error { return backfillOIDCPictures(db, issuer) },
+		func() error { return backfillAvatarUploadPath(db) },
+		func() error { return usercolor.BackfillMissing(context.Background(), db) },
+		func() error { return backfillTimeEntryTasks(db) },
+		func() error { return BackfillFacileIDs(db) },
+		func() error { return backfillAgentEntries(db) },
 	}
-	if err := renamePoolTables(db); err != nil {
-		return err
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return err
+		}
 	}
-	if err := db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{}, &SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}, &ForfaitState{}); err != nil {
-		return err
-	}
-	if err := migrateDeletionState(db); err != nil {
-		return err
-	}
-	if err := AdoptPorte(db, issuer); err != nil {
-		return err
-	}
-	if err := backfillOIDCPictures(db, issuer); err != nil {
-		return err
-	}
-	if err := backfillAvatarUploadPath(db); err != nil {
-		return err
-	}
-	if err := usercolor.BackfillMissing(context.Background(), db); err != nil {
-		return err
-	}
-	if err := backfillTimeEntryTasks(db); err != nil {
-		return err
-	}
-	if err := BackfillFacileIDs(db); err != nil {
-		return err
-	}
-	return backfillAgentEntries(db)
+	return nil
 }
 
 // migrateDeletionState creates the single row that holds the GDPR deletion
@@ -59,6 +52,16 @@ CREATE TABLE IF NOT EXISTS directory_deletion_state (
 	state      bytea NOT NULL,
 	updated_at timestamptz NOT NULL DEFAULT now()
 )`).Error
+}
+
+// migrateMCPActions creates the table tronc/mcp keeps the MCP actions waiting for a
+// person's confirmation in. PostgreSQL only: the schema is Postgres DDL, and the unit tests
+// use an in-memory store.
+func migrateMCPActions(db *gorm.DB) error {
+	if db.Dialector.Name() != "postgres" {
+		return nil
+	}
+	return db.Exec(mcpkit.PendingSchema).Error
 }
 
 // backfillOIDCPictures stores the picture URL Registre would hand over at the next

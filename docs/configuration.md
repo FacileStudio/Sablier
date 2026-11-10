@@ -63,6 +63,7 @@ required, and startup fails with a clear error if any of them is blank.
 | `OIDC_MACHINE_AUDIENCE` | no | — | This app's own Registre client id. Lets porte verify a bearer JWT minted for Sablier, such as the 5 minute delegated token Bulle obtains for a user. Needs `OIDC_ISSUER` |
 | `OIDC_SCOPE_PREFIX` | no | — | Set to `sablier` to gate those JWTs by method: `GET`, `HEAD` and `OPTIONS` need `sablier.read` or `sablier.write`, anything else needs `sablier.write`. Needs `OIDC_MACHINE_AUDIENCE`. Cookie and opaque sessions are never gated |
 | `OIDC_MOBILE_REDIRECT` | no | `studio.facile.sablier://auth` | Where porte's `?flow=mobile` login hands the one-time code back to the Android app. Must match the scheme in `apps/client/capacitor.config.ts` |
+| `MCP_RESOURCE` | no | compose: `https://sablier.facile.studio/mcp` | Canonical URI of the remote MCP server and the RFC 8707 resource Registre binds its tokens to. Mounts `POST /mcp` and its RFC 9728 metadata while OIDC is on; empty turns it off. Registre must declare the resource with the scopes `sablier.read` and `sablier.write` |
 
 The callback route is registered inside the `/api` group, so the redirect URL is
 `https://<host>/api/auth/oidc/callback`. Both `.env.example` files still show it without

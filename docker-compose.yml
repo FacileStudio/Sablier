@@ -68,6 +68,9 @@ services:
       OIDC_MACHINE_AUDIENCE: ${OIDC_MACHINE_AUDIENCE:-}
       OIDC_SCOPE_PREFIX: ${OIDC_SCOPE_PREFIX:-}
       OIDC_MOBILE_REDIRECT: ${OIDC_MOBILE_REDIRECT:-studio.facile.sablier://auth}
+      # The remote MCP server's canonical URI, the resource Registre binds its
+      # tokens to. It mounts POST /mcp only while OIDC is on; empty turns it off.
+      MCP_RESOURCE: ${MCP_RESOURCE:-https://sablier.facile.studio/mcp}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
