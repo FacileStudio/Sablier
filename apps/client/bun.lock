@@ -9,6 +9,7 @@
         "@capacitor/browser": "8.0.5",
         "@capacitor/core": "8.6.0",
         "@capacitor/preferences": "8.0.1",
+        "@facile/client": "github:FacileStudio/facile-client#v0.1.1",
         "@facile/journal": "github:FacileStudio/Journal#ts",
         "@facile/muse": "github:FacileStudio/muse#v0.18.0",
         "@tauri-apps/api": "^2",
@@ -97,6 +98,8 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.27.4", "", { "os": "win32", "cpu": "ia32" }, "sha512-DAyGLS0Jz5G5iixEbMHi5KdiApqHBWMGzTtMiJ72ZOLhbu/bzxgAe8Ue8CTS3n3HbIUHQz/L51yMdGMeoxXNJw=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.27.4", "", { "os": "win32", "cpu": "x64" }, "sha512-+knoa0BDoeXgkNvvV1vvbZX4+hizelrkwmGJBdT17t8FNPwG2lKemmuMZlmaNQ3ws3DKKCxpb4zRZEIp3UxFCg=="],
+
+    "@facile/client": ["@facile/client@github:FacileStudio/facile-client#ca6d153", { "peerDependencies": { "@sveltejs/kit": "^2.0.0", "svelte": "^5.0.0" } }, "FacileStudio-facile-client-ca6d153", "sha512-Q10ys4yvlZMHlkXVZw2MR/+54EzZkT3BM27lUTar86z+KoAf/a+UGidq0KeC+4g2aaEZbvf9TDSFUkyZkVjTaQ=="],
 
     "@facile/journal": ["@facile/journal@github:FacileStudio/Journal#b211454", {}, "FacileStudio-Journal-b211454", "sha512-5zdWQy8EoKC4K7fyVoFSnB1wzVyOn3Rv+AkUjxebhug2uaw0ge7Pm2fqT7qu0bz7tDBFserMOQoh98QoCRmcyg=="],
 

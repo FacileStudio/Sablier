@@ -8,7 +8,6 @@
 	import { ideasStore } from '$lib/ideas/store.svelte';
 	import TimerControl from '$lib/components/TimerControl.svelte';
 	import { NotificationService } from '$lib/notifications';
-	import { TOKEN_KEY } from '$lib/constants';
 	import { identify } from '$lib/journal';
 	import { isApp } from '$lib/platform';
 	import { rememberLocale, setSessionLocale, t } from '$lib/i18n/index.svelte';
@@ -24,6 +23,7 @@
 	let projects = $state<Project[]>([]);
 	let paletteOpen = $state(false);
 	let collapsed = $state(false);
+	let invitations = $state<{ count: number; href: string } | null>(null);
 
 	function setUser(nextUser: UserProfile) {
 		user = nextUser;
@@ -79,7 +79,6 @@
 
 	async function signOut() {
 		await backend.logout(token).catch(() => {});
-		localStorage.removeItem(TOKEN_KEY);
 		identify(null);
 		goto('/login');
 	}
@@ -90,11 +89,12 @@
 		onSignOut: signOut,
 		theme: theme.preference,
 		onThemeChange: (next: ThemePreference) => theme.set(next),
-		onLocaleChange: rememberLocale
+		onLocaleChange: rememberLocale,
+		invitations
 	});
 
 	onMount(async () => {
-		const stored = localStorage.getItem(TOKEN_KEY) ?? '';
+		const stored = '';
 		try {
 			const result = await backend.me(stored);
 			token = stored;
@@ -119,12 +119,12 @@
 					identify(user);
 				}
 			}).catch(() => {});
+			void backend.myInvitations(stored).then((answer) => (invitations = answer));
 			NotificationService.init(stored);
 			if (!isActive('/ideas')) void ideasStore.load(stored, null);
 		} catch (err) {
 			if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
 				keepReturn();
-				localStorage.removeItem(TOKEN_KEY);
 				identify(null);
 				goto('/login');
 			}

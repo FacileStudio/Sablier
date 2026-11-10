@@ -32,6 +32,7 @@
 		"@capacitor/browser": "8.0.5",
 		"@capacitor/core": "8.6.0",
 		"@capacitor/preferences": "8.0.1",
+		"@facile/client": "github:FacileStudio/facile-client#v0.1.1",
 		"@facile/journal": "github:FacileStudio/Journal#ts",
 		"@facile/muse": "github:FacileStudio/muse#v0.18.0",
 		"@tauri-apps/api": "^2",

@@ -6,9 +6,11 @@
 	import { theme } from '$lib/theme.svelte';
 	import { registerDeepLinks } from '$lib/native';
 	import { isApp } from '$lib/platform';
+	import { dropLegacyToken } from '$lib/constants';
 
 	if (browser) {
 		theme.restore();
+		dropLegacyToken();
 		void import('iconify-icon');
 		if (isApp()) registerDeepLinks();
 	}

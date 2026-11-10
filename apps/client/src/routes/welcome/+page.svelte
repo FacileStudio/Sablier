@@ -1,10 +1,8 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { Button, SignInWithFacile, icons } from '@facile/muse';
 	import { t } from '$lib/i18n/index.svelte';
 	import { apiBase } from '$lib/platform';
-	import { TOKEN_KEY } from '$lib/constants';
 	import { startNativeLogin } from '$lib/native';
 	import Hourglass from '$lib/onboarding/Hourglass.svelte';
 	import {
@@ -48,10 +46,6 @@
 	}[step.id]);
 	const last = $derived(isLastStep(index));
 	const counter = $derived(`${String(index + 1).padStart(2, '0')} / ${String(STEPS.length).padStart(2, '0')}`);
-
-	onMount(() => {
-		if (localStorage.getItem(TOKEN_KEY)) void goto('/dashboard', { replaceState: true });
-	});
 
 	async function go(target: number) {
 		const next = clampStep(target);

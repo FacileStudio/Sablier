@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { backend } from '$lib/backend';
-	import { TOKEN_KEY } from '$lib/constants';
 	import { t } from '$lib/i18n/index.svelte';
 	import { landingTarget } from '$lib/onboarding/steps';
 	import { isApp } from '$lib/platform';
@@ -22,7 +21,6 @@
 	const signInHref = `${backend.baseUrl}/api/auth/oidc`;
 
 	async function signedIn(): Promise<boolean> {
-		if (localStorage.getItem(TOKEN_KEY)) return true;
 		try {
 			await backend.me();
 			return true;

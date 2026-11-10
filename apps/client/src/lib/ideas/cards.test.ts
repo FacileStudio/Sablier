@@ -49,9 +49,9 @@ describe('ideas cards', () => {
 	});
 
 	it('reads a 402 as a plan refusal and maps the other statuses', () => {
-		expect(refusedForPlan(new ApiError(402, 'x'))).toBe(true);
-		expect(refusedForPlan(new ApiError(500, 'x'))).toBe(false);
-		expect(errorKey(new ApiError(429, 'x'))).toBe('ideas.error.capped');
+		expect(refusedForPlan(new ApiError(402, '', 'x'))).toBe(true);
+		expect(refusedForPlan(new ApiError(500, '', 'x'))).toBe(false);
+		expect(errorKey(new ApiError(429, '', 'x'))).toBe('ideas.error.capped');
 		expect(errorKey(new Error('x'))).toBe('ideas.error.unreachable');
 	});
 

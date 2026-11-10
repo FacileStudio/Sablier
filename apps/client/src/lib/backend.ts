@@ -1,3 +1,4 @@
+import { ApiError, createApi } from '@facile/client';
 import { normalizeUserColor } from '$lib/user-colors';
 import { t } from '$lib/i18n/index.svelte';
 import { apiBase, clearToken, getToken, isApp, isNative } from '$lib/platform';
@@ -249,34 +250,18 @@ export type AgentPairing = {
 	paired_seconds: number;
 };
 
-export class ApiError extends Error {
-	readonly status: number;
-	constructor(status: number, message: string) {
-		super(message);
-		this.name = 'ApiError';
-		this.status = status;
-	}
-}
+export { ApiError };
+
+/**
+ * The browser's kernel is @facile/client's: same-origin, the session cookie, the CSRF header
+ * on mutations, no bearer token. 401 handling stays with the callers, which already send the
+ * person to /login and keep a pending MCP link.
+ */
+const webFetch = createApi({ base: '/api' });
 
 type ApiErrorPayload = {
-	error?: { message?: string };
+	error?: { code?: string; message?: string };
 };
-
-const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-
-function buildHeaders(init: HeadersInit | undefined, method: string, token?: string, jsonBody = false) {
-	const headers = new Headers(init);
-	if (jsonBody && !headers.has('Content-Type')) {
-		headers.set('Content-Type', 'application/json');
-	}
-	if (token) {
-		headers.set('Authorization', `Bearer ${token}`);
-	}
-	if (!SAFE_METHODS.has(method.toUpperCase())) {
-		headers.set('X-Facile-CSRF', '1');
-	}
-	return headers;
-}
 
 async function requestError(response: Response) {
 	let payload: ApiErrorPayload | undefined;
@@ -285,7 +270,11 @@ async function requestError(response: Response) {
 	} catch {
 		payload = undefined;
 	}
-	throw new ApiError(response.status, payload?.error?.message || t('error.request', { status: response.status }));
+	return new ApiError(
+		response.status,
+		payload?.error?.code ?? '',
+		payload?.error?.message || t('error.request', { status: response.status })
+	);
 }
 
 async function nativeRequest(options: RequestInit, token?: string): Promise<RequestInit> {
@@ -296,22 +285,22 @@ async function nativeRequest(options: RequestInit, token?: string): Promise<Requ
 	return { ...options, headers };
 }
 
-async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string) {
-	const method = options.method ?? 'GET';
-	const init: RequestInit = isApp()
-		? await nativeRequest(options, token)
-		: {
-				...options,
-				headers: buildHeaders(options.headers, method, token, Boolean(options.body)),
-				credentials: 'same-origin'
-			};
-	const response = await fetch(`${backendBaseUrl}${path}`, init);
+/**
+ * The installed apps' kernel: they are served from their own origin, so they call production
+ * by absolute URL with the bearer token their platform's secure storage holds, and no CSRF
+ * header, which CORS does not allow.
+ */
+async function nativeFetch<T>(path: string, options: RequestInit, token?: string): Promise<T> {
+	const response = await fetch(`${backendBaseUrl}${path}`, await nativeRequest(options, token));
 	if (response.status === 401 && isNative()) await clearToken();
-	if (!response.ok) {
-		throw await requestError(response);
-	}
+	if (!response.ok) throw await requestError(response);
 	if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;
+}
+
+async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
+	if (isApp()) return nativeFetch<T>(path, options, token);
+	return webFetch<T>(path.replace(/^\/api(?=\/|$)/, ''), options);
 }
 
 function normalizeUser(user: UserProfile): UserProfile {
@@ -358,6 +347,13 @@ export const backend = {
 		return apiFetch<MeResponse>('/api/users/me', {}, token).then((result) => ({
 			user: normalizeUser(result.user)
 		}));
+	},
+	/** The user menu's pending Registre invitations, or null when there is none to link to. */
+	async myInvitations(token?: string): Promise<{ count: number; href: string } | null> {
+		const answer = await apiFetch<{ count: number; href?: string }>('/api/me/invitations', {}, token).catch(
+			() => null
+		);
+		return answer?.href ? { count: answer.count, href: answer.href } : null;
 	},
 	listUsers(token: string) {
 		return apiFetch<UsersResponse>('/api/users', {}, token).then((result) => ({

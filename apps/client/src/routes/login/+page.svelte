@@ -4,7 +4,6 @@
 	import { page } from '$app/state';
 	import { Alert, AuthScreen, SignInWithFacile } from '@facile/muse';
 	import { backend } from '$lib/backend';
-	import { TOKEN_KEY } from '$lib/constants';
 	import { rememberLocale, t } from '$lib/i18n/index.svelte';
 	import { startNativeLogin } from '$lib/native';
 	import { isApp } from '$lib/platform';
@@ -15,10 +14,6 @@
 	let failed = $state(false);
 
 	onMount(async () => {
-		if (localStorage.getItem(TOKEN_KEY)) {
-			goto('/dashboard');
-			return;
-		}
 		failed = page.url.searchParams.has('error');
 		try {
 			await backend.me();
