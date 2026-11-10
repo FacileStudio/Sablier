@@ -113,6 +113,26 @@ export type TimeEntry = {
 	needs_review?: boolean;
 };
 
+export type PendingEntry = {
+	id: number;
+	project: string;
+	task: string;
+	started_at: string;
+	stopped_at: string | null;
+	minutes: number;
+};
+
+export type PendingAction = {
+	id: string;
+	kind: string;
+	client_id: string;
+	summary: string;
+	created_at: string;
+	expires_at: string;
+	state: 'ready' | 'changed' | 'missing';
+	entry?: PendingEntry;
+};
+
 export type AttributionSource = 'explicit' | 'opus' | 'name' | 'running' | 'ai' | 'fallback' | 'manual';
 
 export type DraftSuggestion = {
@@ -599,6 +619,16 @@ export const backend = {
 			method: 'POST',
 			body: JSON.stringify({ approve })
 		}, token);
+	},
+
+	listPending(token: string) {
+		return apiFetch<{ actions: PendingAction[] }>('/api/mcp/pending', {}, token);
+	},
+	confirmPending(token: string, id: string) {
+		return apiFetch<{ status: string }>(`/api/mcp/pending/${encodeURIComponent(id)}/confirm`, { method: 'POST', body: '{}' }, token);
+	},
+	dismissPending(token: string, id: string) {
+		return apiFetch<{ status: string }>(`/api/mcp/pending/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: '{}' }, token);
 	},
 
 	searchTasks(token: string, q: string, limit = 30) {

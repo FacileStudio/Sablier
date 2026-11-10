@@ -75,6 +75,7 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `LOG_LEVEL` -- `debug`, `info`, `warn`, `error`
 - `STORAGE_DIR` -- Legacy uploaded avatars, read-only since Registre owns pictures (default `./data`)
 - `OIDC_*` -- OpenID Connect config (optional)
+- `MCP_RESOURCE` -- Canonical URI of the remote MCP server (`https://sablier.facile.studio/mcp`); mounts `POST /mcp` while OIDC is on
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` -- Web push (optional; push stays off while the keys are unset)
 - `JOURNAL_URL`, `JOURNAL_TOKEN` -- Log shipping to Journal (optional; both must be set)
 - `JOURNAL_BROWSER_URL`, `JOURNAL_BROWSER_KEY` -- Browser error reporting. The URL is **not**

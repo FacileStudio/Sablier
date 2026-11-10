@@ -13,6 +13,8 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
+	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
+	"github.com/FacileStudio/Sablier/apps/api/modules/mcp"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/Sablier/apps/api/modules/spaces"
 	"github.com/FacileStudio/porte/directory"
@@ -45,7 +47,7 @@ func testRouter(t *testing.T) chi.Router {
 	}
 	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, appEnv.StorageDir, appLogger)
 	ideas := &ideasConfig{URL: "https://bulle.example.test", Token: func(context.Context) (string, error) { return "", nil }}
-	router, err := buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{}, ideas)
+	router, err := buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{}, ideas, nil)
 	if err != nil {
 		t.Fatalf("buildRouter: %v", err)
 	}
@@ -129,5 +131,16 @@ func TestConnectSourcesCarryTheJournalOrigin(t *testing.T) {
 	}
 	if len(connectSources("")) != len(externalConnect) {
 		t.Fatalf("an unset Journal URL must add nothing")
+	}
+}
+
+// The confirm page routes mount only with the MCP server, so the router above lacks them.
+func TestMCPPendingRoutesAreDocumented(t *testing.T) {
+	router := chi.NewRouter()
+	router.Route("/api", func(api chi.Router) {
+		mcp.RegisterPendingRoutes(api, nil, auth.NewService(nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	})
+	if missing := apiref.Undocumented(router, referenceConfig()); len(missing) > 0 {
+		t.Errorf("MCP routes missing from the API registry: %v", missing)
 	}
 }

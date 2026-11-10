@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- A remote MCP server at `POST /mcp` (stateless, spec 2026-07-28, on `tronc/mcp`), so any MCP client can track
+  time in Sablier with a Registre token bound to `https://sablier.facile.studio/mcp` and the scopes
+  `sablier.read` and `sablier.write`. Nine tools: `sablier_timer_status`, `sablier_start_timer`,
+  `sablier_stop_timer`, `sablier_list_entries` (a range with totals per project), `sablier_add_entry`,
+  `sablier_update_entry` (only the fields given change), `sablier_delete_entry`, `sablier_list_projects` (with
+  tasks and spaces) and `sablier_weekly_summary` (per day, project, task and person, in the caller's timezone).
+  Every tool calls the same service method as its REST route, so spaces and permissions match the API.
+- Deleting an entry through MCP always needs the person: a client that can ask confirms in place, any other
+  gets a link to the new `/pending` page, where only the person's own session can confirm. Pending actions live
+  in the new `mcp_actions` table.
+- A person's first MCP call creates their Sablier account, as a first web sign-in would (`porte/mcpauth`
+  provisioning).
+- `MCP_RESOURCE` (compose default `https://sablier.facile.studio/mcp`) turns the server on while OIDC is on.
+
+### Changed
+
+- `porte` v0.15.1 to v0.16.0, `tronc` v0.18.0 to v0.20.0, plus `porte/mcpauth` v0.2.0 and
+  `modelcontextprotocol/go-sdk` v1.8.0.
+
 ## [1.17.0] - 2026-11-10
 
 ### Added

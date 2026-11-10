@@ -1,6 +1,7 @@
 package env
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"slices"
@@ -46,6 +47,19 @@ type OIDCConfig struct {
 	// code back to the Android app: its custom scheme, never a value taken
 	// from the request.
 	MobileRedirect string
+
+	// MCPResource is the canonical URI of the remote MCP server,
+	// https://sablier.facile.studio/mcp in production, and the RFC 8707
+	// resource Registre binds its tokens to, from MCP_RESOURCE. Empty leaves
+	// /mcp unmounted.
+	MCPResource string
+}
+
+// MCPStateKey derives the key that signs MCP confirmation state from the client
+// secret, which is secret, stable across restarts and set whenever OIDC is.
+func (o OIDCConfig) MCPStateKey() []byte {
+	sum := sha256.Sum256([]byte("sablier-mcp-state:" + o.ClientSecret))
+	return sum[:]
 }
 
 // NativeOrigins are the origins the installed apps serve their pages from: the
@@ -169,6 +183,7 @@ func Load() (Config, error) {
 			MachineAudience: troncenv.String("OIDC_MACHINE_AUDIENCE", ""),
 			ScopePrefix:     troncenv.String("OIDC_SCOPE_PREFIX", ""),
 			MobileRedirect:  troncenv.String("OIDC_MOBILE_REDIRECT", DefaultMobileRedirect),
+			MCPResource:     troncenv.String("MCP_RESOURCE", ""),
 		}
 		env.CORSAllowedOrigins = withNativeOrigin(env.CORSAllowedOrigins, env.OIDC.MobileRedirect)
 	}

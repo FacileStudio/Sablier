@@ -35,6 +35,30 @@
 		setUser
 	});
 
+	/*
+	 * An MCP client hands the person a /pending?action=… link. Signing in lands on OIDC's
+	 * success page, so the link is kept for this tab and reopened once the session is back.
+	 * Only /pending is kept: the value is read back into goto, and no other path needs it.
+	 */
+	const RETURN_KEY = 'sablier.return';
+
+	function keepReturn() {
+		if (page.url.pathname !== '/pending') return;
+		try {
+			sessionStorage.setItem(RETURN_KEY, page.url.pathname + page.url.search);
+		} catch {}
+	}
+
+	function resumeReturn() {
+		let back: string | null = null;
+		try {
+			back = sessionStorage.getItem(RETURN_KEY);
+			sessionStorage.removeItem(RETURN_KEY);
+		} catch {}
+		const safe = back === '/pending' || back?.startsWith('/pending?');
+		if (back && safe && back !== page.url.pathname + page.url.search) void goto(back);
+	}
+
 	function isActive(href: string) {
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	}
@@ -80,6 +104,7 @@
 			   stack trace raises is whether it is everyone or one account. */
 			identify(user);
 			loaded = true;
+			resumeReturn();
 			const [p, s] = await Promise.all([
 				backend.listProjects(stored, 'all'),
 				backend.listSpaces(stored)
@@ -98,6 +123,7 @@
 			if (!isActive('/ideas')) void ideasStore.load(stored, null);
 		} catch (err) {
 			if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+				keepReturn();
 				localStorage.removeItem(TOKEN_KEY);
 				identify(null);
 				goto('/login');

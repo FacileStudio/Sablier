@@ -29,6 +29,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 	"github.com/FacileStudio/Sablier/apps/api/modules/heartbeats"
+	"github.com/FacileStudio/Sablier/apps/api/modules/mcp"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/Sablier/apps/api/modules/projects"
 	"github.com/FacileStudio/Sablier/apps/api/modules/review"
@@ -37,6 +38,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/modules/users"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/porte"
 	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/exchange"
 	"github.com/FacileStudio/porte/oidc"
@@ -78,6 +80,7 @@ func referenceConfig() apiref.Config {
 				heartbeats.Documentation,
 				review.Documentation,
 				ideasDocumentation,
+				mcp.Documentation,
 			},
 		},
 	}
@@ -111,33 +114,41 @@ func journalConfigExtra(appEnv *env.Config) func() map[string]any {
 	}
 }
 
+// authParts is what buildAuth assembles: the session manager, the OIDC kit, the token
+// exchanger and the identity store under them.
+type authParts struct {
+	sessions   *session.Manager
+	kit        *oidc.Kit
+	exchanger  *exchange.Exchanger
+	identities porte.IdentityStore
+}
+
 // buildAuth constructs porte: one session manager and the OIDC kit over the
 // identity tables. Sign-in goes through Registre only; there is no local
 // password kit. Discovery runs here, so an unreachable or half-configured
 // issuer fails at boot rather than on somebody's first login.
-func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*session.Manager, *oidc.Kit, *exchange.Exchanger, error) {
+func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*authParts, error) {
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	store, err := newPorteStore(sqlDB)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	resealInBackground(ctx, store, appLogger)
-	users := auth.NewUserStore(db)
 	cfg := appEnv.Porte()
 
 	sessions, err := session.New(cfg, session.Deps{Sessions: store.Sessions(), Logger: appLogger})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	exchanger, err := newExchanger(store.Identities(), appEnv, appLogger)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	kit, err := oidc.New(ctx, cfg, oidc.Deps{
-		Users:       users,
+		Users:       auth.NewUserStore(db),
 		Identities:  store.Identities(),
 		Sessions:    sessions,
 		Codes:       store.LoginCodes(),
@@ -145,9 +156,9 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 		ConfigExtra: journalConfigExtra(appEnv),
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	return sessions, kit, exchanger, nil
+	return &authParts{sessions: sessions, kit: kit, exchanger: exchanger, identities: store.Identities()}, nil
 }
 
 // uploadSourceMaps ships this build's maps to Journal so a browser stack trace
@@ -219,7 +230,7 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig) (chi.Router, error) {
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig, mcpServer *mcpSetup) (chi.Router, error) {
 	authService := auth.NewService(db, sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
@@ -230,6 +241,12 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	projectService.SetPoolService(antenneService)
 	timeEntryService.SetPoolService(antenneService)
 	heartbeatService := heartbeats.NewService(db, timeEntryService, resolver)
+	mcpService, err := mcpServer.service(mcp.Deps{
+		Entries: timeEntryService, Projects: projectService, Spaces: spaceService, Accounts: authService,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	clientDir := spa.DirFromEnv()
 	router := httpx.NewRouter(httpx.Config{
@@ -246,6 +263,9 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	health.Mount(router, sqlDB.PingContext)
 	router.Get("/version", versionHandler)
 	apiref.Mount(router, referenceConfig())
+	if mcpService != nil {
+		mcp.RegisterRoutes(router, mcpService)
+	}
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
 	var ideasErr error
@@ -268,6 +288,9 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		heartbeats.RegisterRoutes(api, heartbeatService, authService)
 		review.RegisterRoutes(api, review.Handlers{Entries: timeEntryService, Drafts: heartbeatService}, authService)
 		ideasErr = mountIdeas(api, db, ideas, middleware.RequireAuth(authService))
+		if mcpService != nil {
+			mcp.RegisterPendingRoutes(api, mcpService, authService)
+		}
 	})
 	if ideasErr != nil {
 		return nil, ideasErr
@@ -282,11 +305,19 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 }
 
 func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
-	sessions, kit, exchanger, err := buildAuth(context.Background(), db, appEnv, appLogger)
+	parts, err := buildAuth(context.Background(), db, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
-	router, err := buildRouter(db, sqlDB, appEnv, appLogger, sessions, kit, notificationsService, antenneService, syncer, deletions, resolver, newIdeasConfig(exchanger, gate, appEnv))
+	rawDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	mcpServer, err := newMCPSetup(context.Background(), appEnv, rawDB, parts, appLogger)
+	if err != nil {
+		return nil, err
+	}
+	router, err := buildRouter(db, sqlDB, appEnv, appLogger, parts.sessions, parts.kit, notificationsService, antenneService, syncer, deletions, resolver, newIdeasConfig(parts.exchanger, gate, appEnv), mcpServer)
 	if err != nil {
 		return nil, err
 	}
