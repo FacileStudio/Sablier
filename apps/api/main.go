@@ -41,6 +41,7 @@ import (
 	"github.com/FacileStudio/porte"
 	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/exchange"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
@@ -117,10 +118,11 @@ func journalConfigExtra(appEnv *env.Config) func() map[string]any {
 // authParts is what buildAuth assembles: the session manager, the OIDC kit, the token
 // exchanger and the identity store under them.
 type authParts struct {
-	sessions   *session.Manager
-	kit        *oidc.Kit
-	exchanger  *exchange.Exchanger
-	identities porte.IdentityStore
+	sessions    *session.Manager
+	kit         *oidc.Kit
+	exchanger   *exchange.Exchanger
+	identities  porte.IdentityStore
+	invitations *kit.InvitationsConfig
 }
 
 // buildAuth constructs porte: one session manager and the OIDC kit over the
@@ -158,7 +160,26 @@ func buildAuth(ctx context.Context, db *gorm.DB, accounts *auth.Accounts, appEnv
 	if err != nil {
 		return nil, err
 	}
-	return &authParts{sessions: sessions, kit: oidcKit, exchanger: exchanger, identities: store.Identities()}, nil
+	return &authParts{sessions: sessions, kit: oidcKit, exchanger: exchanger, identities: store.Identities(),
+		invitations: invitationsConfig(appEnv, store.Identities(), appLogger)}, nil
+}
+
+// invitationsConfig is what the user menu's pending invitations count asks
+// Registre with: the directory credentials the space sync uses. Without an
+// issuer there is no Registre to ask, and the route is not mounted.
+func invitationsConfig(appEnv *env.Config, identities kit.IdentityLister, appLogger *slog.Logger) *kit.InvitationsConfig {
+	if appEnv.OIDC == nil {
+		return nil
+	}
+	return &kit.InvitationsConfig{
+		Directory: directory.Client{
+			Issuer:       appEnv.OIDC.Issuer,
+			ClientID:     appEnv.OIDC.ClientID,
+			ClientSecret: appEnv.OIDC.ClientSecret,
+		},
+		Identities: identities,
+		Logger:     appLogger,
+	}
 }
 
 // uploadSourceMaps ships this build's maps to Journal so a browser stack trace
@@ -230,8 +251,8 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, oidcKit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig, mcpServer *mcpSetup) (chi.Router, error) {
-	authService := auth.NewService(db, sessions, appLogger)
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, parts *authParts, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig, mcpServer *mcpSetup) (chi.Router, error) {
+	authService := auth.NewService(db, parts.sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
 	userService := users.NewService(db, authService)
@@ -270,7 +291,10 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 
 	var mountErr, ideasErr error
 	router.Route("/api", func(api chi.Router) {
-		mountErr = auth.RegisterRoutes(api, sessions, oidcKit)
+		mountErr = auth.RegisterRoutes(api, parts.sessions, parts.kit)
+		if parts.invitations != nil && mountErr == nil {
+			mountErr = kit.MountInvitations(api.With(middleware.RequireAuth(authService)), *parts.invitations)
+		}
 		projects.RegisterRoutes(api, projectService, authService)
 		timeentries.RegisterRoutes(api, timeEntryService, authService)
 		users.RegisterRoutes(api, userService, authService)
@@ -317,7 +341,7 @@ func createApiServer(db *gorm.DB, sqlDB sqlPinger, accounts *auth.Accounts, appE
 	if err != nil {
 		return nil, err
 	}
-	router, err := buildRouter(db, sqlDB, appEnv, appLogger, parts.sessions, parts.kit, notificationsService, antenneService, syncer, deletions, resolver, newIdeasConfig(parts.exchanger, gate, appEnv), mcpServer)
+	router, err := buildRouter(db, sqlDB, appEnv, appLogger, parts, notificationsService, antenneService, syncer, deletions, resolver, newIdeasConfig(parts.exchanger, gate, appEnv), mcpServer)
 	if err != nil {
 		return nil, err
 	}

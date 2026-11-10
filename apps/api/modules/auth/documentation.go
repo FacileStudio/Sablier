@@ -3,12 +3,14 @@ package auth
 import (
 	documentation "github.com/FacileStudio/Sablier/apps/api/internal/documentation"
 	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/kit"
 )
 
 var Documentation = documentation.Module{
 	Name:        "auth",
 	Description: "Authentication, through the suite's porte kit. A session is a random 32 byte token stored SHA-256 hashed, sent as Authorization: Bearer <token> or, after a single sign-on login, as an HttpOnly __Host-session cookie. A cookie-authenticated request that is not GET, HEAD or OPTIONS must also carry an X-Facile-CSRF header with any non-empty value.",
 	Routes: []documentation.Route{
+		invitationsRoute(),
 		{
 			Method:       "POST",
 			Path:         "/auth/logout",
@@ -65,4 +67,12 @@ var Documentation = documentation.Module{
 			ResponseBody: porte.ConfigResponse{},
 		},
 	},
+}
+
+// invitationsRoute is porte/kit's documentation of GET /me/invitations, with
+// the response schema tronc/apiref can render.
+func invitationsRoute() documentation.Route {
+	route := kit.InvitationsRoute()
+	route.ResponseBody = kit.InvitationsResponse{}
+	return route
 }

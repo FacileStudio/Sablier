@@ -18,6 +18,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
 	"github.com/FacileStudio/Sablier/apps/api/modules/spaces"
 	"github.com/FacileStudio/porte/directory"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
@@ -41,13 +42,16 @@ func testRouter(t *testing.T) chi.Router {
 	if err != nil {
 		t.Fatalf("session.New: %v", err)
 	}
-	kit, err := oidc.New(context.Background(), appEnv.Porte(), oidc.Deps{Sessions: sessions, Logger: appLogger})
+	oidcKit, err := oidc.New(context.Background(), appEnv.Porte(), oidc.Deps{Sessions: sessions, Logger: appLogger})
 	if err != nil {
 		t.Fatalf("oidc.New: %v", err)
 	}
 	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, nil, appEnv.StorageDir, appLogger)
 	ideas := &ideasConfig{URL: "https://bulle.example.test", Token: func(context.Context) (string, error) { return "", nil }}
-	router, err := buildRouter(nil, noopPinger{}, appEnv, appLogger, sessions, kit, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{}, ideas, nil)
+	router, err := buildRouter(nil, noopPinger{}, appEnv, appLogger, &authParts{sessions: sessions, kit: oidcKit, invitations: &kit.InvitationsConfig{
+		Directory:  directory.Client{Issuer: "https://sso.example.test", ClientID: "sablier", ClientSecret: "secret"},
+		Identities: store.Identities(),
+	}}, notificationsService, antenneService, &directory.Syncer{}, deletions, attribution.Resolver{}, ideas, nil)
 	if err != nil {
 		t.Fatalf("buildRouter: %v", err)
 	}
@@ -59,6 +63,15 @@ func testRouter(t *testing.T) chi.Router {
 func TestEveryRouteIsDocumented(t *testing.T) {
 	if missing := apiref.Undocumented(testRouter(t), referenceConfig(), "/files", "/version"); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
+	}
+}
+
+// The user menu's invitations count is the signed-in user's, so it is behind the session.
+func TestTheInvitationsCountNeedsASession(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	testRouter(t).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api"+kit.InvitationsPath, nil))
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /api%s without a session = %d, want 401", kit.InvitationsPath, recorder.Code)
 	}
 }
 
