@@ -18,8 +18,9 @@ func Migrate(db *gorm.DB, issuer string) error {
 		func() error { return renamePoolTables(db) },
 		func() error {
 			return db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{},
-				&SpaceMember{}, &AntenneOutbox{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}, &ForfaitState{})
+				&SpaceMember{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}, &ForfaitState{})
 		},
+		func() error { return migrateAntenneOutbox(db) },
 		func() error { return migrateDeletionState(db) },
 		func() error { return migrateMCPActions(db) },
 		func() error { return AdoptPorte(db, issuer) },

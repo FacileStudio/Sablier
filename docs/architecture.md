@@ -14,7 +14,7 @@ Internet ──▶ Traefik ──▶ Go binary (:4000) ──┬──▶ /healt
                                                               │
                                                         Postgres 16
                                                               │
-                        Antenne (WebSocket) ◀── outbox worker ──▶ pool_outbox
+                        Antenne (WebSocket) ◀── outbox drainer ──▶ antenne_outbox
                         Journal (HTTP)        ◀── slog handler
 ```
 
@@ -111,7 +111,7 @@ There is no local sign-up and no password: porte mounts no register or login rou
 | `time_entries` | `id`, `project_id`, `task_id`, `user_id`, `started_at`, `stopped_at`, `paused_at`, `paused_duration_ms` | A running entry has a null `stopped_at`; `last_notification_at` throttles push reminders |
 | `app_settings` | single row `id = 1` | Webhook URL and secret header/value, plus the Antenne URL, secret, enabled flag, and per-event toggles |
 | `push_subscriptions` | `user_id` unique, `endpoint`, `p256dh`, `auth` | One Web Push subscription per user |
-| `pool_outbox` | `id`, `channel`, `payload`, `attempts`, `last_error` | Outbound events waiting for the pool |
+| `antenne_outbox` | `id`, `channel`, `payload` jsonb, `idempotency_key` unique, `sent_at` | antenne-client's outbox: events waiting for the bus, and sent ones for 7 days |
 | `pool_processed_events` | `idempotency_key` PK, `processed_at` | Inbound de-duplication ledger |
 
 `schemas.Migrate` runs `AutoMigrate` over all of them on every boot, then two backfills:
@@ -124,18 +124,22 @@ rows so every entry points at a task.
 - **Notification worker** (`internal/worker`) ticks every minute and calls
   `notifications.SendActiveTimerReminders`, pushing a reminder to users whose timer is
   still running. It is a no-op when the VAPID keys are unset.
-- **Pool outbox worker** (`modules/antenne`) ticks every two seconds, drains
-  `pool_outbox` onto the WebSocket connection, and prunes `pool_processed_events` older
-  than 35 days once a day.
+- **Outbox drainer** (`modules/antenne`, antenne-client's `outbox.Drainer`) sends unsent
+  `antenne_outbox` rows in id order every two seconds, backs off to five seconds while the
+  bus is down, and prunes rows sent over 7 days ago. Before sending, it re-encodes each row
+  through the struct it was marshalled from, because jsonb reorders keys: receivers get the
+  exact bytes Sablier always sent (`modules/antenne/testdata/wire`). The same worker prunes
+  `antenne_processed_events` older than 35 days once a day.
 
 ## Cross-app integration
 
 Sablier is one of the apps genuinely wired into the Antenne event bus. It uses
-`github.com/FacileStudio/antenne-client/go` as the client and `github.com/FacileStudio/enveloppe/go`
-as the event contract.
+`github.com/FacileStudio/antenne-client/go` v1 for all of it: the client (with persistent
+connect, so a bus that is down at boot is reached when it returns), `envelope` for the event
+contract, `catalog` for channel names and `outbox` for durability.
 
 - **Emits** `project.created`, `project.updated`, `project.deleted`, `task.created`,
-  `task.updated`, `task.deleted`, `time_entry.created`, `time_entry.updated`.
+  `task.updated`, `task.deleted`, `time_entry.created`, `time_entry.updated`, `time_entry.deleted`.
 - **Listens** for `project.*`, `task.*`, and `agent_session.created` /
   `agent_session.updated`.
 
@@ -146,7 +150,8 @@ entries: a project whose name matches the session's project receives the entry u
 so no session is dropped.
 
 Connection settings live in `app_settings` and are editable through
-`/api/antenne`. If no row exists, `ANTENNE_URL` and `ANTENNE_SECRET` are read from
+`/api/antenne`. If no row exists, `ANTENNE_URL` (or its older synonym `ANTENNE_INSTANCE`) and
+`ANTENNE_SECRET` are read from
 the environment as a fallback. `antenne.yaml` at the repo root documents the same event
 lists; it is a description, not the source of truth — `modules/antenne/service.go`
 builds the config inline.

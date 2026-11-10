@@ -11,7 +11,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 	"gorm.io/gorm"
 )
 
@@ -81,11 +81,11 @@ func (service *Service) startTimer(ctx context.Context, userID string, projectID
 	}
 	if needsTaskUpdate {
 		if err := service.orm.WithContext(ctx).Save(task).Error; err == nil && service.poolService != nil {
-			service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, task, project)
+			service.poolService.EmitTaskEvent(envelope.ActionUpdated, task, project)
 		}
 	}
 
-	service.emitEntry(enveloppe.ActionCreated, record)
+	service.emitEntry(envelope.ActionCreated, record)
 	service.fireWebhook(ctx, uid, "timer_started", record)
 	return record, task.Name, nil
 }
@@ -144,7 +144,7 @@ func (service *Service) resumeTimer(ctx context.Context, userID string) (*schema
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to resume timer", err)
 	}
-	service.emitEntry(enveloppe.ActionUpdated, &record)
+	service.emitEntry(envelope.ActionUpdated, &record)
 	taskName, err := service.taskName(ctx, record.TaskID)
 	if err != nil {
 		return nil, "", err
@@ -176,7 +176,7 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to stop timer", err)
 	}
-	service.emitEntry(enveloppe.ActionUpdated, &record)
+	service.emitEntry(envelope.ActionUpdated, &record)
 	service.fireWebhook(ctx, uid, "timer_stopped", &record)
 	taskName, err := service.taskName(ctx, record.TaskID)
 	if err != nil {
@@ -211,7 +211,7 @@ func (service *Service) createEntry(ctx context.Context, userID string, req *Cre
 	if err := service.orm.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, "", errors.Internal("failed to create entry", err)
 	}
-	service.emitEntry(enveloppe.ActionCreated, record)
+	service.emitEntry(envelope.ActionCreated, record)
 	return record, task.Name, nil
 }
 
@@ -250,7 +250,7 @@ func (service *Service) updateEntry(ctx context.Context, userID string, entryID 
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to update entry", err)
 	}
-	service.emitEntry(enveloppe.ActionUpdated, &record)
+	service.emitEntry(envelope.ActionUpdated, &record)
 	return &record, task.Name, nil
 }
 
@@ -270,7 +270,7 @@ func (service *Service) deleteEntry(ctx context.Context, userID string, entryID 
 	if err := service.orm.WithContext(ctx).Delete(&record).Error; err != nil {
 		return errors.Internal("failed to delete entry", err)
 	}
-	service.emitEntry(enveloppe.ActionDeleted, &record)
+	service.emitEntry(envelope.ActionDeleted, &record)
 	return nil
 }
 
@@ -317,7 +317,7 @@ func (service *Service) fireWebhook(ctx context.Context, userID int64, event str
 	}
 }
 
-func (service *Service) emitEntry(action enveloppe.Action, entry *schemas.TimeEntry) {
+func (service *Service) emitEntry(action envelope.Action, entry *schemas.TimeEntry) {
 	if service.poolService != nil {
 		service.poolService.EmitTimeEntryEvent(action, entry)
 	}

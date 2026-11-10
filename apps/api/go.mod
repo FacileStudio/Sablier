@@ -4,8 +4,7 @@ go 1.26
 
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665
-	github.com/FacileStudio/antenne-client/go v0.0.0-20260810113516-0458a301c709
-	github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee
+	github.com/FacileStudio/antenne-client/go v1.1.0
 	github.com/FacileStudio/porte v0.18.2
 	github.com/FacileStudio/porte/directory v0.4.0
 	github.com/FacileStudio/porte/forfait v0.1.1
@@ -39,10 +38,8 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect

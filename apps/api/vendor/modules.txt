@@ -1,12 +1,12 @@
 # github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665
 ## explicit; go 1.24.0
 github.com/FacileStudio/Journal/sdk/journal
-# github.com/FacileStudio/antenne-client/go v0.0.0-20260810113516-0458a301c709
-## explicit; go 1.24.0
+# github.com/FacileStudio/antenne-client/go v1.1.0
+## explicit; go 1.26
 github.com/FacileStudio/antenne-client/go
-# github.com/FacileStudio/enveloppe/go v0.0.0-20260824150156-c6a22ad287ee
-## explicit; go 1.24.0
-github.com/FacileStudio/enveloppe/go
+github.com/FacileStudio/antenne-client/go/catalog
+github.com/FacileStudio/antenne-client/go/envelope
+github.com/FacileStudio/antenne-client/go/outbox
 # github.com/FacileStudio/porte v0.18.2
 ## explicit; go 1.26
 github.com/FacileStudio/porte
@@ -101,8 +101,6 @@ github.com/jinzhu/now
 # github.com/joho/godotenv v1.5.1
 ## explicit; go 1.12
 github.com/joho/godotenv
-# github.com/kr/text v0.2.0
-## explicit
 # github.com/mattn/go-sqlite3 v1.14.22
 ## explicit; go 1.19
 github.com/mattn/go-sqlite3
@@ -118,8 +116,6 @@ github.com/modelcontextprotocol/go-sdk/internal/xcontext
 github.com/modelcontextprotocol/go-sdk/jsonrpc
 github.com/modelcontextprotocol/go-sdk/mcp
 github.com/modelcontextprotocol/go-sdk/oauthex
-# github.com/rogpeppe/go-internal v1.14.1
-## explicit; go 1.23
 # github.com/segmentio/asm v1.1.3
 ## explicit; go 1.17
 github.com/segmentio/asm/ascii

@@ -24,14 +24,20 @@ const (
 	deletePushSubscription = `DELETE FROM push_subscriptions WHERE user_id = ANY($1)`
 	deleteMemberships      = `DELETE FROM space_members WHERE user_id = ANY($1)`
 	deleteMCPActions       = `DELETE FROM mcp_actions WHERE user_id = ANY($1::bigint[]::text[])`
-	deleteAgents           = `DELETE FROM users WHERE kind = 'agent' AND owner_user_id = $1`
+	deleteOutboxMentions   = `DELETE FROM antenne_outbox o
+		WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ANY($1) AND coalesce(u.email, '') <> ''
+			AND strpos(o.payload::text, '"' || lower(u.email) || '"') > 0)
+		   OR EXISTS (SELECT 1 FROM porte_identities i WHERE i.user_id = ANY($1)
+			AND strpos(o.payload::text, '"' || i.subject || '"') > 0)`
+	deleteAgents = `DELETE FROM users WHERE kind = 'agent' AND owner_user_id = $1`
 )
 
 // eraseData is the kit's EraseData: it deletes what an erased person owns, in
 // the transaction that then deletes their users row. Their personal projects
 // with their tasks and time entries, every time entry they or their agents
 // logged, their agent users, heartbeats, dismissed drafts, push subscription,
-// memberships and pending MCP actions go. A space project they owned passes
+// memberships and pending MCP actions go, and so does every queued or recently
+// sent bus event that names their email or Registre subject. A space project they owned passes
 // to the space's longest-standing admin (owner or admin role), else its
 // longest-standing member, agents excluded; only a space left with nobody
 // keeps owner_id 0. A task they were assigned stays with no assignee.
@@ -53,7 +59,7 @@ func eraseData(ctx context.Context, tx *sql.Tx, userID int64) error {
 		return err
 	}
 	for _, statement := range []string{
-		deletePersonalEntries, deletePersonalTasks, deletePersonalProjects, deleteOwnEntries,
+		deleteOutboxMentions, deletePersonalEntries, deletePersonalTasks, deletePersonalProjects, deleteOwnEntries,
 		anonymiseTaskActor, transferSpaceProjects, deleteHeartbeats, deleteDismissals,
 		deletePushSubscription, deleteMemberships, deleteMCPActions,
 	} {

@@ -1,8 +1,12 @@
-package enveloppe
+// Package envelope is the canonical event envelope every Facile Suite app puts
+// on the Antenne bus. The TypeScript half in ts/src/envelope.ts must serialize
+// to identical JSON keys; the fixtures under testdata/ prove it from both sides.
+package envelope
 
 // App names one application in the suite that may appear on the wire.
 type App string
 
+// The apps that may appear on the wire, spelled as they register on the bus.
 const (
 	AppSablier  App = "Sablier"
 	AppOpus     App = "Opus"
@@ -12,11 +16,18 @@ const (
 	AppVision   App = "Vision"
 	AppMycelium App = "Mycelium"
 	AppSonde    App = "Sonde"
+	AppAgenda   App = "Agenda"
+	AppJournal  App = "Journal"
+	AppCourrier App = "Courrier"
+	AppNuage    App = "Nuage"
+	AppBulle    App = "Bulle"
+	AppAntenne  App = "Antenne"
 )
 
 // Action is what happened to an object: created, updated or deleted.
 type Action string
 
+// The three actions an event can report.
 const (
 	ActionCreated Action = "created"
 	ActionUpdated Action = "updated"
@@ -27,15 +38,19 @@ const (
 // type that crosses the wire has exactly one.
 type ObjectType string
 
+// The object types the shared payload structs below describe. An Agenda entry
+// is "calendar_event", never "event", which would be ambiguous on an event bus.
 const (
-	ObjectProject      ObjectType = "project"
-	ObjectTask         ObjectType = "task"
-	ObjectUser         ObjectType = "user"
-	ObjectTimeEntry    ObjectType = "time_entry"
-	ObjectInvoice      ObjectType = "invoice"
-	ObjectDocument     ObjectType = "document"
-	ObjectAgentSession ObjectType = "agent_session"
-	ObjectMonitor      ObjectType = "monitor"
+	ObjectProject       ObjectType = "project"
+	ObjectTask          ObjectType = "task"
+	ObjectUser          ObjectType = "user"
+	ObjectTimeEntry     ObjectType = "time_entry"
+	ObjectInvoice       ObjectType = "invoice"
+	ObjectDocument      ObjectType = "document"
+	ObjectAgentSession  ObjectType = "agent_session"
+	ObjectMonitor       ObjectType = "monitor"
+	ObjectCalendar      ObjectType = "calendar"
+	ObjectCalendarEvent ObjectType = "calendar_event"
 )
 
 // EventVersion pins the envelope version both implementations export.
@@ -128,4 +143,27 @@ type Monitor struct {
 	Status    string  `json:"status"`
 	LatencyMS int64   `json:"latency_ms"`
 	Error     *string `json:"error"`
+}
+
+// Calendar is an Agenda calendar's wire shape. It is deliberately minimal,
+// because calendar data is personal: no description, color or sharing list.
+// OwnerEmail is empty for a calendar owned by a space rather than a person.
+type Calendar struct {
+	FacileID   string `json:"facile_id"`
+	Name       string `json:"name"`
+	OwnerEmail string `json:"owner_email,omitempty"`
+	ActorEmail string `json:"actor_email,omitempty"`
+}
+
+// CalendarEvent is one Agenda calendar entry's wire shape. StartsAt and EndsAt
+// are RFC 3339 strings; for an all-day entry they span whole days. It carries
+// no description, location or attendee list, because calendar data is personal.
+type CalendarEvent struct {
+	FacileID         string `json:"facile_id"`
+	CalendarFacileID string `json:"calendar_facile_id"`
+	Title            string `json:"title"`
+	StartsAt         string `json:"starts_at"`
+	EndsAt           string `json:"ends_at"`
+	AllDay           bool   `json:"all_day"`
+	ActorEmail       string `json:"actor_email,omitempty"`
 }

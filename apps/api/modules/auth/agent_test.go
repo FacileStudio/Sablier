@@ -18,7 +18,7 @@ const testIssuer = "https://sso.example.test"
 
 func accountsOn(t *testing.T) (*Accounts, *gorm.DB) {
 	t.Helper()
-	orm := testdb.Migrated(t, testIssuer)
+	orm := testdb.Migrated(t)
 	sqlDB, err := orm.DB()
 	if err != nil {
 		t.Fatal(err)

@@ -8,7 +8,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 	"gorm.io/gorm"
 )
 
@@ -56,7 +56,7 @@ func (service *Service) ReviewEntry(ctx context.Context, ownerID, entryID, taskI
 	if err := service.orm.WithContext(ctx).Save(&entry).Error; err != nil {
 		return nil, errors.Internal("failed to review entry", err)
 	}
-	service.emitEntry(enveloppe.ActionUpdated, &entry)
+	service.emitEntry(envelope.ActionUpdated, &entry)
 	var records []timeEntryRow
 	if err := service.rows(ctx).Where("time_entries.id = ?", entry.ID).Find(&records).Error; err != nil || len(records) == 0 {
 		return nil, errors.Internal("failed to read the reviewed entry", err)

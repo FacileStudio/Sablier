@@ -9,7 +9,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 	"gorm.io/gorm"
 )
 
@@ -61,7 +61,7 @@ func (service *Service) createProject(ctx context.Context, userID string, name, 
 		return nil, errors.Internal("failed to create project", err)
 	}
 	if service.poolService != nil {
-		service.poolService.EmitProjectEvent(enveloppe.ActionCreated, record)
+		service.poolService.EmitProjectEvent(envelope.ActionCreated, record)
 	}
 	return record, nil
 }
@@ -118,7 +118,7 @@ func (service *Service) updateProject(ctx context.Context, projectID int64, name
 		return nil, errors.Internal("failed to update project", err)
 	}
 	if service.poolService != nil {
-		service.poolService.EmitProjectEvent(enveloppe.ActionUpdated, record)
+		service.poolService.EmitProjectEvent(envelope.ActionUpdated, record)
 	}
 	return record, nil
 }
@@ -136,7 +136,7 @@ func (service *Service) deleteProject(ctx context.Context, projectID int64) erro
 		return errors.NotFound("project not found")
 	}
 	if service.poolService != nil {
-		service.poolService.EmitProjectEvent(enveloppe.ActionDeleted, record)
+		service.poolService.EmitProjectEvent(envelope.ActionDeleted, record)
 	}
 	return nil
 }
@@ -181,7 +181,7 @@ func (service *Service) deleteTask(ctx context.Context, projectID int64, taskID 
 	}
 	if service.poolService != nil {
 		project, _ := service.getProject(ctx, projectID)
-		service.poolService.EmitTaskEvent(enveloppe.ActionDeleted, &task, project)
+		service.poolService.EmitTaskEvent(envelope.ActionDeleted, &task, project)
 	}
 	return count, nil
 }
@@ -223,7 +223,7 @@ func (service *Service) updateTask(ctx context.Context, projectID int64, taskID 
 	}
 	if service.poolService != nil {
 		project, _ := service.getProject(ctx, projectID)
-		service.poolService.EmitTaskEvent(enveloppe.ActionUpdated, &task, project)
+		service.poolService.EmitTaskEvent(envelope.ActionUpdated, &task, project)
 	}
 	return &task, nil
 }
@@ -251,7 +251,7 @@ func (service *Service) createTask(ctx context.Context, projectID int64, name st
 		return nil, errors.Internal("failed to create task", err)
 	}
 	if service.poolService != nil {
-		service.poolService.EmitTaskEvent(enveloppe.ActionCreated, record, project)
+		service.poolService.EmitTaskEvent(envelope.ActionCreated, record, project)
 	}
 	return record, nil
 }

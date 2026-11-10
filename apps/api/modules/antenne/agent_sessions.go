@@ -8,7 +8,7 @@ import (
 	"time"
 
 	antenneclient "github.com/FacileStudio/antenne-client/go"
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
 	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
@@ -22,7 +22,7 @@ import (
 // Entries upsert by facile_id, making re-emitted history idempotent even
 // without the processed-events ledger.
 func (s *Service) handleAgentSession(payload json.RawMessage, meta antenneclient.EventMeta) {
-	var evt enveloppe.Event[enveloppe.AgentSession]
+	var evt envelope.Event[envelope.AgentSession]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("antenne: failed to decode agent session", slog.Any("error", err))
 		return

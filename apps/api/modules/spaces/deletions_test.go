@@ -22,7 +22,7 @@ const erasureIssuer = "https://registre.example.test"
 
 func openErasureDatabase(t *testing.T) *gorm.DB {
 	t.Helper()
-	return testdb.Migrated(t, erasureIssuer)
+	return testdb.Migrated(t)
 }
 
 func erasureReceiver(t *testing.T, db *gorm.DB) *Deletions {
@@ -108,6 +108,10 @@ func seedErasure(t *testing.T, db *gorm.DB) erasureFixture {
 	mustExec(t, db, `INSERT INTO porte_sessions (token_hash, user_id, created_at, last_used_at) VALUES ('h', ?, now(), now())`, gone)
 	mustExec(t, db, `INSERT INTO mcp_actions (id, user_id, kind, target, digest, expires_at) VALUES ('a1', ?, 'k', 't', 'd', now())`,
 		strconv.FormatInt(gone, 10))
+	mustExec(t, db, `INSERT INTO antenne_outbox (channel, payload, idempotency_key) VALUES
+		('time_entry.created', '{"payload": {"user_email": "gone@facile.studio"}}', 'k1'),
+		('project.created', '{"payload": {"space": {"owner_subject": "sub-gone"}}}', 'k2'),
+		('project.created', '{"payload": {"space": {"owner_email": "other@facile.studio"}}}', 'k3')`)
 	return erasureFixture{gone: gone, other: other, deletions: erasureReceiver(t, db)}
 }
 
@@ -135,6 +139,9 @@ func assertNothingNames(t *testing.T, db *gorm.DB, gone int64) {
 		if got := count(t, db, query, args...); got != 0 {
 			t.Errorf("%s = %d, want 0", query, got)
 		}
+	}
+	if got := count(t, db, `SELECT count(*) FROM antenne_outbox WHERE idempotency_key IN ('k1', 'k2')`); got != 0 {
+		t.Errorf("bus events naming the erased person = %d, want 0", got)
 	}
 	if got := count(t, db, `SELECT count(*) FROM mcp_actions WHERE user_id = ?`, strconv.FormatInt(gone, 10)); got != 0 {
 		t.Errorf("pending MCP actions = %d, want 0", got)
@@ -192,6 +199,9 @@ func assertErasure(t *testing.T, db *gorm.DB) {
 	}
 	if n := count(t, db, `SELECT count(*) FROM push_subscriptions WHERE user_id = ?`, f.other); n != 1 {
 		t.Errorf("another person's subscription was touched")
+	}
+	if n := count(t, db, `SELECT count(*) FROM antenne_outbox WHERE idempotency_key = 'k3'`); n != 1 {
+		t.Errorf("another person's bus event was erased")
 	}
 }
 

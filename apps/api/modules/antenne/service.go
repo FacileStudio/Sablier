@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
@@ -15,20 +15,35 @@ import (
 	"github.com/FacileStudio/tronc/errors"
 
 	antenneclient "github.com/FacileStudio/antenne-client/go"
+	"github.com/FacileStudio/antenne-client/go/catalog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 const appSettingID = 1
 
-// EmitEvents and ListenEvents are the pool registration lists; antenne.yaml
-// documents them and a test keeps both in step.
+// EmitEvents is the channels Sablier publishes. It and ListenEvents are the
+// bus registration lists; antenne.yaml documents them and a test keeps all
+// three in step.
 func EmitEvents() []string {
-	return []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "time_entry.created", "time_entry.updated", "time_entry.deleted"}
+	return names(catalog.ProjectCreated, catalog.ProjectUpdated, catalog.ProjectDeleted,
+		catalog.TaskCreated, catalog.TaskUpdated, catalog.TaskDeleted,
+		catalog.TimeEntryCreated, catalog.TimeEntryUpdated, catalog.TimeEntryDeleted)
 }
 
+// ListenEvents is the channels Sablier handles, the keys of listeners.
 func ListenEvents() []string {
-	return []string{"project.created", "project.updated", "project.deleted", "task.created", "task.updated", "task.deleted", "agent_session.created", "agent_session.updated"}
+	return names(catalog.ProjectCreated, catalog.ProjectUpdated, catalog.ProjectDeleted,
+		catalog.TaskCreated, catalog.TaskUpdated, catalog.TaskDeleted,
+		catalog.AgentSessionCreated, catalog.AgentSessionUpdated)
+}
+
+func names(channels ...catalog.Channel) []string {
+	out := make([]string, len(channels))
+	for i, channel := range channels {
+		out[i] = string(channel)
+	}
+	return out
 }
 
 // Service manages the Antenne pool connection, its settings, and the
@@ -60,8 +75,15 @@ func (s *Service) SetIssuer(issuer string) {
 	s.issuer = issuer
 }
 
+// getEnvPoolConfig reads the bus from the environment through
+// antenne-client's ConfigFromEnv, which takes ANTENNE_URL or its older synonym
+// ANTENNE_INSTANCE. A URL without a secret configures nothing, as before.
 func getEnvPoolConfig() (string, string) {
-	return os.Getenv("ANTENNE_URL"), os.Getenv("ANTENNE_SECRET")
+	cfg, err := antenneclient.ConfigFromEnv("Sablier")
+	if err != nil {
+		return "", ""
+	}
+	return cfg.Instance, cfg.Secret
 }
 
 func (s *Service) AutoConnect(ctx context.Context) {
@@ -72,7 +94,7 @@ func (s *Service) AutoConnect(ctx context.Context) {
 	}
 	if settings.Enabled && settings.URL != "" && settings.Secret != "" {
 		if err := s.connect(settings.URL, settings.Secret); err != nil {
-			s.logger.Error("antenne: auto-connect failed", slog.Any("error", err))
+			s.logger.Warn("antenne: auto-connect failed, retrying", slog.Any("error", err))
 		}
 		return
 	}
@@ -80,7 +102,7 @@ func (s *Service) AutoConnect(ctx context.Context) {
 	if fromEnv && settings.URL != "" && settings.Secret != "" {
 		s.logger.Info("antenne: using env vars for auto-connect")
 		if err := s.connect(settings.URL, settings.Secret); err != nil {
-			s.logger.Error("antenne: auto-connect from env failed", slog.Any("error", err))
+			s.logger.Warn("antenne: auto-connect from env failed, retrying", slog.Any("error", err))
 		}
 	}
 }
@@ -140,15 +162,18 @@ func (s *Service) updateSettings(ctx context.Context, req *UpdatePoolRequest) (*
 	}, connectErr, nil
 }
 
-// connect establishes (or re-establishes) the Antenne client connection
-// using the given instance URL and secret, wiring up event listeners on
-// success.
+// connect replaces the client with one for the given instance URL and secret
+// and registers the listeners. The client keeps dialling until it is
+// disconnected (antenne-client's persistent connect), so a bus that is down at
+// boot or during a deploy is reached when it returns, and the outbox holds
+// what Sablier publishes meanwhile. The first dial's error is still returned,
+// so the settings page can show it.
 //
 // A reconnect the client is going to retry is the mechanism working, not an
 // incident: an Antenne restart takes a few seconds and produces three of
 // these. Logging them at error painted the dashboard red on every deploy,
 // which teaches people to scroll past the colour that is supposed to mean
-// something, so transient errors are logged at warn and only the terminal
+// something, so transient errors are logged at warn and only a terminal
 // failure lands at error.
 func (s *Service) connect(instanceURL, secret string) error {
 	s.disconnect()
@@ -163,7 +188,10 @@ func (s *Service) connect(instanceURL, secret string) error {
 		},
 	}
 
+	var dialling atomic.Bool
+	firstErr := make(chan error, 1)
 	client := antenneclient.NewClient(cfg,
+		antenneclient.WithPersistentConnect(),
 		antenneclient.WithOnConnect(func() {
 			s.logger.Info("antenne: connected")
 		}),
@@ -172,20 +200,29 @@ func (s *Service) connect(instanceURL, secret string) error {
 		}),
 		antenneclient.WithOnError(func(err error) {
 			var transient *antenneclient.TransientError
-			if stderrors.As(err, &transient) {
-				s.logger.Warn("antenne: reconnecting",
-					slog.Int("attempt", transient.Attempt),
-					slog.Any("error", transient.Err))
+			if !stderrors.As(err, &transient) {
+				s.logger.Error("antenne: error", slog.Any("error", err))
 				return
 			}
-			s.logger.Error("antenne: error", slog.Any("error", err))
+			if dialling.Load() {
+				select {
+				case firstErr <- transient.Err:
+				default:
+				}
+			}
+			s.logger.Warn("antenne: reconnecting",
+				slog.Int("attempt", transient.Attempt),
+				slog.Any("error", transient.Err))
 		}),
 	)
+	s.setupListeners(client)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	if err := client.Connect(ctx); err != nil {
+	dialling.Store(true)
+	err := client.Connect(ctx)
+	dialling.Store(false)
+	if err != nil {
 		return err
 	}
 
@@ -193,9 +230,12 @@ func (s *Service) connect(instanceURL, secret string) error {
 	s.client = client
 	s.mu.Unlock()
 
-	s.setupListeners()
-	s.logger.Info("antenne: connected and listeners registered")
-	return nil
+	select {
+	case err := <-firstErr:
+		return err
+	default:
+		return nil
+	}
 }
 
 func (s *Service) disconnect() {
@@ -295,70 +335,6 @@ func (s *Service) shouldEmit() bool {
 	return record.AntenneEnabled
 }
 
-func (s *Service) enqueueOutbox(channel string, evt any) {
-	payload, err := json.Marshal(evt)
-	if err != nil {
-		s.logger.Error("antenne: failed to serialize outbox event", slog.Any("error", err), slog.String("channel", channel))
-		return
-	}
-	row := schemas.AntenneOutbox{Channel: channel, Payload: string(payload)}
-	if err := s.orm.Create(&row).Error; err != nil {
-		s.logger.Error("antenne: failed to enqueue outbox event", slog.Any("error", err), slog.String("channel", channel))
-	}
-}
-
-const outboxBatchSize = 100
-
-// RunOutboxWorker drains the outbox to the pool while connected. Failures
-// stop the batch (never skip: skipping would reorder the log) and retry on
-// the next tick. It also prunes the idempotency ledger daily.
-func (s *Service) RunOutboxWorker(ctx context.Context) {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-	lastPrune := time.Time{}
-
-	for {
-		select {
-		case <-ticker.C:
-			s.drainOutbox()
-			if time.Since(lastPrune) > 24*time.Hour {
-				s.orm.Where("processed_at < ?", time.Now().Add(-ledgerRetention)).Delete(&schemas.AntenneProcessedEvent{})
-				lastPrune = time.Now()
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (s *Service) drainOutbox() {
-	s.mu.RLock()
-	client := s.client
-	s.mu.RUnlock()
-
-	if client == nil || !client.IsConnected() {
-		return
-	}
-
-	var rows []schemas.AntenneOutbox
-	if err := s.orm.Order("id ASC").Limit(outboxBatchSize).Find(&rows).Error; err != nil {
-		s.logger.Error("antenne: failed to read outbox", slog.Any("error", err))
-		return
-	}
-
-	for i := range rows {
-		if err := client.EmitNow(rows[i].Channel, json.RawMessage(rows[i].Payload)); err != nil {
-			s.logger.Error("antenne: outbox emit failed", slog.Any("error", err), slog.String("channel", rows[i].Channel))
-			s.orm.Model(&rows[i]).Updates(map[string]interface{}{
-				"attempts":   rows[i].Attempts + 1,
-				"last_error": err.Error(),
-			})
-			return
-		}
-		s.orm.Delete(&rows[i])
-	}
-}
-
 // GenerateFacileID returns a random "fac_"-prefixed hex identifier.
 func GenerateFacileID() string {
 	return schemas.NewFacileID()
@@ -402,37 +378,22 @@ func normalizeIcon(icon *string) *string {
 	return icon
 }
 
-func (s *Service) setupListeners() {
-	s.mu.RLock()
-	client := s.client
-	s.mu.RUnlock()
-
-	if client == nil {
-		return
+// listeners maps every channel Sablier listens to onto its handler.
+func (s *Service) listeners() map[catalog.Channel]antenneclient.EventHandler {
+	return map[catalog.Channel]antenneclient.EventHandler{
+		catalog.ProjectCreated:      s.handleProjectCreated,
+		catalog.ProjectUpdated:      s.handleProjectUpdated,
+		catalog.ProjectDeleted:      s.handleProjectDeleted,
+		catalog.TaskCreated:         s.handleTaskCreated,
+		catalog.TaskUpdated:         s.handleTaskUpdated,
+		catalog.TaskDeleted:         s.handleTaskDeleted,
+		catalog.AgentSessionCreated: s.handleAgentSession,
+		catalog.AgentSessionUpdated: s.handleAgentSession,
 	}
+}
 
-	client.Listen("project.created", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleProjectCreated(payload, meta)
-	})
-	client.Listen("project.updated", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleProjectUpdated(payload, meta)
-	})
-	client.Listen("project.deleted", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleProjectDeleted(payload, meta)
-	})
-	client.Listen("task.created", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleTaskCreated(payload, meta)
-	})
-	client.Listen("task.updated", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleTaskUpdated(payload, meta)
-	})
-	client.Listen("task.deleted", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleTaskDeleted(payload, meta)
-	})
-	client.Listen("agent_session.created", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleAgentSession(payload, meta)
-	})
-	client.Listen("agent_session.updated", func(payload json.RawMessage, meta antenneclient.EventMeta) {
-		s.handleAgentSession(payload, meta)
-	})
+func (s *Service) setupListeners(client *antenneclient.Client) {
+	for channel, handler := range s.listeners() {
+		client.Listen(string(channel), handler)
+	}
 }

@@ -1,24 +1,27 @@
 package antenne
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/catalog"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 )
 
 func (s *Service) emitting(channel string) bool {
 	return s.shouldEmit() && s.IsPoolEventEnabled(channel)
 }
 
-func (s *Service) enqueue(object enveloppe.ObjectType, action enveloppe.Action, facileID string, payload any) {
-	channel := fmt.Sprintf("%s.%s", object, action)
+func (s *Service) enqueue(object envelope.ObjectType, action envelope.Action, facileID string, payload any) {
+	channel := catalog.Channel(fmt.Sprintf("%s.%s", object, action))
 	now := time.Now().UTC()
-	s.enqueueOutbox(channel, enveloppe.Event[any]{
-		Version:        enveloppe.EventVersion,
-		App:            enveloppe.AppSablier,
+	err := s.enqueueOutbox(context.Background(), channel, envelope.Event[any]{
+		Version:        envelope.EventVersion,
+		App:            envelope.AppSablier,
 		Object:         object,
 		Action:         action,
 		FacileID:       facileID,
@@ -26,6 +29,9 @@ func (s *Service) enqueue(object enveloppe.ObjectType, action enveloppe.Action, 
 		Timestamp:      now.Format(time.RFC3339),
 		IdempotencyKey: fmt.Sprintf("%s:%s:%d", channel, facileID, now.UnixNano()),
 	})
+	if err != nil {
+		s.logger.Error("antenne: failed to enqueue outbox event", slog.Any("error", err), slog.String("channel", string(channel)))
+	}
 }
 
 func (s *Service) ensureFacileID(model any, id int64, facileID **string) {
@@ -45,13 +51,13 @@ func (s *Service) markLinked(model any, id int64) {
 
 // EmitProjectEvent queues a live project change for the pool. A project in a space
 // Registre does not know stays local.
-func (s *Service) EmitProjectEvent(action enveloppe.Action, project *schemas.Project) {
+func (s *Service) EmitProjectEvent(action envelope.Action, project *schemas.Project) {
 	if s.emitProject(action, project) {
 		s.markLinked(&schemas.Project{}, project.ID)
 	}
 }
 
-func (s *Service) emitProject(action enveloppe.Action, project *schemas.Project) bool {
+func (s *Service) emitProject(action envelope.Action, project *schemas.Project) bool {
 	if !s.emitting("project." + string(action)) {
 		return false
 	}
@@ -62,7 +68,7 @@ func (s *Service) emitProject(action enveloppe.Action, project *schemas.Project)
 	p := *project
 	s.ensureFacileID(&schemas.Project{}, p.ID, &p.FacileID)
 	project.FacileID = p.FacileID
-	s.enqueue(enveloppe.ObjectProject, action, *p.FacileID, projectPayload{
+	s.enqueue(envelope.ObjectProject, action, *p.FacileID, projectPayload{
 		FacileID:    *p.FacileID,
 		Name:        p.Name,
 		Description: p.Description,
@@ -75,13 +81,13 @@ func (s *Service) emitProject(action enveloppe.Action, project *schemas.Project)
 
 // EmitTaskEvent queues a live task change for the pool, after its project when the
 // project had never been given a facile_id.
-func (s *Service) EmitTaskEvent(action enveloppe.Action, task *schemas.Task, project *schemas.Project) {
+func (s *Service) EmitTaskEvent(action envelope.Action, task *schemas.Task, project *schemas.Project) {
 	if s.emitTask(action, task, project) {
 		s.markLinked(&schemas.Task{}, task.ID)
 	}
 }
 
-func (s *Service) emitTask(action enveloppe.Action, task *schemas.Task, project *schemas.Project) bool {
+func (s *Service) emitTask(action envelope.Action, task *schemas.Task, project *schemas.Project) bool {
 	if project == nil || !s.emitting("task."+string(action)) {
 		return false
 	}
@@ -90,12 +96,12 @@ func (s *Service) emitTask(action enveloppe.Action, task *schemas.Task, project 
 	}
 	p := *project
 	if p.FacileID == nil {
-		s.EmitProjectEvent(enveloppe.ActionCreated, &p)
+		s.EmitProjectEvent(envelope.ActionCreated, &p)
 		s.ensureFacileID(&schemas.Project{}, p.ID, &p.FacileID)
 	}
 	t := *task
 	s.ensureFacileID(&schemas.Task{}, t.ID, &t.FacileID)
-	s.enqueue(enveloppe.ObjectTask, action, *t.FacileID, s.taskPayload(&t, *p.FacileID))
+	s.enqueue(envelope.ObjectTask, action, *t.FacileID, s.taskPayload(&t, *p.FacileID))
 	return true
 }
 
@@ -124,7 +130,7 @@ func (s *Service) taskPayload(t *schemas.Task, projectFacileID string) taskPaylo
 
 // EmitTimeEntryEvent queues a time entry change. Only entries on a task of a synced
 // project leave Sablier; Opus mirrors them read-only.
-func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.TimeEntry) {
+func (s *Service) EmitTimeEntryEvent(action envelope.Action, entry *schemas.TimeEntry) {
 	if !s.emitting("time_entry." + string(action)) {
 		return
 	}
@@ -132,7 +138,7 @@ func (s *Service) EmitTimeEntryEvent(action enveloppe.Action, entry *schemas.Tim
 	if !ok {
 		return
 	}
-	s.enqueue(enveloppe.ObjectTimeEntry, action, payload.FacileID, payload)
+	s.enqueue(envelope.ObjectTimeEntry, action, payload.FacileID, payload)
 }
 
 func (s *Service) timeEntryPayload(entry *schemas.TimeEntry) (timeEntryPayload, bool) {

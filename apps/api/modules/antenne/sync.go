@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -89,13 +89,13 @@ func uniqueTaskName(tx *gorm.DB, projectID, selfID int64, name string) (string, 
 	}
 }
 
-func decodeInbound[T any](s *Service, channel string, payload json.RawMessage, facileID func(*T) string) (*enveloppe.Event[T], string, bool) {
-	var evt enveloppe.Event[T]
+func decodeInbound[T any](s *Service, channel string, payload json.RawMessage, facileID func(*T) string) (*envelope.Event[T], string, bool) {
+	var evt envelope.Event[T]
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		s.logger.Error("antenne: failed to decode "+channel, slog.Any("error", err))
 		return nil, "", false
 	}
-	if evt.App != enveloppe.AppOpus {
+	if evt.App != envelope.AppOpus {
 		return nil, "", false
 	}
 	if !s.IsPoolEventEnabled(channel) {

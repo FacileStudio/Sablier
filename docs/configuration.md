@@ -89,10 +89,10 @@ nothing to send.
 
 | Variable | Required | Default | What it does |
 |---|---|---|---|
-| `ANTENNE_URL` | no | — | Pool instance URL, used only as a fallback |
+| `ANTENNE_URL` | no | — | Pool instance URL, used only as a fallback. `ANTENNE_INSTANCE` is read as a synonym; `ANTENNE_URL` wins |
 | `ANTENNE_SECRET` | no | — | Pool shared secret, used only as a fallback |
 
-These are read directly with `os.Getenv` in `modules/antenne/service.go` and are used
+These are read through antenne-client's `ConfigFromEnv` in `modules/antenne/service.go` and are used
 **only when no `app_settings` row exists yet**. Once settings have been saved through
 `PUT /api/antenne`, the database wins and the environment is ignored. Even in the
 fallback path the connection is only attempted when both values are non-empty.

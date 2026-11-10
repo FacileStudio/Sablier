@@ -7,7 +7,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +28,7 @@ func (s *Service) Reconcile(ctx context.Context) (*SyncResult, error) {
 	}
 	result := &SyncResult{}
 	for i := range projects {
-		if !s.emitProject(enveloppe.ActionCreated, &projects[i]) {
+		if !s.emitProject(envelope.ActionCreated, &projects[i]) {
 			continue
 		}
 		result.ProjectsSynced++
@@ -63,7 +63,7 @@ func (s *Service) resendProject(orm *gorm.DB, project *schemas.Project) (int, in
 	orm.Where("project_id = ?", project.ID).Order("id").Find(&tasks)
 	sent, entries := 0, 0
 	for i := range tasks {
-		if s.emitTask(enveloppe.ActionCreated, &tasks[i], project) {
+		if s.emitTask(envelope.ActionCreated, &tasks[i], project) {
 			sent++
 			entries += s.resendEntries(orm, tasks[i].ID)
 		}
@@ -75,7 +75,7 @@ func (s *Service) resendEntries(orm *gorm.DB, taskID int64) int {
 	var entries []schemas.TimeEntry
 	orm.Where("task_id = ?", taskID).Order("id").Find(&entries)
 	for i := range entries {
-		s.EmitTimeEntryEvent(enveloppe.ActionCreated, &entries[i])
+		s.EmitTimeEntryEvent(envelope.ActionCreated, &entries[i])
 	}
 	return len(entries)
 }

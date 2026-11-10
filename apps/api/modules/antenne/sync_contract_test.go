@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 )
@@ -19,12 +19,19 @@ type queued struct {
 	channel string
 	key     string
 	payload map[string]any
+	raw     []byte
 }
 
-func outbox(t *testing.T, s *Service) []queued {
+func queuedEvents(t *testing.T, s *Service) []queued {
 	t.Helper()
-	var rows []schemas.AntenneOutbox
-	s.orm.Order("id").Find(&rows)
+	var rows []struct {
+		Channel string
+		Payload string
+	}
+	if err := s.orm.Raw(`SELECT channel, payload::text AS payload FROM antenne_outbox WHERE sent_at IS NULL ORDER BY id`).
+		Scan(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
 	out := make([]queued, len(rows))
 	for i, row := range rows {
 		var evt struct {
@@ -34,13 +41,13 @@ func outbox(t *testing.T, s *Service) []queued {
 		if err := json.Unmarshal([]byte(row.Payload), &evt); err != nil {
 			t.Fatal(err)
 		}
-		out[i] = queued{channel: row.Channel, key: evt.Key, payload: evt.Payload}
+		out[i] = queued{channel: row.Channel, key: evt.Key, payload: evt.Payload, raw: []byte(row.Payload)}
 	}
 	return out
 }
 
-func projectEvent(t *testing.T, action enveloppe.Action, key, id, name string, space map[string]any, updatedAt string) []byte {
-	return wireEvent(t, enveloppe.AppOpus, enveloppe.ObjectProject, action, key, map[string]any{
+func projectEvent(t *testing.T, action envelope.Action, key, id, name string, space map[string]any, updatedAt string) []byte {
+	return wireEvent(t, envelope.AppOpus, envelope.ObjectProject, action, key, map[string]any{
 		"facile_id": id, "name": name, "space": space, "updated_at": updatedAt,
 	})
 }
@@ -62,9 +69,9 @@ func TestInboundProjectResolvesRegistreSpaceAndSubject(t *testing.T) {
 	s.orm.Create(&space)
 
 	shared := map[string]any{"registre_space_id": reg, "personal": false, "owner_subject": "sub-alice", "owner_email": "x@y.z"}
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k1", testProjectID, "Shared", shared, ""), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k1", testProjectID, "Shared", shared, ""), testMeta)
 	mine := map[string]any{"registre_space_id": "", "personal": true, "owner_subject": "sub-alice", "owner_email": "nobody@x.z"}
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k2", testTaskID, "Mine", mine, ""), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k2", testTaskID, "Mine", mine, ""), testMeta)
 
 	var p schemas.Project
 	s.orm.Where("facile_id = ?", testProjectID).First(&p)
@@ -81,8 +88,8 @@ func TestInboundProjectResolvesRegistreSpaceAndSubject(t *testing.T) {
 func TestInboundProjectWithUnresolvableSpaceStaysReplayable(t *testing.T) {
 	s := newSyncService(t)
 	missing := map[string]any{"registre_space_id": "reg-unknown", "personal": false}
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k1", testProjectID, "A", missing, ""), testMeta)
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k2", testProjectID, "A", personal("ghost@x.z"), ""), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k1", testProjectID, "A", missing, ""), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k2", testProjectID, "A", personal("ghost@x.z"), ""), testMeta)
 	if countOf(s, &schemas.Project{}) != 0 || s.alreadyProcessed("k1") || s.alreadyProcessed("k2") {
 		t.Fatal("unresolvable space must skip without consuming the event")
 	}
@@ -91,16 +98,16 @@ func TestInboundProjectWithUnresolvableSpaceStaysReplayable(t *testing.T) {
 func TestInboundProjectLastWriterWins(t *testing.T) {
 	s := newSyncService(t)
 	now := time.Now().UTC()
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k1", testProjectID, "A", personal("owner@example.com"), now.Format(time.RFC3339Nano)), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k1", testProjectID, "A", personal("owner@example.com"), now.Format(time.RFC3339Nano)), testMeta)
 	older := now.Add(-time.Minute).Format(time.RFC3339Nano)
-	s.handleProjectUpdated(projectEvent(t, enveloppe.ActionUpdated, "k2", testProjectID, "Old", personal("owner@example.com"), older), testMeta)
+	s.handleProjectUpdated(projectEvent(t, envelope.ActionUpdated, "k2", testProjectID, "Old", personal("owner@example.com"), older), testMeta)
 	var p schemas.Project
 	s.orm.First(&p)
 	if p.Name != "A" {
 		t.Fatalf("older update applied: %q", p.Name)
 	}
 	newer := now.Add(time.Minute).Format(time.RFC3339Nano)
-	s.handleProjectUpdated(projectEvent(t, enveloppe.ActionUpdated, "k3", testProjectID, "New", personal("owner@example.com"), newer), testMeta)
+	s.handleProjectUpdated(projectEvent(t, envelope.ActionUpdated, "k3", testProjectID, "New", personal("owner@example.com"), newer), testMeta)
 	s.orm.First(&p)
 	if p.Name != "New" {
 		t.Fatalf("newer update not applied: %q", p.Name)
@@ -115,12 +122,12 @@ func TestProjectTwinMergeConvergesOnSmallerID(t *testing.T) {
 	s.orm.Create(&local)
 	s.orm.Create(&schemas.Task{ProjectID: local.ID, Name: "T"})
 
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k1", smallID, "alpha", personal("owner@example.com"), ""), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k1", smallID, "alpha", personal("owner@example.com"), ""), testMeta)
 	s.orm.First(&local, local.ID)
 	if countOf(s, &schemas.Project{}) != 1 || *local.FacileID != smallID || local.SyncedAt == nil {
 		t.Fatalf("smaller incoming id not adopted: %+v", local)
 	}
-	sent := outbox(t, s)
+	sent := queuedEvents(t, s)
 	if len(sent) != 1 || sent[0].channel != "task.created" || sent[0].payload["project_facile_id"] != smallID {
 		t.Fatalf("adopted project must resend its tasks: %+v", sent)
 	}
@@ -128,7 +135,7 @@ func TestProjectTwinMergeConvergesOnSmallerID(t *testing.T) {
 	other := smallID
 	twin := schemas.Project{Name: "Beta", OwnerID: 1, FacileID: &other}
 	s.orm.Create(&twin)
-	s.handleProjectCreated(projectEvent(t, enveloppe.ActionCreated, "k2", largeID[:len(largeID)-1]+"e", "Beta", personal("owner@example.com"), ""), testMeta)
+	s.handleProjectCreated(projectEvent(t, envelope.ActionCreated, "k2", largeID[:len(largeID)-1]+"e", "Beta", personal("owner@example.com"), ""), testMeta)
 	s.orm.First(&twin, twin.ID)
 	if countOf(s, &schemas.Project{}) != 2 || *twin.FacileID != smallID || !s.alreadyProcessed("k2") {
 		t.Fatalf("larger incoming id must be ignored: %+v", twin)
@@ -137,14 +144,14 @@ func TestProjectTwinMergeConvergesOnSmallerID(t *testing.T) {
 
 func seedSyncedTask(t *testing.T, s *Service) (*schemas.Project, *schemas.Task) {
 	t.Helper()
-	s.handleProjectCreated(opusProject(t, enveloppe.ActionCreated, "p1", "Alpha"), testMeta)
+	s.handleProjectCreated(opusProject(t, envelope.ActionCreated, "p1", "Alpha"), testMeta)
 	var project schemas.Project
 	s.orm.First(&project)
 	linked := time.Now()
 	local := schemas.Task{ProjectID: project.ID, Name: "Docs"}
 	local.SyncedAt = &linked
 	s.orm.Create(&local)
-	s.handleTaskCreated(opusTask(t, enveloppe.ActionCreated, "t1", map[string]any{
+	s.handleTaskCreated(opusTask(t, envelope.ActionCreated, "t1", map[string]any{
 		"name": "Docs", "status": "archived", "description": "write it", "due_date": "2026-12-01", "priority": "urgent",
 	}), testMeta)
 	var task schemas.Task
@@ -160,8 +167,8 @@ func TestTaskSuffixAndOpusFieldsRoundTrip(t *testing.T) {
 		t.Fatalf("inbound fields not stored: %+v", task)
 	}
 	enableEmit(s)
-	s.EmitTaskEvent(enveloppe.ActionUpdated, task, project)
-	sent := outbox(t, s)
+	s.EmitTaskEvent(envelope.ActionUpdated, task, project)
+	sent := queuedEvents(t, s)
 	got := sent[len(sent)-1]
 	if got.payload["name"] != "Docs" || got.payload["description"] != "write it" ||
 		got.payload["due_date"] != "2026-12-01" || got.payload["priority"] != "urgent" {
@@ -180,7 +187,7 @@ func TestInboundTaskUpdateMovesTaskAndEntries(t *testing.T) {
 	s.orm.Create(&target)
 	s.orm.Create(&schemas.TimeEntry{ProjectID: task.ProjectID, TaskID: task.ID, UserID: 1})
 
-	s.handleTaskUpdated(opusTask(t, enveloppe.ActionUpdated, "t2", map[string]any{
+	s.handleTaskUpdated(opusTask(t, envelope.ActionUpdated, "t2", map[string]any{
 		"name": "Docs", "project_facile_id": smallID, "updated_at": time.Now().Add(time.Minute).UTC().Format(time.RFC3339Nano),
 	}), testMeta)
 	var moved schemas.Task
@@ -199,7 +206,7 @@ func TestTimeEntryEventsOnlyForSyncedProjects(t *testing.T) {
 	stopped := time.Now().UTC()
 	entry := schemas.TimeEntry{ProjectID: task.ProjectID, TaskID: task.ID, UserID: 1, StoppedAt: &stopped, PausedDurationMs: 42}
 	s.orm.Create(&entry)
-	s.EmitTimeEntryEvent(enveloppe.ActionDeleted, &entry)
+	s.EmitTimeEntryEvent(envelope.ActionDeleted, &entry)
 
 	space := schemas.Space{Name: "Local only"}
 	s.orm.Create(&space)
@@ -207,10 +214,10 @@ func TestTimeEntryEventsOnlyForSyncedProjects(t *testing.T) {
 	s.orm.Create(&hidden)
 	hiddenTask := schemas.Task{ProjectID: hidden.ID, Name: "H"}
 	s.orm.Create(&hiddenTask)
-	s.EmitTimeEntryEvent(enveloppe.ActionCreated, &schemas.TimeEntry{ProjectID: hidden.ID, TaskID: hiddenTask.ID, UserID: 1})
-	s.EmitProjectEvent(enveloppe.ActionUpdated, &hidden)
+	s.EmitTimeEntryEvent(envelope.ActionCreated, &schemas.TimeEntry{ProjectID: hidden.ID, TaskID: hiddenTask.ID, UserID: 1})
+	s.EmitProjectEvent(envelope.ActionUpdated, &hidden)
 
-	sent := outbox(t, s)
+	sent := queuedEvents(t, s)
 	if len(sent) != 1 || sent[0].channel != "time_entry.deleted" {
 		t.Fatalf("unexpected outbox: %+v", sent)
 	}
@@ -233,7 +240,7 @@ func TestReconcileQueuesProjectsThenTasksThenEntries(t *testing.T) {
 	if err != nil || result.ProjectsSynced != 1 || result.TasksSynced != 1 || result.TimeEntriesSynced != 1 {
 		t.Fatalf("reconcile: %+v %v", result, err)
 	}
-	sent := outbox(t, s)
+	sent := queuedEvents(t, s)
 	if len(sent) != 3 || sent[0].channel != "project.created" || sent[1].channel != "task.created" ||
 		sent[2].channel != "time_entry.created" || sent[0].payload["description"] != "" {
 		t.Fatalf("unexpected order: %+v", sent)

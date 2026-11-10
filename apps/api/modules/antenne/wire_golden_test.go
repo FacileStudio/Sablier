@@ -1,6 +1,8 @@
 package antenne
 
 import (
+	"context"
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -8,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
+	"github.com/FacileStudio/antenne-client/go/outbox"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 )
@@ -80,13 +83,13 @@ func seedWire(t *testing.T, s *Service) wireFixture {
 
 func publishEveryChannel(s *Service, f wireFixture) []string {
 	var names []string
-	for _, action := range []enveloppe.Action{enveloppe.ActionCreated, enveloppe.ActionUpdated, enveloppe.ActionDeleted} {
+	for _, action := range []envelope.Action{envelope.ActionCreated, envelope.ActionUpdated, envelope.ActionDeleted} {
 		s.EmitProjectEvent(action, f.shared)
 		s.EmitTaskEvent(action, f.task, f.shared)
 		s.EmitTimeEntryEvent(action, f.entry)
 		names = append(names, "project."+string(action), "task."+string(action), "time_entry."+string(action))
 	}
-	s.EmitProjectEvent(enveloppe.ActionCreated, f.personal)
+	s.EmitProjectEvent(envelope.ActionCreated, f.personal)
 	return append(names, "project.created.personal")
 }
 
@@ -116,15 +119,22 @@ func TestEveryPublishedEventKeepsItsBytes(t *testing.T) {
 	}
 }
 
+// sentEvents drains the outbox through antenne-client's drainer and returns
+// what Sablier hands the client for each row, the bytes that go on the wire.
 func sentEvents(t *testing.T, s *Service) [][]byte {
 	t.Helper()
-	var rows []schemas.AntenneOutbox
-	if err := s.orm.Order("id").Find(&rows).Error; err != nil {
+	db, err := s.orm.DB()
+	if err != nil {
 		t.Fatal(err)
 	}
-	out := make([][]byte, len(rows))
-	for i, row := range rows {
-		out[i] = []byte(row.Payload)
+	var out [][]byte
+	drainer := outbox.NewDrainer(db, func(channel string, payload any) error {
+		event, err := canonical(channel, payload.(json.RawMessage))
+		out = append(out, event)
+		return err
+	})
+	if _, err := drainer.Drain(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 	return out
 }

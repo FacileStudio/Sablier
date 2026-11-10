@@ -108,8 +108,8 @@ func TestMigrateRenamesPoolTablesKeepingRows(t *testing.T) {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	var pending []AntenneOutbox
-	if err := orm.Find(&pending).Error; err != nil {
+	var pending []struct{ Channel string }
+	if err := orm.Table("antenne_outbox").Find(&pending).Error; err != nil {
 		t.Fatalf("read migrated outbox: %v", err)
 	}
 	if len(pending) != 1 || pending[0].Channel != "project.updated" {

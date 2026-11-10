@@ -2,35 +2,25 @@ package antenne
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"strings"
 	"testing"
 
 	antenneclient "github.com/FacileStudio/antenne-client/go"
-	enveloppe "github.com/FacileStudio/enveloppe/go"
+	"github.com/FacileStudio/antenne-client/go/envelope"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/agentwork"
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
-	orm, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.AppSetting{}, &schemas.AntenneOutbox{}, &schemas.AntenneProcessedEvent{}, &schemas.SpaceMember{}, &schemas.Space{})
-	if err != nil {
-		t.Fatalf("migrate test database: %v", err)
-	}
+	orm := testdb.Migrated(t)
 	return NewService(orm, slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
 
@@ -54,13 +44,13 @@ func seedProject(t *testing.T, orm *gorm.DB, name string) *schemas.Project {
 
 func sessionEvent(t *testing.T, facileID, project, email, key string) json.RawMessage {
 	t.Helper()
-	evt := enveloppe.Event[enveloppe.AgentSession]{
-		Version:  enveloppe.EventVersion,
-		App:      enveloppe.AppMycelium,
-		Object:   enveloppe.ObjectAgentSession,
-		Action:   enveloppe.ActionCreated,
+	evt := envelope.Event[envelope.AgentSession]{
+		Version:  envelope.EventVersion,
+		App:      envelope.AppMycelium,
+		Object:   envelope.ObjectAgentSession,
+		Action:   envelope.ActionCreated,
 		FacileID: facileID,
-		Payload: enveloppe.AgentSession{
+		Payload: envelope.AgentSession{
 			FacileID:  facileID,
 			Project:   project,
 			Machine:   "lucy",
@@ -195,8 +185,8 @@ func TestAgentSessionRejectsInvalidTimes(t *testing.T) {
 	seedUser(t, s.orm, "sara@example.com")
 	seedProject(t, s.orm, "Mycelium")
 
-	evt := enveloppe.Event[enveloppe.AgentSession]{
-		Payload: enveloppe.AgentSession{
+	evt := envelope.Event[envelope.AgentSession]{
+		Payload: envelope.AgentSession{
 			FacileID: "fac_bad", Project: "Mycelium", UserEmail: "sara@example.com",
 			StartedAt: "2026-08-01T10:30:00Z", StoppedAt: "2026-08-01T10:00:00Z",
 		},
