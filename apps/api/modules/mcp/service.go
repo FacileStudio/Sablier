@@ -15,6 +15,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/projects"
 	"github.com/FacileStudio/Sablier/apps/api/modules/spaces"
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
+	"github.com/FacileStudio/porte/kit"
 	mcpkit "github.com/FacileStudio/tronc/mcp"
 	"github.com/FacileStudio/tronc/middleware"
 	"github.com/modelcontextprotocol/go-sdk/auth"
@@ -33,7 +34,7 @@ const instructions = `Sablier is the user's time tracker: projects hold tasks, a
 // Accounts resolves the person a token speaks for, with the rule RequireAuth applies:
 // an agent user or a missing row is refused. The auth service implements it.
 type Accounts interface {
-	IdentityForUser(ctx context.Context, userID int64) (id string, email string, err error)
+	Identity(ctx context.Context, userID int64) (kit.Identity, error)
 }
 
 // Deps are the services the tools call.

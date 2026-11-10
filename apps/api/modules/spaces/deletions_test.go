@@ -2,17 +2,19 @@ package spaces
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
+	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte/directory"
 	portepg "github.com/FacileStudio/porte/pg"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -20,25 +22,21 @@ const erasureIssuer = "https://registre.example.test"
 
 func openErasureDatabase(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	return testdb.Migrated(t, erasureIssuer)
+}
+
+func erasureReceiver(t *testing.T, db *gorm.DB) *Deletions {
+	t.Helper()
+	sqlDB, err := db.DB()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = db.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.Heartbeat{}, &schemas.DraftDismissal{}, &schemas.PushSubscription{}, &schemas.Space{}, &schemas.SpaceMember{})
+	accounts, err := auth.NewAccounts(context.Background(), sqlDB, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, ddl := range []string{
-		`CREATE TABLE porte_identities (user_id integer NOT NULL, provider text NOT NULL, subject text NOT NULL, PRIMARY KEY (provider, subject))`,
-		`CREATE TABLE directory_deletion_state (id integer PRIMARY KEY, state blob NOT NULL, updated_at datetime)`,
-	} {
-		if err := db.Exec(ddl).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
-	return db
+	return NewDeletions(db, directory.Client{Issuer: erasureIssuer}, accounts.Store().EraseAccount,
+		portepg.New(sqlDB).EraseIdentity, t.TempDir(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
 
 func count(t *testing.T, db *gorm.DB, query string, args ...any) int64 {
@@ -105,26 +103,46 @@ func seedErasure(t *testing.T, db *gorm.DB) erasureFixture {
 	}
 	mustCreate(t, db, &schemas.PushSubscription{UserID: gone, Endpoint: "e", P256DH: "p", Auth: "a"})
 	mustCreate(t, db, &schemas.PushSubscription{UserID: other, Endpoint: "e2", P256DH: "p", Auth: "a"})
-	deletions := NewDeletions(db, directory.Client{Issuer: erasureIssuer}, nil, t.TempDir(),
-		slog.New(slog.NewTextHandler(io.Discard, nil)))
-	return erasureFixture{gone: gone, other: other, deletions: deletions}
+	mustCreate(t, db, &schemas.Heartbeat{UserID: gone, At: time.Now(), Source: "editor"})
+	mustCreate(t, db, &schemas.DraftDismissal{UserID: agent.ID, StartedAt: time.Now(), StoppedAt: time.Now()})
+	mustExec(t, db, `INSERT INTO porte_sessions (token_hash, user_id, created_at, last_used_at) VALUES ('h', ?, now(), now())`, gone)
+	mustExec(t, db, `INSERT INTO mcp_actions (id, user_id, kind, target, digest, expires_at) VALUES ('a1', ?, 'k', 't', 'd', now())`,
+		strconv.FormatInt(gone, 10))
+	return erasureFixture{gone: gone, other: other, deletions: erasureReceiver(t, db)}
+}
+
+// assertNothingNames fails when any table still holds a row that references
+// the erased user or one of their agents.
+func assertNothingNames(t *testing.T, db *gorm.DB, gone int64) {
+	t.Helper()
+	ids := `(SELECT ? UNION SELECT id FROM users WHERE owner_user_id = ?)`
+	for _, query := range []string{
+		`SELECT count(*) FROM users WHERE id IN ` + ids + ` OR owner_user_id = ?`,
+		`SELECT count(*) FROM time_entries WHERE user_id IN ` + ids,
+		`SELECT count(*) FROM projects WHERE owner_id IN ` + ids,
+		`SELECT count(*) FROM tasks WHERE actor_id IN ` + ids,
+		`SELECT count(*) FROM heartbeats WHERE user_id IN ` + ids,
+		`SELECT count(*) FROM draft_dismissals WHERE user_id IN ` + ids,
+		`SELECT count(*) FROM push_subscriptions WHERE user_id IN ` + ids,
+		`SELECT count(*) FROM space_members WHERE user_id IN ` + ids,
+		`SELECT count(*) FROM porte_identities WHERE user_id IN ` + ids + ` OR subject = 'sub-gone'`,
+		`SELECT count(*) FROM porte_sessions WHERE user_id IN ` + ids,
+	} {
+		args := []any{gone, gone}
+		for range strings.Count(query, "?") - 2 {
+			args = append(args, gone)
+		}
+		if got := count(t, db, query, args...); got != 0 {
+			t.Errorf("%s = %d, want 0", query, got)
+		}
+	}
+	if got := count(t, db, `SELECT count(*) FROM mcp_actions WHERE user_id = ?`, strconv.FormatInt(gone, 10)); got != 0 {
+		t.Errorf("pending MCP actions = %d, want 0", got)
+	}
 }
 
 func TestErasePersonDeletesPersonalDataAndKeepsSpaceData(t *testing.T) {
 	assertErasure(t, openErasureDatabase(t))
-}
-
-func TestErasePersonOnPostgres(t *testing.T) {
-	db := openPostgres(t)
-	err := db.AutoMigrate(&schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{}, &schemas.Heartbeat{},
-		&schemas.DraftDismissal{}, &schemas.PushSubscription{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := schemas.AdoptPorte(db, ""); err != nil {
-		t.Fatal(err)
-	}
-	assertErasure(t, db)
 }
 
 func assertErasure(t *testing.T, db *gorm.DB) {
@@ -134,7 +152,11 @@ func assertErasure(t *testing.T, db *gorm.DB) {
 		if err := f.deletions.ErasePerson(context.Background(), erasureIssuer, "sub-gone"); err != nil {
 			t.Fatalf("erase: %v", err)
 		}
+		if err := f.deletions.receiver.Erase(context.Background(), erasureIssuer, "sub-gone"); err != nil {
+			t.Fatalf("erase the identity: %v", err)
+		}
 	}
+	assertNothingNames(t, db, f.gone)
 
 	for query, want := range map[string]int64{
 		`SELECT count(*) FROM users WHERE id = ? OR owner_user_id = ?`:         0,
@@ -218,8 +240,7 @@ func TestErasePersonTransfersSpaceProjectsToTheLongestStandingAdmin(t *testing.T
 	for name, space := range map[string]schemas.Space{"P-crowded": crowded, "P-solo": soloMembers, "P-empty": empty} {
 		mustCreate(t, db, &schemas.Project{Name: name, OwnerID: gone, SpaceID: &space.ID})
 	}
-	deletions := NewDeletions(db, directory.Client{Issuer: erasureIssuer}, nil, t.TempDir(),
-		slog.New(slog.NewTextHandler(io.Discard, nil)))
+	deletions := erasureReceiver(t, db)
 	for range 2 {
 		if err := deletions.ErasePerson(context.Background(), erasureIssuer, "sub-gone"); err != nil {
 			t.Fatalf("erase: %v", err)

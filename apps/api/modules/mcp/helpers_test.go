@@ -19,6 +19,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/mcpauth"
 	"github.com/FacileStudio/tronc/mcp/mcptest"
 	"github.com/go-chi/chi/v5"
@@ -212,7 +213,7 @@ func (s sessions) RequireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// IdentityForUser is the auth service's lookup.
-func (s sessions) IdentityForUser(ctx context.Context, userID int64) (string, string, error) {
-	return auth.NewService(s.db, nil, slog.Default()).IdentityForUser(ctx, userID)
+// Identity is the auth service's lookup.
+func (s sessions) Identity(ctx context.Context, userID int64) (kit.Identity, error) {
+	return auth.NewService(s.db, nil, slog.Default()).Identity(ctx, userID)
 }

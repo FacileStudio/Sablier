@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/session"
 )
 
@@ -24,8 +25,8 @@ func (f fakeAuth) RequireAuth(next http.Handler) http.Handler {
 	return f.sessions.RequireAuth(next)
 }
 
-func (fakeAuth) IdentityForUser(context.Context, int64) (string, string, error) {
-	return "7", "user@example.test", nil
+func (fakeAuth) Identity(_ context.Context, userID int64) (kit.Identity, error) {
+	return kit.Identity{UserID: userID, Email: "user@example.test"}, nil
 }
 
 func serve(t *testing.T, scopes []string, method, path string) int {

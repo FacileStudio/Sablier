@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/FacileStudio/porte/directory"
 
@@ -17,18 +18,20 @@ import (
 // list with the same client credentials as the snapshot sync and accepts
 // Registre's signed push on directory.DeletionsPath.
 type Deletions struct {
-	orm        *gorm.DB
-	storageDir string
-	receiver   *directory.Deletions
+	orm          *gorm.DB
+	storageDir   string
+	eraseAccount func(context.Context, string, string) error
+	receiver     *directory.Deletions
 }
 
-// NewDeletions builds the receiver over Sablier's tables. erase is porte's own
-// rows eraser, pg.Store.EraseIdentity.
+// NewDeletions builds the receiver over Sablier's tables. eraseAccount is the
+// account store's EraseAccount, which deletes the person's rows and account
+// in one transaction; erase is porte's own rows eraser, pg.Store.EraseIdentity.
 func NewDeletions(
-	orm *gorm.DB, client directory.Client, erase func(context.Context, string, string) error,
+	orm *gorm.DB, client directory.Client, eraseAccount, erase func(context.Context, string, string) error,
 	storageDir string, logger *slog.Logger,
 ) *Deletions {
-	d := &Deletions{orm: orm, storageDir: storageDir}
+	d := &Deletions{orm: orm, storageDir: storageDir, eraseAccount: eraseAccount}
 	d.receiver = &directory.Deletions{
 		Client:          client,
 		OnPersonDeleted: d.ErasePerson,
@@ -49,69 +52,36 @@ func (d *Deletions) Handler() http.Handler {
 	return d.receiver.Handler()
 }
 
-const (
-	personalProjects = `SELECT id FROM projects WHERE space_id IS NULL AND owner_id IN @ids`
-
-	deletePersonalEntries  = `DELETE FROM time_entries WHERE project_id IN (` + personalProjects + `)`
-	deletePersonalTasks    = `DELETE FROM tasks WHERE project_id IN (` + personalProjects + `)`
-	deletePersonalProjects = `DELETE FROM projects WHERE space_id IS NULL AND owner_id IN @ids`
-	deleteOwnEntries       = `DELETE FROM time_entries WHERE user_id IN @ids`
-	anonymiseTaskActor     = `UPDATE tasks SET actor_id = NULL WHERE actor_id IN @ids`
-	transferSpaceProjects  = `UPDATE projects SET owner_id = COALESCE((
-		SELECT m.user_id FROM space_members m JOIN users u ON u.id = m.user_id
-		WHERE CAST(m.space_id AS text) = CAST(projects.space_id AS text) AND m.user_id NOT IN @ids AND u.kind <> 'agent'
-		ORDER BY CASE WHEN m.role IN ('owner', 'admin') THEN 0 ELSE 1 END, m.joined_at, m.id
-		LIMIT 1), 0)
-		WHERE space_id IS NOT NULL AND owner_id IN @ids`
-	deleteHeartbeats       = `DELETE FROM heartbeats WHERE user_id IN @ids`
-	deleteDismissals       = `DELETE FROM draft_dismissals WHERE user_id IN @ids`
-	deletePushSubscription = `DELETE FROM push_subscriptions WHERE user_id IN @ids`
-	deleteMemberships      = `DELETE FROM space_members WHERE user_id IN @ids`
-	deleteAccounts         = `DELETE FROM users WHERE id IN @ids`
-)
-
-// ErasePerson deletes the account behind a Registre identity and what it owns:
-// its personal projects with their tasks and time entries, every time entry it
-// logged, its agent users, heartbeats, dismissed drafts, push subscription and
-// memberships. A space project it owned passes to the space's longest-standing
-// admin (owner or admin role), else its longest-standing member, agents excluded;
-// only a space left with nobody keeps owner_id 0. A task it was assigned stays
-// with no assignee. A subject that is already gone is a no-op,
-// so a replayed notice changes nothing.
+// ErasePerson deletes the account behind a Registre identity and what it owns,
+// through the account store, then the legacy avatar file it uploaded. A
+// subject that is already gone is a no-op, so a replayed notice changes
+// nothing.
 func (d *Deletions) ErasePerson(ctx context.Context, provider, subject string) error {
-	var account struct {
-		ID         int64
-		UploadPath string
-	}
+	var uploads []string
 	err := d.orm.WithContext(ctx).Raw(
-		`SELECT u.id, coalesce(u.avatar_upload_path, '') AS upload_path FROM users u
-		 JOIN porte_identities i ON i.user_id = u.id WHERE i.provider = ? AND i.subject = ?`,
-		provider, subject).Scan(&account).Error
-	if err != nil || account.ID == 0 {
+		`SELECT coalesce(u.avatar_upload_path, '') FROM users u
+		 JOIN porte_identities i ON i.user_id = u.id
+		 WHERE i.provider IN (?, ?) AND i.subject = ?`,
+		provider, toggleSlash(provider), subject).Scan(&uploads).Error
+	if err != nil {
 		return err
 	}
-	err = d.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		ids := []int64{account.ID}
-		var agents []int64
-		if err := tx.Raw(`SELECT id FROM users WHERE owner_user_id = ?`, account.ID).Scan(&agents).Error; err != nil {
-			return err
-		}
-		args := map[string]any{"ids": append(ids, agents...)}
-		for _, statement := range []string{
-			deletePersonalEntries, deletePersonalTasks, deletePersonalProjects, deleteOwnEntries,
-			anonymiseTaskActor, transferSpaceProjects, deleteHeartbeats, deleteDismissals,
-			deletePushSubscription, deleteMemberships, deleteAccounts,
-		} {
-			if err := tx.Exec(statement, args).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err == nil && account.UploadPath != "" {
-		removeUpload(d.storageDir, account.UploadPath)
+	if err := d.eraseAccount(ctx, provider, subject); err != nil {
+		return err
 	}
-	return err
+	for _, upload := range uploads {
+		if upload != "" {
+			removeUpload(d.storageDir, upload)
+		}
+	}
+	return nil
+}
+
+func toggleSlash(provider string) string {
+	if trimmed, ok := strings.CutSuffix(provider, "/"); ok {
+		return trimmed
+	}
+	return provider + "/"
 }
 
 func removeUpload(storageDir, relative string) {

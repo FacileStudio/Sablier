@@ -32,7 +32,7 @@ that reason.
 | Router | `tronc/httpx.NewRouter` | Chi router with the suite's logging, recovery, and CORS middleware |
 | Modules | `apps/api/modules/*` | One package per domain, each with `router.go`, `controller.go`, `service.go`, `types.go`, `documentation.go` |
 | Schemas | `apps/api/schemas` | GORM models plus `Migrate`, which runs `AutoMigrate` and the backfills |
-| Internal | `apps/api/internal/*` | `database`, `middleware`, `env`, `authcontext`, `authcrypto`, `usercolor`, `oidcavatar`, `webhook`, `worker`, `documentation` |
+| Internal | `apps/api/internal/*` | `database`, `middleware`, `env`, `authcontext`, `authcrypto`, `usercolor`, `webhook`, `worker`, `documentation` |
 | Client | `apps/client` | SvelteKit 5 with `adapter-static` and `fallback: index.html` |
 
 The eight modules are `auth`, `projects`, `timeentries`, `users`, `settings`, `spaces`,
@@ -48,8 +48,9 @@ The eight modules are `auth`, `projects`, `timeentries`, `users`, `settings`, `s
    anything else. `/ready` pings Postgres with a two-second timeout and returns 503 as
    `{"status":"not_ready"}` when the ping fails.
 4. `/api/*` dispatches into a module router. Protected routes run
-   `internal/middleware.RequireAuth`, which resolves the bearer token and puts an
-   `authcontext.Identity{UserID, Email}` on the request context.
+   `internal/middleware.RequireAuth`: porte/kit's `RequireAuth` resolves the cookie or bearer
+   credential, refuses an agent user, and the middleware copies the identity onto the request
+   context as `authcontext.Identity{UserID, Email}`, with the user id as a decimal string.
 5. The module controller validates and delegates to its service, which talks to GORM.
 6. Responses are written by `tronc/httpjson`. Errors constructed with `tronc/errors`
    (`Invalid`, `Unauthorized`, `Conflict`, `Internal`) map to their status codes.
@@ -78,9 +79,13 @@ it. When it is configured, three extra routes appear:
 
 - `GET /api/auth/oidc` sets a short-lived `oidc_state` cookie (10 minutes) and redirects
   to the provider.
-- `GET /api/auth/oidc/callback` verifies state and the ID token, upserts the user by
-  email, creates a session, and redirects to `OIDC_SUCCESS_URL` — which defaults to the
-  first entry of `CORS_ALLOWED_ORIGINS`.
+- `GET /api/auth/oidc/callback` verifies state and the ID token, upserts the user through
+  `modules/auth.Accounts` (porte/kit's store over the `users` table), creates a session, and
+  redirects to `OIDC_SUCCESS_URL`, which defaults to the first entry of `CORS_ALLOWED_ORIGINS`.
+  The store links by identity, then by a verified email, then creates the account; it
+  rewrites the stored email only when the provider marks it verified, and refuses any
+  sign-in that would land on an agent user. A new account gets its colour in the kit's
+  `OnCreate` hook.
 - `POST /api/auth/sync-profile` re-pulls the provider profile for the logged-in user.
 
 The scopes requested are `openid`, `email`, `profile`, and `offline_access`. Access,

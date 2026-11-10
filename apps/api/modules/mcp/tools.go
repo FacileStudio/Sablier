@@ -46,7 +46,7 @@ func (t *toolset) userOf(ctx context.Context, req *sdk.CallToolRequest) (int64, 
 	if !ok {
 		return 0, errNoCaller
 	}
-	if _, _, err := t.Accounts.IdentityForUser(ctx, identity.UserID); err != nil {
+	if _, err := t.Accounts.Identity(ctx, identity.UserID); err != nil {
 		return 0, errNoCaller
 	}
 	return identity.UserID, nil

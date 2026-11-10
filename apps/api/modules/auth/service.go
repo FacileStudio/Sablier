@@ -4,10 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/errors"
 
@@ -15,8 +15,8 @@ import (
 )
 
 // Service is what is left of Sablier's authentication after porte took the
-// credential: the profile lookup the rest of the app reads, and a thin wrapper
-// over porte/local so the register and login routes keep their response shape.
+// credential: the profile lookup the rest of the app reads and the token
+// issuer the API key routes call.
 type Service struct {
 	orm      *gorm.DB
 	sessions *session.Manager
@@ -34,34 +34,31 @@ func (service *Service) RequireAuth(next http.Handler) http.Handler {
 	return service.sessions.RequireAuth(next)
 }
 
-// IdentityForUser turns the user id porte authenticated into the identity the
-// rest of Sablier reads. It is no longer where authentication happens.
-//
-// The email costs one query per authenticated request, which is what the old
-// join cost. porte deliberately carries neither the email nor any role: what a
-// role may do is the app's business, and the profile lives in the app's table.
-//
-// A user id that resolves to no row means the session outlived the user
-// (porte's foreign key cascades a delete, so this is a race) and is treated as
-// unauthenticated. An agent user resolves to no row either: whatever credential
-// names one, no request is ever served as an agent.
-func (service *Service) IdentityForUser(ctx context.Context, userID int64) (string, string, error) {
+// Identity turns the user id porte authenticated into the identity the rest
+// of Sablier reads. It is porte/kit's Resolver with Sablier's one extra rule:
+// an agent user resolves to no row, so whatever credential names one, no
+// request is ever served as an agent. A missing row means the session
+// outlived the user and is treated as unauthenticated.
+func (service *Service) Identity(ctx context.Context, userID int64) (kit.Identity, error) {
 	var out struct {
-		ID    int64
-		Email string
+		ID             int64
+		Email          string
+		Name           string
+		OIDCPictureURL string
 	}
 	err := service.orm.WithContext(ctx).
 		Model(&schemas.User{}).
-		Select("id", "email").
+		Select("id", "coalesce(email, '') AS email", "coalesce(name, '') AS name",
+			"coalesce(oidc_picture_url, '') AS oidc_picture_url").
 		Where("id = ? AND kind <> ?", userID, schemas.UserKindAgent).
 		Scan(&out).Error
 	if err != nil {
-		return "", "", errors.Internal("failed to load the account", err)
+		return kit.Identity{}, errors.Internal("failed to load the account", err)
 	}
 	if out.ID == 0 {
-		return "", "", errors.Unauthorized("invalid auth token")
+		return kit.Identity{}, errors.Unauthorized("invalid auth token")
 	}
-	return strconv.FormatInt(out.ID, 10), out.Email, nil
+	return kit.Identity{UserID: out.ID, Email: out.Email, Name: out.Name, PictureURL: out.OIDCPictureURL}, nil
 }
 
 // Issue mints a named API token: a porte session with a label and no

@@ -74,3 +74,21 @@ func openPostgres(t *testing.T, raw, schema string) *gorm.DB {
 	}
 	return orm
 }
+
+// Migrated returns a PostgreSQL schema private to t, brought up to date by
+// schemas.Migrate exactly as a booting server does, porte tables included. It
+// skips the test when SABLIER_TEST_DATABASE_URL is unset: what it proves is
+// PostgreSQL behaviour.
+func Migrated(t *testing.T, issuer string) *gorm.DB {
+	t.Helper()
+	raw := os.Getenv("SABLIER_TEST_DATABASE_URL")
+	if raw == "" {
+		t.Skip("SABLIER_TEST_DATABASE_URL is unset")
+	}
+	name := "m_" + unsafeName.ReplaceAllString(strings.ToLower(t.Name()), "_")
+	orm := openPostgres(t, raw, name[:min(len(name), 60)])
+	if err := schemas.Migrate(orm, issuer); err != nil {
+		t.Fatalf("migrate the test database: %v", err)
+	}
+	return orm
+}

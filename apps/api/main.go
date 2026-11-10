@@ -127,7 +127,7 @@ type authParts struct {
 // identity tables. Sign-in goes through Registre only; there is no local
 // password kit. Discovery runs here, so an unreachable or half-configured
 // issuer fails at boot rather than on somebody's first login.
-func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) (*authParts, error) {
+func buildAuth(ctx context.Context, db *gorm.DB, accounts *auth.Accounts, appEnv *env.Config, appLogger *slog.Logger) (*authParts, error) {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -147,8 +147,8 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 	if err != nil {
 		return nil, err
 	}
-	kit, err := oidc.New(ctx, cfg, oidc.Deps{
-		Users:       auth.NewUserStore(db),
+	oidcKit, err := oidc.New(ctx, cfg, oidc.Deps{
+		Users:       accounts,
 		Identities:  store.Identities(),
 		Sessions:    sessions,
 		Codes:       store.LoginCodes(),
@@ -158,7 +158,7 @@ func buildAuth(ctx context.Context, db *gorm.DB, appEnv *env.Config, appLogger *
 	if err != nil {
 		return nil, err
 	}
-	return &authParts{sessions: sessions, kit: kit, exchanger: exchanger, identities: store.Identities()}, nil
+	return &authParts{sessions: sessions, kit: oidcKit, exchanger: exchanger, identities: store.Identities()}, nil
 }
 
 // uploadSourceMaps ships this build's maps to Journal so a browser stack trace
@@ -230,7 +230,7 @@ func clientRelease(clientDir string) (string, error) {
 // the real visitor address if both are trusted, since Traefik replaces the
 // forwarded chain rather than extending it, so the visitor survives only in
 // Cf-Connecting-Ip. TRUSTED_PROXIES=private,cloudflare covers all three hops.
-func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, kit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig, mcpServer *mcpSetup) (chi.Router, error) {
+func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, sessions *session.Manager, oidcKit *oidc.Kit, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, ideas *ideasConfig, mcpServer *mcpSetup) (chi.Router, error) {
 	authService := auth.NewService(db, sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
@@ -268,9 +268,9 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	}
 	router.Handle("/files/*", http.StripPrefix("/files/", http.FileServer(http.Dir(appEnv.StorageDir))))
 
-	var ideasErr error
+	var mountErr, ideasErr error
 	router.Route("/api", func(api chi.Router) {
-		auth.RegisterRoutes(api, sessions, kit)
+		mountErr = auth.RegisterRoutes(api, sessions, oidcKit)
 		projects.RegisterRoutes(api, projectService, authService)
 		timeentries.RegisterRoutes(api, timeEntryService, authService)
 		users.RegisterRoutes(api, userService, authService)
@@ -292,8 +292,8 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 			mcp.RegisterPendingRoutes(api, mcpService, authService)
 		}
 	})
-	if ideasErr != nil {
-		return nil, ideasErr
+	if err := errors.Join(mountErr, ideasErr); err != nil {
+		return nil, err
 	}
 
 	if spa.Available(clientDir) {
@@ -304,8 +304,8 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	return router, nil
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
-	parts, err := buildAuth(context.Background(), db, appEnv, appLogger)
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, accounts *auth.Accounts, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
+	parts, err := buildAuth(context.Background(), db, accounts, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +374,7 @@ func newDirectory(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger, gate 
 // newDeletions builds the GDPR deletion receiver when OIDC is configured, polling Registre
 // with the same client credentials as the snapshot sync. Sablier runs one replica, so this
 // is the one poller. Without Registre there is nobody to erase and it returns nil.
-func newDeletions(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) *spaces.Deletions {
+func newDeletions(db *gorm.DB, accounts *auth.Accounts, appEnv *env.Config, appLogger *slog.Logger) *spaces.Deletions {
 	if appEnv.OIDC == nil {
 		return nil
 	}
@@ -388,7 +388,7 @@ func newDeletions(db *gorm.DB, appEnv *env.Config, appLogger *slog.Logger) *spac
 		ClientID:     appEnv.OIDC.ClientID,
 		ClientSecret: appEnv.OIDC.ClientSecret,
 	}
-	return spaces.NewDeletions(db, client, portepg.New(sqlDB).EraseIdentity, appEnv.StorageDir, appLogger)
+	return spaces.NewDeletions(db, client, accounts.Store().EraseAccount, portepg.New(sqlDB).EraseIdentity, appEnv.StorageDir, appLogger)
 }
 
 // externalConnect lists the origins the built client always calls besides itself: Ardoise's
@@ -508,8 +508,13 @@ func run() error {
 		return err
 	}
 	registre, syncer := newDirectory(db, &appEnv, appLogger, gate, antenneService.ReconcileAtBoot)
-	deletions := newDeletions(db, &appEnv, appLogger)
-	server, err := createApiServer(db, sqlDB, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver, gate)
+	accounts, err := auth.NewAccounts(context.Background(), sqlDB, appLogger)
+	if err != nil {
+		appLogger.Error("failed to read the users table", slog.Any("error", err))
+		return err
+	}
+	deletions := newDeletions(db, accounts, &appEnv, appLogger)
+	server, err := createApiServer(db, sqlDB, accounts, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver, gate)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err

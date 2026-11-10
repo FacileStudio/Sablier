@@ -13,6 +13,7 @@ github.com/FacileStudio/porte
 github.com/FacileStudio/porte/exchange
 github.com/FacileStudio/porte/internal/handoff
 github.com/FacileStudio/porte/keys
+github.com/FacileStudio/porte/kit
 github.com/FacileStudio/porte/oidc
 github.com/FacileStudio/porte/oidc/jwt
 github.com/FacileStudio/porte/pg
