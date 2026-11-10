@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `GET /api/me/invitations` (porte/kit `MountInvitations`, mounted while OIDC is on): the signed-in person's
+  pending Registre space invitations, shown in the user menu through muse v0.18.0's `invitations` row.
+
+### Changed
+
+- Sign-in runs on `porte/kit`: `kit.NewStore` over the `users` table, `kit.Mount` and `kit.RequireAuth`.
+  The stored email is now rewritten only when Registre marks it verified, the suite rule. Sablier keeps
+  app-side the refusal of any sign-in that would reach an agent user, the decimal-string user id its handlers
+  read, and the colour a new account gets.
+- Erasure runs through the kit's `EraseAccount`, in one transaction under the sign-in lock. It now also deletes
+  the person's pending MCP actions and every queued or recently sent bus event naming their email or subject.
+- The bus moves to `antenne-client/go` v1.1.0: `envelope` replaces `enveloppe/go`, channel names come from
+  `catalog`, and events queue in the library's outbox. Boot converts the existing `antenne_outbox` table in
+  place and keeps its unsent rows. Every published event keeps its exact bytes (`modules/antenne/testdata/wire`).
+  The client keeps dialling a bus that is down at boot instead of giving up. `ANTENNE_INSTANCE` is read as a
+  synonym of `ANTENNE_URL`. Sent events stay in the outbox for 7 days, where they used to be deleted on send.
+- The browser calls the API through `@facile/client` v0.1.1 and sends no bearer token; a `sablier.token` key
+  left in `localStorage` is deleted on load. The Tauri and Android apps keep their bearer token in native
+  storage, unchanged.
+- `tronc` v0.20.0 to v0.21.0, `porte` v0.16.0 to v0.18.2 (`directory` v0.4.0), `@facile/muse` v0.17.1 to
+  v0.18.0, Go 1.26.10, and the newest `x/crypto`, `x/text`, `go-jose` and `chi`.
+- Gates: `filet.yml` is `preset: facile`, the pre-push hook runs `filet gate`, CI pins filet v0.19.1 and runs
+  douane v0.7.1 with `-fail critical -scope prod`.
+
 ## [1.18.0] - 2026-11-10
 
 ### Added

@@ -6,7 +6,7 @@ Self-hosted time tracker for small teams. Go API + SvelteKit frontend + PostgreS
 
 | Layer    | Stack                                                        |
 | -------- | ------------------------------------------------------------ |
-| API      | Go 1.24, Chi router, GORM, PostgreSQL 16                    |
+| API      | Go 1.26, Chi router, GORM, PostgreSQL 16                    |
 | Client   | SvelteKit 5 (Svelte 5 runes), Tailwind CSS 4, shadcn-svelte |
 | Build    | `go build` (vendored deps), Bun                             |
 | Deploy   | Docker Compose, one distroless container serving API + client |
@@ -106,6 +106,15 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 
 - **Go modules are vendored** -- run `go mod vendor` after changing dependencies.
 - **Migrations run on startup** via `schemas.Migrate(db)`. No separate migration tool.
+- **Sign-in is porte/kit** (`modules/auth/store.go`, `kit.NewStore`). `store_test.go` pins `Unwritten()` and
+  checks a kit account has the same NULL columns as a GORM one: a new nullable `users` column must be filled in
+  `fillNewAccount` or accepted there. The agent-user refusal lives app-side in `Accounts.UpsertFromOIDC`.
+- **The bus is antenne-client v1** (`modules/antenne`). `antenne_outbox` is the library's table, created or
+  converted by `schemas.migrateAntenneOutbox`; there is no GORM struct for it. The drainer re-encodes jsonb rows
+  through their payload struct so the wire bytes match `modules/antenne/testdata/wire`; a new published payload
+  type needs a case in `canonical` and a fixture.
+- **Database tests** use `internal/testdb.Migrated(t)`: one migrated PostgreSQL schema per package, emptied
+  before each test, skipped without `SABLIER_TEST_DATABASE_URL`. Never `t.Parallel()` in those packages.
 - **Client uses static adapter** -- output is plain HTML/CSS/JS served by the Go binary through tronc's `spa` package, mounted as the catch-all after `/api`.
 - **shadcn-svelte** provides the UI component primitives in `src/lib/components/ui/`. The Nova style is configured.
 - **Svelte 5 runes** are enforced (`$state`, `$props`, `$derived`, `$effect`). No legacy Svelte 4 syntax.
