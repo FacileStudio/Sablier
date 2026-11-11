@@ -2,10 +2,7 @@ package mcp
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
@@ -29,12 +26,7 @@ func (t *toolset) kinds() map[string]mcpkit.Kind {
 
 // refOf parses an action's user and entry.
 func refOf(a mcpkit.Action) (int64, int64, error) {
-	userID, errUser := strconv.ParseInt(a.UserID, 10, 64)
-	entryID, errEntry := strconv.ParseInt(a.Target, 10, 64)
-	if errUser != nil || errEntry != nil {
-		return 0, 0, errTarget
-	}
-	return userID, entryID, nil
+	return mcpkit.TargetIDs(a, errTarget)
 }
 
 // fingerprint digests the targeted entry as it is now, through the reach of DELETE
@@ -58,8 +50,7 @@ func digest(e *timeentries.TimeEntryResponse) string {
 		e.StartedAt.UTC().Format(time.RFC3339Nano), stampOf(e.StoppedAt), strconv.FormatInt(e.PausedDuration, 10),
 		e.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
-	sum := sha256.Sum256([]byte(strings.Join(fields, "\x00")))
-	return hex.EncodeToString(sum[:16])
+	return mcpkit.Digest(fields...)
 }
 
 // stampOf renders an optional instant.
