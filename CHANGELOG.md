@@ -8,6 +8,8 @@
   `TargetIDs`) instead of local copies. MCP tool names, schemas and instructions are unchanged, and open
   pending deletions still confirm. The OpenAPI list schema is now named `PendingList_PendingItem`, and the
   confirm and dismiss result documents an optional `url`.
+- Go 1.26.11 (the `go` directive and the builder image) clears the standard library advisories douane
+  reports against 1.26.10.
 
 ## [1.19.1] - 2026-11-11
 

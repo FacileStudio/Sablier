@@ -13,7 +13,7 @@ RUN mkdir -p /sourcemaps \
     && find build -name '*.map' -exec mv {} /sourcemaps/ \; \
     && echo "source maps: $(find /sourcemaps -name '*.map' | wc -l)"
 
-FROM golang:1.26.10-alpine AS api-build
+FROM golang:1.26.11-alpine AS api-build
 
 ARG TARGETOS=linux
 ARG TARGETARCH
