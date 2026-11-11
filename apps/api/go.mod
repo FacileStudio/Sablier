@@ -8,7 +8,7 @@ require (
 	github.com/FacileStudio/porte v0.18.2
 	github.com/FacileStudio/porte/directory v0.4.0
 	github.com/FacileStudio/porte/forfait v0.1.1
-	github.com/FacileStudio/tronc v0.21.0
+	github.com/FacileStudio/tronc v0.22.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/joho/godotenv v1.5.1

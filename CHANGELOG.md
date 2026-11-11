@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- The MCP server and its confirm page run on tronc/mcp v0.22.0 (`NewApp`, `PendingPage`, `Digest`,
+  `TargetIDs`) instead of local copies. MCP tool names, schemas and instructions are unchanged, and open
+  pending deletions still confirm. The OpenAPI list schema is now named `PendingList_PendingItem`, and the
+  confirm and dismiss result documents an optional `url`.
+
 ## [1.19.1] - 2026-11-11
 
 ### Security

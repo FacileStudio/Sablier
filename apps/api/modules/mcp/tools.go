@@ -36,7 +36,6 @@ var (
 type toolset struct {
 	Deps
 	confirm *mcpkit.Confirmations
-	appURL  string
 }
 
 // userOf reads the Sablier user id from the verified token, refused the way RequireAuth
