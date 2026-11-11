@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- Client dependencies past their high advisories: `@sveltejs/kit` 2.70.4 and `vite` 7.3.8, with overrides pinning `devalue` 5.9.4, `nanoid` 3.3.20, `picomatch` 4.0.7, `postcss` 8.5.32 and `source-map-js` 1.2.2.
+- The unused `apps/client/package-lock.json` is deleted. `bun.lock` is the only lockfile, and the stale npm lock kept old vulnerable versions in the scans.
+
 ## [1.19.3] - 2026-11-11
 
 ### Fixed
