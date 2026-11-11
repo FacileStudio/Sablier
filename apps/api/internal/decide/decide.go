@@ -20,11 +20,14 @@ const (
 	maxBody = 1 << 20
 )
 
-// Question is one typed ask. A "choice" question carries its Options.
+// Question is one typed ask. A "choice" question carries its Options and a Criteria
+// object keyed by option that says what belongs to each: the decision model answers 422
+// to a choice without it.
 type Question struct {
-	Type         string   `json:"type"`
-	Instructions any      `json:"instructions"`
-	Options      []string `json:"options,omitempty"`
+	Type         string            `json:"type"`
+	Instructions any               `json:"instructions"`
+	Criteria     map[string]string `json:"criteria,omitempty"`
+	Options      []string          `json:"options,omitempty"`
 }
 
 // Answer is one question's result: the picked option, its calibrated confidence and the

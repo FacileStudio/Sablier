@@ -61,3 +61,18 @@ func TestBackends(t *testing.T) {
 		}
 	}
 }
+
+func TestBulleRequestCarriesCriteria(t *testing.T) {
+	var got seen
+	server := stub(t, http.StatusOK, &got)
+	decider, _ := New(Config{BulleURL: server.URL}, nil)
+	questions := map[string]Question{"task": {Type: "choice", Instructions: "pick",
+		Criteria: map[string]string{"A": "work on A", "B": "work on B"}, Options: []string{"A", "B"}}}
+	if _, err := decider.Decide(context.Background(), "sara@example.test", "state", questions); err != nil {
+		t.Fatal(err)
+	}
+	sent, _ := got.body["questions"].(map[string]any)["task"].(map[string]any)
+	if criteria, ok := sent["criteria"].(map[string]any); !ok || criteria["A"] != "work on A" || criteria["B"] != "work on B" {
+		t.Fatalf("a choice must reach Bulle with its criteria keyed by option, got %v", sent)
+	}
+}
