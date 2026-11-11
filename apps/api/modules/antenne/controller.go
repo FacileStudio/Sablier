@@ -19,7 +19,7 @@ func (c *Controller) getSettings(ctx context.Context) (*PoolSettingsResponse, er
 		return nil, err
 	}
 	return &PoolSettingsResponse{
-		Settings:  *s,
+		Settings:  s.view(),
 		Connected: c.service.isConnected(),
 		FromEnv:   fromEnv,
 	}, nil
@@ -35,7 +35,7 @@ func (c *Controller) updateSettings(ctx context.Context, req *UpdatePoolRequest)
 		return nil, err
 	}
 	resp := &PoolSettingsResponse{
-		Settings:  *s,
+		Settings:  s.view(),
 		Connected: c.service.isConnected(),
 	}
 	if connectErr != "" {

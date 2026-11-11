@@ -28,8 +28,3 @@ func (c *Controller) deleteSubscription(ctx context.Context) (*DeleteResponse, e
 	}
 	return &DeleteResponse{Deleted: true}, nil
 }
-
-func (c *Controller) broadcastNotification(ctx context.Context, req *BroadcastRequest) *BroadcastResponse {
-	sent, failed := c.service.broadcastNotification(ctx, req)
-	return &BroadcastResponse{Sent: sent, Failed: failed}
-}

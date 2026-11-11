@@ -22,11 +22,12 @@ func newController(service *Service) *Controller {
 }
 
 func (controller *Controller) list(context context.Context) (*ListResponse, error) {
-	if _, ok := authcontext.IdentityFromContext(context); !ok {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
 		return nil, errors.Unauthorized("missing auth")
 	}
 
-	users, err := controller.service.listUsers(context)
+	users, err := controller.service.listUsers(context, identity.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,12 +35,16 @@ func (controller *Controller) list(context context.Context) (*ListResponse, erro
 	return &ListResponse{Users: users}, nil
 }
 
-func (controller *Controller) get(context context.Context, userID string) (*MeResponse, error) {
-	user, err := controller.service.getUser(context, userID)
+func (controller *Controller) get(context context.Context, userID string) (*PeerResponse, error) {
+	identity, ok := authcontext.IdentityFromContext(context)
+	if !ok {
+		return nil, errors.Unauthorized("missing auth")
+	}
+	peer, err := controller.service.getPeer(context, identity.UserID, userID)
 	if err != nil {
 		return nil, err
 	}
-	return &MeResponse{User: *user}, nil
+	return &PeerResponse{User: *peer}, nil
 }
 
 func (controller *Controller) me(context context.Context) (*MeResponse, error) {
@@ -56,6 +61,7 @@ func (controller *Controller) me(context context.Context) (*MeResponse, error) {
 	if user.Email == "" {
 		user.Email = identity.Email
 	}
+	user.IsAdmin = controller.service.admins.Allows(identity.Email)
 
 	return &MeResponse{User: *user}, nil
 }
@@ -75,15 +81,6 @@ func (controller *Controller) updateMe(r *http.Request, req *UpdateRequest) (*Me
 			return nil, errors.Invalid("name must be at most 80 characters")
 		}
 		name = &trimmed
-	}
-
-	var email *string
-	if req.Email != nil {
-		normalized := strings.TrimSpace(strings.ToLower(*req.Email))
-		if normalized == "" || !strings.Contains(normalized, "@") {
-			return nil, errors.Invalid("invalid email")
-		}
-		email = &normalized
 	}
 
 	var color *string
@@ -122,14 +119,15 @@ func (controller *Controller) updateMe(r *http.Request, req *UpdateRequest) (*Me
 		workdayHours = &h
 	}
 
-	if name == nil && email == nil && color == nil && rate == nil && rateType == nil && workdayHours == nil {
+	if name == nil && color == nil && rate == nil && rateType == nil && workdayHours == nil {
 		return nil, errors.Invalid("at least one field must be provided")
 	}
 
-	user, err := controller.service.updateUser(context, identity.UserID, name, email, color, rate, rateType, workdayHours)
+	user, err := controller.service.updateUser(context, identity.UserID, name, color, rate, rateType, workdayHours)
 	if err != nil {
 		return nil, err
 	}
+	user.IsAdmin = controller.service.admins.Allows(identity.Email)
 
 	return &MeResponse{User: *user}, nil
 }

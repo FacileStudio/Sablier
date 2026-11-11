@@ -310,6 +310,12 @@ export const settings = {
 		'Secreto compartido para la autenticación',
 		'Gemeinsames Geheimnis zur Authentifizierung'
 	],
+	'pool.secretSet': [
+		'A secret is set. Type a new one to replace it.',
+		'Un secret est défini. Saisissez-en un nouveau pour le remplacer.',
+		'Hay un secreto definido. Escribe uno nuevo para reemplazarlo.',
+		'Ein Geheimnis ist gesetzt. Gib ein neues ein, um es zu ersetzen.'
+	],
 	'pool.enable': ['Enable sync', 'Activer la synchronisation', 'Activar la sincronización', 'Synchronisierung aktivieren'],
 	'pool.enableDescription': [
 		'Sablier holds an outbound connection to Antenne.',
@@ -415,6 +421,12 @@ export const settings = {
 		'Laissez vide pour ne pas authentifier',
 		'Déjalo vacío para no autenticar',
 		'Leer lassen für keine Authentifizierung'
+	],
+	'webhook.secretSet': [
+		'A secret is set. Type a new one to replace it.',
+		'Un secret est défini. Saisissez-en un nouveau pour le remplacer.',
+		'Hay un secreto definido. Escribe uno nuevo para reemplazarlo.',
+		'Ein Geheimnis ist gesetzt. Gib ein neues ein, um es zu ersetzen.'
 	],
 	'webhook.saved': ['Webhook settings saved', 'Réglages du webhook enregistrés', 'Ajustes del webhook guardados', 'Webhook-Einstellungen gespeichert'],
 	'webhook.failed.load': [

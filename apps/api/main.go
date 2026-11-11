@@ -255,7 +255,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	authService := auth.NewService(db, parts.sessions, appLogger)
 	projectService := projects.NewService(db)
 	timeEntryService := timeentries.NewService(db)
-	userService := users.NewService(db, authService)
+	userService := users.NewService(db, authService, appEnv.Admins)
 	settingsService := settings.NewService(db)
 	spaceService := spaces.NewService(db)
 	agentService := agents.NewService(db, resolver)
@@ -298,7 +298,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		projects.RegisterRoutes(api, projectService, authService)
 		timeentries.RegisterRoutes(api, timeEntryService, authService)
 		users.RegisterRoutes(api, userService, authService)
-		settings.RegisterRoutes(api, settingsService, authService)
+		settings.RegisterRoutes(api, settingsService, authService, appEnv.Admins)
 		spaces.RegisterRoutes(api, spaceService, authService)
 		if syncer != nil {
 			spaces.RegisterSync(api, syncer)
@@ -306,7 +306,7 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 		if deletions != nil {
 			spaces.RegisterDeletions(api, deletions)
 		}
-		antenne.RegisterRoutes(api, antenneService, authService)
+		antenne.RegisterRoutes(api, antenneService, authService, appEnv.Admins)
 		notifications.RegisterRoutes(api, notificationsService, authService)
 		agents.RegisterRoutes(api, agentService, authService)
 		heartbeats.RegisterRoutes(api, heartbeatService, authService)

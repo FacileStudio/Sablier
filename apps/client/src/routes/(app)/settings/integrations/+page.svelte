@@ -23,11 +23,14 @@
 	let webhookUrl = $state('');
 	let webhookSecretHeader = $state('');
 	let webhookSecretValue = $state('');
+	let webhookSecretSet = $state(false);
+	let webhookSecretCleared = $state(false);
 	let webhookSaving = $state(false);
 	let webhookError = $state('');
 
 	let poolUrl = $state('');
 	let poolSecret = $state('');
+	let poolSecretSet = $state(false);
 	let poolEnabled = $state(false);
 	let poolConnected = $state(false);
 	let poolFromEnv = $state(false);
@@ -59,7 +62,7 @@
 			const result = await backend.getSettings(ctx.token);
 			webhookUrl = result.settings.webhook_url;
 			webhookSecretHeader = result.settings.webhook_secret_header;
-			webhookSecretValue = result.settings.webhook_secret_value;
+			webhookSecretSet = result.settings.webhook_secret_set;
 		} catch (e) {
 			webhookError = e instanceof Error ? e.message : t('webhook.failed.load');
 		}
@@ -67,7 +70,7 @@
 		try {
 			const poolResult = await backend.getPoolSettings(ctx.token);
 			poolUrl = poolResult.pool_settings.antenne_url;
-			poolSecret = poolResult.pool_settings.antenne_secret;
+			poolSecretSet = poolResult.pool_settings.antenne_secret_set;
 			poolEnabled = poolResult.pool_settings.antenne_enabled;
 			poolConnected = poolResult.connected;
 			poolFromEnv = poolResult.from_env ?? false;
@@ -93,11 +96,13 @@
 				ctx.token,
 				webhookUrl,
 				webhookSecretHeader,
-				webhookSecretValue
+				webhookSecretValue || (webhookSecretCleared ? '' : undefined)
 			);
 			webhookUrl = result.settings.webhook_url;
 			webhookSecretHeader = result.settings.webhook_secret_header;
-			webhookSecretValue = result.settings.webhook_secret_value;
+			webhookSecretSet = result.settings.webhook_secret_set;
+			webhookSecretValue = '';
+			webhookSecretCleared = false;
 			toast.success(t('webhook.saved'));
 		} catch (e) {
 			webhookError = e instanceof Error ? e.message : t('webhook.failed.save');
@@ -111,15 +116,17 @@
 		webhookUrl = '';
 		webhookSecretHeader = '';
 		webhookSecretValue = '';
+		webhookSecretCleared = true;
 	}
 
 	async function savePool() {
 		poolSaving = true;
 		poolError = '';
 		try {
-			const result = await backend.updatePoolSettings(ctx.token, poolUrl, poolSecret, poolEnabled);
+			const result = await backend.updatePoolSettings(ctx.token, poolUrl, poolSecret || undefined, poolEnabled);
 			poolUrl = result.pool_settings.antenne_url;
-			poolSecret = result.pool_settings.antenne_secret;
+			poolSecretSet = result.pool_settings.antenne_secret_set;
+			poolSecret = '';
 			poolEnabled = result.pool_settings.antenne_enabled;
 			poolConnected = result.connected;
 			if (result.connect_error) {
@@ -235,7 +242,7 @@
 			label={t('pool.secret')}
 			bind:value={poolSecret}
 			editable
-			placeholder={t('pool.secretPlaceholder')}
+			placeholder={poolSecretSet ? t('pool.secretSet') : t('pool.secretPlaceholder')}
 		/>
 	</SettingsRow>
 
@@ -334,7 +341,7 @@
 			label={t('webhook.secretValue')}
 			bind:value={webhookSecretValue}
 			editable
-			placeholder={t('webhook.secretPlaceholder')}
+			placeholder={webhookSecretSet && !webhookSecretCleared ? t('webhook.secretSet') : t('webhook.secretPlaceholder')}
 		/>
 	</SettingsRow>
 </SettingsSection>

@@ -19,6 +19,7 @@ export type UserProfile = {
 	created_at: string;
 	kind?: 'human' | 'agent';
 	owner_user_id?: number;
+	is_admin?: boolean;
 };
 
 export type MeResponse = {
@@ -66,7 +67,7 @@ export type PushSubscriptionPayload = {
 export type UserSettings = {
 	webhook_url: string;
 	webhook_secret_header: string;
-	webhook_secret_value: string;
+	webhook_secret_set: boolean;
 };
 
 export type SettingsResponse = {
@@ -75,7 +76,7 @@ export type SettingsResponse = {
 
 export type PoolSettings = {
 	antenne_url: string;
-	antenne_secret: string;
+	antenne_secret_set: boolean;
 	antenne_enabled: boolean;
 };
 
@@ -483,7 +484,8 @@ export const backend = {
 	getSettings(token: string) {
 		return apiFetch<SettingsResponse>('/api/settings/', {}, token);
 	},
-	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue: string) {
+	/** An undefined secret keeps the stored one; an empty string clears it. */
+	updateSettings(token: string, webhookUrl: string, webhookSecretHeader: string, webhookSecretValue?: string) {
 		return apiFetch<SettingsResponse>('/api/settings/', {
 			method: 'PUT',
 			body: JSON.stringify({
@@ -507,7 +509,8 @@ export const backend = {
 		return apiFetch<{ synced: boolean }>('/api/auth/sync-profile', { method: 'POST' }, token);
 	},
 
-	updatePoolSettings(token: string, url: string, secret: string, enabled: boolean) {
+	/** An undefined secret keeps the stored one. */
+	updatePoolSettings(token: string, url: string, secret: string | undefined, enabled: boolean) {
 		return apiFetch<PoolSettingsResponse>('/api/antenne/', {
 			method: 'PUT',
 			body: JSON.stringify({

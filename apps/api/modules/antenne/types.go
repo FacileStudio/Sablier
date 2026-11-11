@@ -1,17 +1,19 @@
 package antenne
 
-// PoolSettings holds the stored Antenne Pool connection configuration.
+// PoolSettings is the Antenne Pool connection configuration as the API shows
+// it. The shared secret never leaves the server: SecretSet says whether one is stored.
 type PoolSettings struct {
-	URL     string `json:"antenne_url"`
-	Secret  string `json:"antenne_secret"`
-	Enabled bool   `json:"antenne_enabled"`
+	URL       string `json:"antenne_url"`
+	SecretSet bool   `json:"antenne_secret_set"`
+	Enabled   bool   `json:"antenne_enabled"`
 }
 
-// UpdatePoolRequest is the request body for updating pool settings.
+// UpdatePoolRequest is the request body for updating pool settings. A missing
+// or null antenne_secret keeps the stored secret.
 type UpdatePoolRequest struct {
-	URL     string `json:"antenne_url"`
-	Secret  string `json:"antenne_secret"`
-	Enabled bool   `json:"antenne_enabled"`
+	URL     string  `json:"antenne_url"`
+	Secret  *string `json:"antenne_secret"`
+	Enabled bool    `json:"antenne_enabled"`
 }
 
 // PoolSettingsResponse describes the current pool settings and connection state.

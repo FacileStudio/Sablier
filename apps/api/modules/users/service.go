@@ -2,11 +2,12 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	stderrors "errors"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte"
@@ -28,12 +29,15 @@ type TokenIssuer interface {
 type Service struct {
 	orm        *gorm.DB
 	tokens     TokenIssuer
+	admins     middleware.Admins
 	controller *Controller
 }
 
-// NewService wires the users service with a fresh route controller.
-func NewService(orm *gorm.DB, tokens TokenIssuer) *Service {
-	service := &Service{orm: orm, tokens: tokens}
+// NewService wires the users service with a fresh route controller. admins is
+// SABLIER_ADMINS, which /users/me reports as is_admin so the client can show
+// the app-wide settings to the people allowed to change them.
+func NewService(orm *gorm.DB, tokens TokenIssuer, admins middleware.Admins) *Service {
+	service := &Service{orm: orm, tokens: tokens, admins: admins}
 	service.controller = newController(service)
 	return service
 }
@@ -58,26 +62,68 @@ func (service *Service) getUser(context context.Context, userID string) (*User, 
 	return mapUser(record), nil
 }
 
-func (service *Service) listUsers(context context.Context) ([]User, error) {
+// visibleUsers narrows query to the accounts callerID may see: itself, its
+// own agents, and everyone who shares a space with it. Nobody else's email or
+// rate is any of the caller's business.
+func visibleUsers(query *gorm.DB, callerID int64) *gorm.DB {
+	peers := query.Session(&gorm.Session{NewDB: true}).Model(&schemas.SpaceMember{}).
+		Select("user_id").Where("space_id IN (?)", schemas.MemberSpaces(query, callerID))
+	return query.Where("users.id = @caller OR (users.kind = @agent AND users.owner_user_id = @caller) OR users.id IN (@peers)",
+		sql.Named("caller", callerID), sql.Named("agent", schemas.UserKindAgent), sql.Named("peers", peers))
+}
+
+func (service *Service) listUsers(context context.Context, callerID string) ([]Peer, error) {
+	caller, err := strconv.ParseInt(callerID, 10, 64)
+	if err != nil {
+		return nil, errors.Internal("failed to parse user id", err)
+	}
 	if err := usercolor.BackfillMissing(context, service.orm); err != nil {
 		return nil, errors.Internal("failed to backfill user colors", err)
 	}
 
 	var records []schemas.User
-	if err := service.orm.WithContext(context).Order("name asc, email asc, id asc").Find(&records).Error; err != nil {
+	query := visibleUsers(service.orm.WithContext(context), caller)
+	if err := query.Order("name asc, email asc, id asc").Find(&records).Error; err != nil {
 		return nil, errors.Internal("failed to list users", err)
 	}
 
-	users := make([]User, 0, len(records))
+	users := make([]Peer, 0, len(records))
 	for _, record := range records {
-		users = append(users, *mapUser(record))
+		users = append(users, mapUser(record).peer())
 	}
 
 	return users, nil
 }
 
+// getPeer returns userID when callerID may see it, and not_found otherwise, so
+// the answer does not reveal whether an invisible account exists.
+func (service *Service) getPeer(context context.Context, callerID, userID string) (*Peer, error) {
+	caller, err := strconv.ParseInt(callerID, 10, 64)
+	if err != nil {
+		return nil, errors.Internal("failed to parse user id", err)
+	}
+	id, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return nil, errors.NotFound("user not found")
+	}
+	var count int64
+	if err := visibleUsers(service.orm.WithContext(context).Model(&schemas.User{}), caller).
+		Where("users.id = ?", id).Count(&count).Error; err != nil {
+		return nil, errors.Internal("failed to read user", err)
+	}
+	if count == 0 {
+		return nil, errors.NotFound("user not found")
+	}
+	user, err := service.getUser(context, userID)
+	if err != nil {
+		return nil, err
+	}
+	peer := user.peer()
+	return &peer, nil
+}
+
 // updateUser applies the non-nil profile fields.
-func (service *Service) updateUser(context context.Context, userID string, name *string, email *string, color *string, rate *float64, rateType *string, workdayHours *float64) (*User, error) {
+func (service *Service) updateUser(context context.Context, userID string, name *string, color *string, rate *float64, rateType *string, workdayHours *float64) (*User, error) {
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, errors.Internal("failed to parse user id", err)
@@ -86,9 +132,6 @@ func (service *Service) updateUser(context context.Context, userID string, name 
 	updates := map[string]any{}
 	if name != nil {
 		updates["name"] = *name
-	}
-	if email != nil {
-		updates["email"] = strings.ToLower(strings.TrimSpace(*email))
 	}
 	if color != nil {
 		updates["color"] = *color
@@ -143,6 +186,22 @@ func (service *Service) ensureUserColor(context context.Context, record *schemas
 
 	record.Color = color
 	return nil
+}
+
+func (user *User) peer() Peer {
+	return Peer{
+		ID:           user.ID,
+		Email:        user.Email,
+		Name:         user.Name,
+		AvatarURL:    user.AvatarURL,
+		Color:        user.Color,
+		Rate:         user.Rate,
+		RateType:     user.RateType,
+		WorkdayHours: user.WorkdayHours,
+		CreatedAt:    user.CreatedAt,
+		Kind:         user.Kind,
+		OwnerUserID:  user.OwnerUserID,
+	}
 }
 
 func mapUser(record schemas.User) *User {

@@ -11,8 +11,8 @@ import (
 )
 
 // RegisterRoutes wires the web-push endpoints. The subscription routes are
-// authenticated; /test-broadcast is not and is TEST ONLY — it must be removed
-// before production.
+// authenticated; the VAPID public key is not, so the service worker can
+// register before a session exists.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/notifications", func(r chi.Router) {
 		r.Get("/vapid-public-key", func(w http.ResponseWriter, req *http.Request) {
@@ -39,16 +39,6 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 				httpjson.WriteError(w, err)
 				return
 			}
-			httpjson.WriteJSON(w, http.StatusOK, resp)
-		})
-
-		r.Post("/test-broadcast", func(w http.ResponseWriter, req *http.Request) {
-			var body BroadcastRequest
-			if err := httpjson.DecodeJSON(w, req, &body); err != nil {
-				httpjson.WriteError(w, err)
-				return
-			}
-			resp := service.controller.broadcastNotification(req.Context(), &body)
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 	})

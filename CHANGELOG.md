@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Security
+
+- `GET` and `PUT /api/settings` and every `/api/antenne*` route answer 403 unless the account's email is on the
+  new `SABLIER_ADMINS` list. Empty, the default, closes them to everyone. Before, any account that could sign in
+  through Registre could read the webhook secret and the Antenne bus secret, and repoint the webhook or the bus.
+- Secrets are write-only. `GET /api/settings` returns `webhook_secret_set` instead of `webhook_secret_value`,
+  and `GET /api/antenne` returns `antenne_secret_set` instead of `antenne_secret`. A `PUT` without the secret
+  field keeps the stored one; an empty `webhook_secret_value` clears it.
+- `GET /api/users` and `GET /api/users/{id}` show only the caller, its own agents and the people it shares a
+  space with, without `locale` and `avatar_source`. Any other id answers 404. Before, every account saw every
+  account's email and rate.
+- `PATCH /api/users/me` no longer changes the email: Registre owns it, and the admin list compares it.
+- `POST /api/notifications/test-broadcast` is removed. It took no authentication and pushed any text to every
+  subscribed browser.
+- `/api/users/me` carries `is_admin`, and the Integrations settings tab shows only to admins.
+
 ### Changed
 
 - Licensed under the GNU Affero General Public License v3.0 only (`AGPL-3.0-only`). See `LICENSE`. The desktop shell, previously declared `MIT` in `Cargo.toml`, moves to the same licence; releases up to 1.19.0 keep the terms they shipped with.

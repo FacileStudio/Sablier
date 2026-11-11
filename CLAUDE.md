@@ -75,6 +75,9 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `LOG_LEVEL` -- `debug`, `info`, `warn`, `error`
 - `STORAGE_DIR` -- Legacy uploaded avatars, read-only since Registre owns pictures (default `./data`)
 - `OIDC_*` -- OpenID Connect config (optional)
+- `SABLIER_ADMINS` -- emails allowed to read and change the app-wide webhook and Antenne settings. Empty closes
+  `/api/settings` and `/api/antenne*` to everyone (403). Sablier has no admin role of its own: any Registre
+  account can sign in, so never put app-wide data behind plain `RequireAuth`; use `middleware.RequireAdmin`
 - `MCP_RESOURCE` -- Canonical URI of the remote MCP server (`https://sablier.facile.studio/mcp`); mounts `POST /mcp` while OIDC is on
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` -- Web push (optional; push stays off while the keys are unset)
 - `JOURNAL_URL`, `JOURNAL_TOKEN` -- Log shipping to Journal (optional; both must be set)
@@ -122,4 +125,6 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - **No test setup on the client side** -- only the API has `go test`.
 - Profile pictures come from Registre: `oidc_picture_url` holds `<issuer>/avatars/<sub>`, backfilled at boot from `porte_identities`. Sablier has no upload; the profile page links to `https://sso.facile.studio/account`. Old uploads in `STORAGE_DIR/avatars/` still render for accounts with no Registre identity.
 - Shared spaces are Registre's (`modules/spaces/registre_*.go`, `porte/directory`). Boot imports unlinked spaces once, retrying, and only then starts the snapshot sync. Apply never touches members without an identity under `OIDC_ISSUER`, unlinked spaces, or linked spaces missing from the snapshot. No write route for spaces exists here; the UI links to `https://sso.facile.studio/spaces`.
+- `/api/users` and `/api/users/{id}` show only the caller, its agents and its space peers (`visibleUsers` in
+  `modules/users/service.go`). Secrets are write-only: a GET reports `*_secret_set`, a PUT without the field keeps it.
 - Space visibility goes through `schemas.VisibleSpaces` / `schemas.ScopeSpace` with `schemas.Projects` or `schemas.Entries`. Personal rows (no space) are private to their owner: projects by `owner_id`, entries by `user_id` or the owner's agents (`space_id` absent = personal, `all`, or a member space; a non-member space is 404). They compare with `CAST(space_id AS TEXT)` because `space_members.space_id` is text. Query tests use `internal/testdb`, which runs on PostgreSQL in its own schema when `SABLIER_TEST_DATABASE_URL` is set.

@@ -43,6 +43,12 @@ origin, and fatal in dev, where Vite runs on `:5173`.
 |---|---|---|---|
 | `STORAGE_DIR` | no | `./data` | Root of avatars uploaded before Registre owned pictures, served under `/files/`. Nothing writes there any more |
 | `CLIENT_DIR` | no | `./client` | Directory holding the built SPA. The image sets `/client` explicitly |
+| `SABLIER_ADMINS` | no | — | Comma-separated emails allowed to read and change the app-wide webhook and Antenne settings (`/api/settings`, `/api/antenne*`). Empty closes those routes to everyone |
+
+Any Registre account can sign in to Sablier, so the app-wide settings answer 403 to every
+account whose email is not on `SABLIER_ADMINS`. The email compared is the account's own,
+which the sign-in rewrites from Registre's verified address; `PATCH /api/users/me` cannot
+change it.
 
 `CLIENT_DIR` is read by `tronc/spa`. If the directory has no `index.html`, the SPA
 catch-all is simply not mounted and the binary serves the API alone.

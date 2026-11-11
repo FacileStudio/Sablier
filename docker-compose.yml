@@ -77,6 +77,8 @@ services:
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
       BULLE_URL: ${BULLE_URL:-}
+      # Emails allowed to change the app-wide webhook and Antenne settings. Empty closes them.
+      SABLIER_ADMINS: ${SABLIER_ADMINS:-}
       BULLE_SERVICE_KEY: ${BULLE_SERVICE_KEY:-}
       JEV_API_KEY: ${JEV_API_KEY:-}
       JEV_ENDPOINT: ${JEV_ENDPOINT:-}

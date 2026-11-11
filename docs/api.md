@@ -50,14 +50,17 @@ desktop app, the CLI and scripts keep using a named API token (see below).
 
 ## Users
 
-All routes require authentication.
+All routes require authentication. `/api/users` and `/api/users/{id}` show only the
+caller, its own agents, and the people it shares a space with; any other id answers 404.
+They carry no `locale` and no `avatar_source`. `/api/users/me` adds `is_admin` when the
+account is on `SABLIER_ADMINS`. The email belongs to Registre and cannot be changed here.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | GET | `/api/users` | — | `{"users":[User]}` |
 | GET | `/api/users/me` | — | `{"user":User}` |
 | GET | `/api/users/{id}` | — | `{"user":User}` |
-| PATCH | `/api/users/me` | any of `name`, `email`, `color`, `rate`, `rate_type`, `workday_hours` | `{"user":User}` |
+| PATCH | `/api/users/me` | any of `name`, `color`, `rate`, `rate_type`, `workday_hours` | `{"user":User}` |
 | GET | `/api/users/me/api-token` | — | `{"has_token", "name"?, "created_at"?}` |
 | POST | `/api/users/me/api-token` | `{"name"}` | 201 `{"token","name","created_at"}` — the only time the token is returned |
 | DELETE | `/api/users/me/api-token` | — | `{"deleted":true}` |
@@ -190,21 +193,26 @@ agent session never moves the entry again.
 
 ## Settings
 
-Workspace-wide webhook configuration, stored on the single `app_settings` row.
+Workspace-wide webhook configuration, stored on the single `app_settings` row. Both
+routes answer 403 to any account not on `SABLIER_ADMINS`. The secret value is write-only:
+a missing `webhook_secret_value` keeps the stored one and an empty string clears it.
 
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
-| GET | `/api/settings` | yes | — | `{"settings":{"webhook_url","webhook_secret_header","webhook_secret_value"}}` |
-| PUT | `/api/settings` | yes | Same three fields | `{"settings":{...}}` |
+| GET | `/api/settings` | admin | — | `{"settings":{"webhook_url","webhook_secret_header","webhook_secret_set"}}` |
+| PUT | `/api/settings` | admin | `{"webhook_url","webhook_secret_header","webhook_secret_value"?}` | `{"settings":{...}}` |
 
 ## Antenne
 
-Event-bus connection settings and per-event toggles. All routes require authentication.
+Event-bus connection settings and per-event toggles. Every route answers 403 to any
+account not on `SABLIER_ADMINS`. The shared secret is write-only: `pool_settings` carries
+`antenne_url`, `antenne_secret_set` and `antenne_enabled`, and a PUT without
+`antenne_secret` keeps the stored one.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | GET | `/api/antenne` | — | `{"pool_settings":{...}, "connected", "connect_error"?, "from_env"?}` |
-| PUT | `/api/antenne` | `{"antenne_url","antenne_secret","antenne_enabled"}` | Same shape; reconnects or disconnects immediately |
+| PUT | `/api/antenne` | `{"antenne_url","antenne_secret"?,"antenne_enabled"}` | Same shape; reconnects or disconnects immediately |
 | POST | `/api/antenne/sync` | — | `{"projects_synced","tasks_synced"}` |
 | GET | `/api/antenne/events` | — | `{"events":[{"event","enabled"}]}` |
 | PUT | `/api/antenne/events` | `{"events":[{"event","enabled"}]}` | `{"events":[...]}` |
@@ -212,7 +220,7 @@ Event-bus connection settings and per-event toggles. All routes require authenti
 The toggleable events are `time_entry.created`, `time_entry.updated`,
 `agent_session.created`, `agent_session.updated`, `project.created`, `project.updated`,
 `project.deleted`, `task.created`, `task.updated`, and `task.deleted`. `from_env` is true
-when the returned URL and secret came from `ANTENNE_URL` / `ANTENNE_SECRET` because
+when the returned URL and secret flag came from `ANTENNE_URL` / `ANTENNE_SECRET` because
 no settings row exists yet.
 
 ## Notifications
@@ -225,8 +233,3 @@ worker can register before the user has a session.
 | GET | `/api/notifications/vapid-public-key` | no | — | `{"public_key"}` |
 | POST | `/api/notifications/subscriptions` | yes | `{"endpoint","p256dh","auth"}` | `{"saved":true}` |
 | DELETE | `/api/notifications/subscriptions` | yes | — | `{"deleted":true}` |
-| POST | `/api/notifications/test-broadcast` | no | `{"title","body","icon"}` | `{"sent","failed"}` |
-
-`test-broadcast` pushes to every subscription and carries a `TEST ONLY — remove before
-production` comment in `modules/notifications/router.go`. It takes no authentication.
-Treat it as a development affordance, not a supported endpoint.

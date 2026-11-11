@@ -104,6 +104,10 @@ type Config struct {
 	VAPIDSubject    string
 	BulleURL        string
 
+	// Admins is SABLIER_ADMINS: the emails allowed to read and change the
+	// app-wide webhook and Antenne settings. Empty closes those routes.
+	Admins []string
+
 	// JournalBrowserURL and JournalBrowserKey configure the browser's error
 	// reporting. Both empty leaves the client reporting nothing.
 	//
@@ -152,6 +156,7 @@ func Load() (Config, error) {
 		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
 		OIDCClaimsScope: troncenv.String("OIDC_CLAIMS_SCOPE", ""),
 		BulleURL:        troncenv.String("BULLE_URL", ""),
+		Admins:          troncenv.List("SABLIER_ADMINS"),
 
 		JournalBrowserURL: troncenv.String("JOURNAL_BROWSER_URL", ""),
 		JournalBrowserKey: troncenv.String("JOURNAL_BROWSER_KEY", ""),

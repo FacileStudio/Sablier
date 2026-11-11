@@ -21,16 +21,3 @@ type SubscriptionResponse struct {
 type DeleteResponse struct {
 	Deleted bool `json:"deleted"`
 }
-
-// BroadcastRequest is the body for the test broadcast endpoint.
-type BroadcastRequest struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
-	Icon  string `json:"icon,omitempty"`
-}
-
-// BroadcastResponse reports how many pushes were sent and failed.
-type BroadcastResponse struct {
-	Sent   int `json:"sent"`
-	Failed int `json:"failed"`
-}

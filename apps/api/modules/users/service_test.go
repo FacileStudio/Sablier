@@ -2,16 +2,18 @@ package users
 
 import (
 	"context"
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/tronc/errors"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -43,7 +45,7 @@ func TestUpdateUserPersistsChosenColor(t *testing.T) {
 	user := seedUser(t, service.orm, "color@example.com", "AD9EF0")
 	color := "7EEEDB"
 
-	updated, err := service.updateUser(context.Background(), fmt.Sprintf("%d", user.ID), nil, nil, &color, nil, nil, nil)
+	updated, err := service.updateUser(context.Background(), fmt.Sprintf("%d", user.ID), nil, &color, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("update user: %v", err)
 	}
@@ -55,10 +57,11 @@ func TestUpdateUserPersistsChosenColor(t *testing.T) {
 
 func TestListUsersBackfillsMissingColors(t *testing.T) {
 	service := newDatabaseBackedService(t)
-	seedUser(t, service.orm, "one@example.com", "")
-	seedUser(t, service.orm, "two@example.com", "")
+	one := seedUser(t, service.orm, "one@example.com", "")
+	two := seedUser(t, service.orm, "two@example.com", "")
+	shareSpace(t, service.orm, one, two)
 
-	users, err := service.listUsers(context.Background())
+	users, err := service.listUsers(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("list users: %v", err)
 	}
@@ -90,19 +93,76 @@ func TestUpdateMeRejectsInvalidColor(t *testing.T) {
 	}
 }
 
+func TestListUsersShowsOnlySelfOwnAgentsAndSpacePeers(t *testing.T) {
+	service := newDatabaseBackedService(t)
+	caller := seedUser(t, service.orm, "caller@example.com", "AD9EF0")
+	peer := seedUser(t, service.orm, "peer@example.com", "F09ED6")
+	stranger := seedUser(t, service.orm, "stranger@example.com", "EE7E89")
+	agent := schemas.User{Email: "agent@example.com", Color: "EEB47E", Kind: schemas.UserKindAgent, OwnerUserID: &caller.ID}
+	if err := service.orm.Create(&agent).Error; err != nil {
+		t.Fatalf("create agent: %v", err)
+	}
+	shareSpace(t, service.orm, caller, peer)
+	shareSpace(t, service.orm, stranger)
+
+	users, err := service.listUsers(context.Background(), fmt.Sprint(caller.ID))
+	if err != nil {
+		t.Fatalf("list users: %v", err)
+	}
+	got := map[string]bool{}
+	for _, user := range users {
+		got[user.Email] = true
+	}
+	if len(got) != 3 || !got["caller@example.com"] || !got["peer@example.com"] || !got["agent@example.com"] {
+		t.Fatalf("visible users = %v, want the caller, its agent and its space peer", got)
+	}
+
+	if _, err := service.getPeer(context.Background(), fmt.Sprint(caller.ID), fmt.Sprint(peer.ID)); err != nil {
+		t.Fatalf("get a space peer: %v", err)
+	}
+	_, err = service.getPeer(context.Background(), fmt.Sprint(caller.ID), fmt.Sprint(stranger.ID))
+	var apiErr *errors.Error
+	if !stderrors.As(err, &apiErr) || apiErr.Code != "not_found" {
+		t.Fatalf("get a stranger = %v, want not_found", err)
+	}
+}
+
+func TestUpdateMeIgnoresEmail(t *testing.T) {
+	service := newDatabaseBackedService(t)
+	user := seedUser(t, service.orm, "kept@example.com", "AD9EF0")
+	request := httptest.NewRequest(http.MethodPatch, "/api/users/me", nil)
+	ctx := authcontext.WithIdentity(request.Context(), authcontext.Identity{UserID: fmt.Sprint(user.ID), Email: user.Email})
+	var body UpdateRequest
+	if err := json.Unmarshal([]byte(`{"email":"admin@example.com","color":"7EEEDB"}`), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	updated, err := service.controller.updateMe(request.WithContext(ctx), &body)
+	if err != nil {
+		t.Fatalf("update me: %v", err)
+	}
+	if updated.User.Email != "kept@example.com" {
+		t.Fatalf("email = %q, want it unchanged", updated.User.Email)
+	}
+}
+
+func shareSpace(t *testing.T, orm *gorm.DB, members ...schemas.User) {
+	t.Helper()
+	space := schemas.Space{Name: "shared"}
+	if err := orm.Create(&space).Error; err != nil {
+		t.Fatalf("create space: %v", err)
+	}
+	for _, member := range members {
+		if err := orm.Create(&schemas.SpaceMember{SpaceID: space.ID, UserID: member.ID, Role: schemas.RoleMember}).Error; err != nil {
+			t.Fatalf("add member: %v", err)
+		}
+	}
+}
+
 func newDatabaseBackedService(t *testing.T) *Service {
 	t.Helper()
 
-	orm, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-
-	if err := orm.AutoMigrate(&schemas.User{}); err != nil {
-		t.Fatalf("migrate test database: %v", err)
-	}
-
-	return NewService(orm, nil)
+	return NewService(testdb.Open(t), nil, nil)
 }
 
 func seedUser(t *testing.T, orm *gorm.DB, email string, color string) schemas.User {

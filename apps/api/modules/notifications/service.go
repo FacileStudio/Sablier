@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"context"
-	"encoding/json"
 	stderrors "errors"
 	"log/slog"
 	"strconv"
@@ -148,40 +147,5 @@ func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed in
 		sent++
 	}
 
-	return sent, failed
-}
-
-func (s *Service) broadcastNotification(ctx context.Context, req *BroadcastRequest) (sent, failed int) {
-	var subs []schemas.PushSubscription
-	if err := s.orm.WithContext(ctx).Find(&subs).Error; err != nil {
-		return 0, 0
-	}
-
-	payload, _ := json.Marshal(map[string]string{
-		"title": req.Title,
-		"body":  req.Body,
-		"icon":  req.Icon,
-	})
-
-	opts := newWebPushOptions(s)
-
-	for _, sub := range subs {
-		resp, err := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{
-			Endpoint: sub.Endpoint,
-			Keys: webpush.Keys{
-				Auth:   sub.Auth,
-				P256dh: sub.P256DH,
-			},
-		}, opts)
-		if resp != nil {
-			resp.Body.Close()
-		}
-		if err != nil || (resp != nil && resp.StatusCode >= 400) {
-			s.logger.Error("failed to send notification", "user_id", sub.UserID, "error", err)
-			failed++
-			continue
-		}
-		sent++
-	}
 	return sent, failed
 }

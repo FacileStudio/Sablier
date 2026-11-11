@@ -40,17 +40,5 @@ var Documentation = documentation.Module{
 				{Status: 500, Code: "internal", Description: "Unexpected server error."},
 			},
 		},
-		{
-			Method:       "POST",
-			Path:         "/notifications/test-broadcast",
-			Summary:      "Broadcast a test notification",
-			Description:  "Sends a notification to every saved subscription. Development aid, not part of the product surface.",
-			Auth:         "none",
-			RequestBody:  BroadcastRequest{},
-			ResponseBody: BroadcastResponse{},
-			Errors: []documentation.Error{
-				{Status: 400, Code: "invalid_argument", Description: "Invalid JSON body."},
-			},
-		},
 	},
 }

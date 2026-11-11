@@ -11,10 +11,11 @@ import (
 )
 
 // RegisterRoutes mounts the /antenne routes for reading and updating Antenne
-// Pool settings and events on router, requiring authentication.
-func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
+// Pool settings and events on router. The bus connection is app-wide, so every
+// route is open to the SABLIER_ADMINS allow-list only.
+func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service, admins middleware.Admins) {
 	router.Route("/antenne", func(r chi.Router) {
-		r.Use(middleware.RequireAuth(authService))
+		r.Use(middleware.RequireAdmin(authService, admins))
 
 		r.Get("/", func(w http.ResponseWriter, req *http.Request) {
 			resp, err := service.controller.getSettings(req.Context())

@@ -10,10 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// RegisterRoutes wires the authenticated /settings endpoints.
-func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
+// RegisterRoutes wires the /settings endpoints. The webhook is app-wide, so
+// both routes are open to the SABLIER_ADMINS allow-list only.
+func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service, admins middleware.Admins) {
 	router.Route("/settings", func(r chi.Router) {
-		r.With(middleware.RequireAuth(authService)).Get("/", func(w http.ResponseWriter, req *http.Request) {
+		r.With(middleware.RequireAdmin(authService, admins)).Get("/", func(w http.ResponseWriter, req *http.Request) {
 			resp, err := service.controller.getSettings(req.Context())
 			if err != nil {
 				httpjson.WriteError(w, err)
@@ -22,7 +23,7 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 			httpjson.WriteJSON(w, http.StatusOK, resp)
 		})
 
-		r.With(middleware.RequireAuth(authService)).Put("/", func(w http.ResponseWriter, req *http.Request) {
+		r.With(middleware.RequireAdmin(authService, admins)).Put("/", func(w http.ResponseWriter, req *http.Request) {
 			var body UpdateRequest
 			if err := httpjson.DecodeJSON(w, req, &body); err != nil {
 				httpjson.WriteError(w, err)
