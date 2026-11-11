@@ -92,16 +92,16 @@ export const shell = {
 		'Die Anmeldung konnte nicht abgeschlossen werden. Versuche es erneut.'
 	],
 	'landing.title': [
-		'Sablier — Time tracking',
-		'Sablier — Suivi du temps',
-		'Sablier — Control del tiempo',
-		'Sablier — Zeiterfassung'
+		'Sablier · Billable hours, tracked in one click',
+		'Sablier · Vos heures facturables, suivies en un clic',
+		'Sablier · Horas facturables, registradas con un clic',
+		'Sablier · Abrechenbare Stunden mit einem Klick erfasst'
 	],
 	'landing.description': [
-		'Self-hosted time tracking for small teams. A Go API, a SvelteKit frontend, and a single container behind a single router. Boring on purpose.',
-		'Suivi du temps auto-hébergé pour les petites équipes. Une API Go, un frontend SvelteKit et un seul conteneur derrière un seul routeur. Sobre, volontairement.',
-		'Control del tiempo autoalojado para equipos pequeños. Una API en Go, un frontend SvelteKit y un único contenedor tras un único enrutador. Aburrido a propósito.',
-		'Selbst gehostete Zeiterfassung für kleine Teams. Eine Go-API, ein SvelteKit-Frontend und ein einziger Container hinter einem Router. Absichtlich unspektakulär.'
+		'One click to start, one click to stop. Time split by project, with sessions shared live with the team.',
+		'Un clic pour démarrer, un clic pour arrêter. Le temps réparti par projet, avec des sessions partagées en direct avec l’équipe.',
+		'Un clic para empezar, un clic para parar. El tiempo repartido por proyecto, con sesiones compartidas en directo con el equipo.',
+		'Ein Klick zum Starten, ein Klick zum Stoppen. Zeit nach Projekt aufgeteilt, mit Sitzungen, die live mit dem Team geteilt werden.'
 	],
 	'landing.nav.features': ['Features', 'Fonctionnalités', 'Funciones', 'Funktionen'],
 	'landing.nav.pricing': ['Pricing', 'Tarifs', 'Precios', 'Preise'],

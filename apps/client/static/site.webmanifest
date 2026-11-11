@@ -1,7 +1,7 @@
 {
   "name": "Sablier",
   "short_name": "Sablier",
-  "description": "Self-hosted time tracker for small teams.",
+  "description": "One click to start, one click to stop. Time split by project, with sessions shared live with the team.",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -12,15 +12,10 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ],
-  "theme_color": "#0a0a0a",
-  "background_color": "#0a0a0a",
+  "theme_color": "#fafafa",
+  "background_color": "#fafafa",
   "display": "standalone",
   "start_url": "/"
 }
