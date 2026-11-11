@@ -78,8 +78,8 @@ type Resolver struct {
 	Decider decide.Decider
 }
 
-// Resolve attributes every item of facts for owner, asking the decider at most once for
-// all the items the rules left open.
+// Resolve attributes every item of facts for owner, asking the decider once per batch of
+// the items the rules left open, each batch within Bulle's decide limits.
 func (r Resolver) Resolve(ctx context.Context, db *gorm.DB, owner Owner, facts []Facts) ([]Result, error) {
 	results := make([]Result, len(facts))
 	spaces := make([]*string, len(facts))

@@ -66,52 +66,42 @@ func labelled(tasks []candidate) ([]string, map[string]schemas.Task) {
 	return labels, byLabel
 }
 
-type question struct {
-	index   int
-	byLabel map[string]schemas.Task
-}
-
-type prompt struct {
-	state     map[string]any
-	questions map[string]decide.Question
-	asked     map[string]question
-}
-
-func buildPrompt(db *gorm.DB, ownerID int64, batch aiBatch) prompt {
-	p := prompt{state: map[string]any{}, questions: map[string]decide.Question{}, asked: map[string]question{}}
-	for _, i := range batch.open {
-		item := batch.facts[i]
-		if item.Title == "" && item.ProjectHint == "" && item.Entity == "" {
-			continue
-		}
-		tasks, err := candidates(db, ownerID, batch.spaces[i])
-		if err != nil || len(tasks) == 0 {
-			continue
-		}
-		labels, byLabel := labelled(tasks)
-		name := questionPrefix + strconv.Itoa(i)
-		p.state[name] = map[string]any{"title": item.Title, "project_hint": item.ProjectHint, "entity": item.Entity, "candidates": labels}
-		p.questions[name] = decide.Question{Type: "choice", Instructions: instructions, Options: labels}
-		p.asked[name] = question{index: i, byLabel: byLabel}
+func entryFor(db *gorm.DB, ownerID int64, batch aiBatch, i int) (entry, bool) {
+	item := batch.facts[i]
+	if item.Title == "" && item.ProjectHint == "" && item.Entity == "" {
+		return entry{}, false
 	}
-	return p
+	tasks, err := candidates(db, ownerID, batch.spaces[i])
+	if err != nil || len(tasks) == 0 {
+		return entry{}, false
+	}
+	labels, byLabel := labelled(tasks)
+	return newEntry(i, item, labels, byLabel)
+}
+
+func buildPrompts(db *gorm.DB, ownerID int64, batch aiBatch) []prompt {
+	entries := make([]entry, 0, len(batch.open))
+	for _, i := range batch.open {
+		if e, ok := entryFor(db, ownerID, batch, i); ok {
+			entries = append(entries, e)
+		}
+	}
+	return split(entries)
 }
 
 func (r Resolver) ask(ctx context.Context, db *gorm.DB, owner Owner, batch aiBatch) {
 	if r.Decider == nil || len(batch.open) == 0 {
 		return
 	}
-	p := buildPrompt(db, owner.ID, batch)
-	if len(p.questions) == 0 {
-		return
-	}
-	answers, err := r.Decider.Decide(ctx, owner.Email, p.state, p.questions)
-	if err != nil {
-		return
-	}
-	for name, answer := range answers {
-		if result := pick(db, p.asked[name], answer); result != nil {
-			batch.results[p.asked[name].index] = *result
+	for _, p := range buildPrompts(db, owner.ID, batch) {
+		answers, err := r.Decider.Decide(ctx, owner.Email, p.state, p.questions)
+		if err != nil {
+			continue
+		}
+		for name, answer := range answers {
+			if result := pick(db, p.asked[name], answer); result != nil {
+				batch.results[p.asked[name].index] = *result
+			}
 		}
 	}
 }

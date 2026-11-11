@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- AI attribution answered nothing through Bulle: every choice question went out without `criteria`, and the
+  decision model behind `POST /api/ai/decide` refused it with 422 (Bulle answered 503). Each question now
+  carries a criterion per option, plus a "None of these tasks" option, so an item with a single candidate task
+  still asks a valid two-option choice. Direct Jev installs send the same shape.
+- A batch of open items is split into calls of at most eight questions and under Bulle's 32 KiB state and
+  128 KiB body limits. The hourly draft pass sent everything in one call and got 413.
+
 ## [1.19.2] - 2026-11-11
 
 ### Changed
