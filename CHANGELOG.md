@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Licensed under the GNU Affero General Public License v3.0 only (`AGPL-3.0-only`). See `LICENSE`. The desktop shell, previously declared `MIT` in `Cargo.toml`, moves to the same licence; releases up to 1.19.0 keep the terms they shipped with.
+
 ## [1.19.0] - 2026-11-10
 
 ### Added

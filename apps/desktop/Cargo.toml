@@ -2,7 +2,7 @@
 name = "sablier-desktop"
 version = "0.3.0"
 description = "Sablier desktop app: a tray timer with idle detection and local window rules"
-license = "MIT"
+license = "AGPL-3.0-only"
 edition = "2024"
 publish = false
 
