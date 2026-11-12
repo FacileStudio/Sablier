@@ -59,7 +59,6 @@ services:
       PORTE_TOKEN_KEY: ${PORTE_TOKEN_KEY:-}
       OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
       OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
-      OIDC_CLAIMS_SCOPE: ${OIDC_CLAIMS_SCOPE:-}
       # The client id the suite CLI's device-grant token carries. Setting it
       # mounts porte's device exchange, which is what lets one `facile login`
       # sign in here too. Unset, the route is absent and the CLI falls back to
