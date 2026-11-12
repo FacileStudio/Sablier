@@ -7,8 +7,8 @@ github.com/FacileStudio/antenne-client/go
 github.com/FacileStudio/antenne-client/go/catalog
 github.com/FacileStudio/antenne-client/go/envelope
 github.com/FacileStudio/antenne-client/go/outbox
-# github.com/FacileStudio/porte v0.18.2
-## explicit; go 1.26
+# github.com/FacileStudio/porte v0.19.0
+## explicit; go 1.26.11
 github.com/FacileStudio/porte
 github.com/FacileStudio/porte/exchange
 github.com/FacileStudio/porte/internal/handoff
@@ -20,8 +20,8 @@ github.com/FacileStudio/porte/pg
 github.com/FacileStudio/porte/session
 github.com/FacileStudio/porte/spaces
 github.com/FacileStudio/porte/spaces/spacestest
-# github.com/FacileStudio/porte/directory v0.4.0
-## explicit; go 1.22
+# github.com/FacileStudio/porte/directory v0.5.0
+## explicit; go 1.26.11
 github.com/FacileStudio/porte/directory
 # github.com/FacileStudio/porte/forfait v0.1.1
 ## explicit; go 1.22

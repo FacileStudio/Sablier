@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -125,15 +126,18 @@ type authParts struct {
 	invitations *kit.InvitationsConfig
 }
 
+// people are where accounts live: the users table, and the erasure ledger porte asks
+// before it creates one.
+type people struct {
+	accounts *auth.Accounts
+	erased   porte.ErasedSubjects
+}
+
 // buildAuth constructs porte: one session manager and the OIDC kit over the
 // identity tables. Sign-in goes through Registre only; there is no local
 // password kit. Discovery runs here, so an unreachable or half-configured
 // issuer fails at boot rather than on somebody's first login.
-func buildAuth(ctx context.Context, db *gorm.DB, accounts *auth.Accounts, appEnv *env.Config, appLogger *slog.Logger) (*authParts, error) {
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
+func buildAuth(ctx context.Context, sqlDB *sql.DB, owners people, appEnv *env.Config, appLogger *slog.Logger) (*authParts, error) {
 	store, err := newPorteStore(sqlDB)
 	if err != nil {
 		return nil, err
@@ -150,12 +154,13 @@ func buildAuth(ctx context.Context, db *gorm.DB, accounts *auth.Accounts, appEnv
 		return nil, err
 	}
 	oidcKit, err := oidc.New(ctx, cfg, oidc.Deps{
-		Users:       accounts,
+		Users:       owners.accounts,
 		Identities:  store.Identities(),
 		Sessions:    sessions,
 		Codes:       store.LoginCodes(),
 		Logger:      appLogger,
 		ConfigExtra: journalConfigExtra(appEnv),
+		Erased:      owners.erased,
 	})
 	if err != nil {
 		return nil, err
@@ -263,7 +268,8 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	timeEntryService.SetPoolService(antenneService)
 	heartbeatService := heartbeats.NewService(db, timeEntryService, resolver)
 	mcpService, err := mcpServer.service(mcp.Deps{
-		Entries: timeEntryService, Projects: projectService, Spaces: spaceService, Accounts: authService,
+		Entries: timeEntryService, Projects: projectService, Spaces: spaceService, Agents: agentService,
+		Heartbeats: heartbeatService, Accounts: authService,
 	})
 	if err != nil {
 		return nil, err
@@ -329,11 +335,11 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 }
 
 func createApiServer(db *gorm.DB, sqlDB sqlPinger, accounts *auth.Accounts, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
-	parts, err := buildAuth(context.Background(), db, accounts, appEnv, appLogger)
+	rawDB, err := db.DB()
 	if err != nil {
 		return nil, err
 	}
-	rawDB, err := db.DB()
+	parts, err := buildAuth(context.Background(), rawDB, people{accounts: accounts, erased: deletions}, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +418,7 @@ func newDeletions(db *gorm.DB, accounts *auth.Accounts, appEnv *env.Config, appL
 		ClientID:     appEnv.OIDC.ClientID,
 		ClientSecret: appEnv.OIDC.ClientSecret,
 	}
-	return spaces.NewDeletions(db, client, accounts.Store().EraseAccount, portepg.New(sqlDB).EraseIdentity, appEnv.StorageDir, appLogger)
+	return spaces.NewDeletions(db, client, accounts.Store().EraseAccount, portepg.New(sqlDB), appEnv.StorageDir, appLogger)
 }
 
 // externalConnect lists the origins the built client always calls besides itself: Ardoise's

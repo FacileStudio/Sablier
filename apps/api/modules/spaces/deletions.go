@@ -24,18 +24,27 @@ type Deletions struct {
 	receiver     *directory.Deletions
 }
 
+// Identities are porte's rows the receiver erases and re-checks: pg.Store's
+// EraseIdentity and HoldsIdentity.
+type Identities interface {
+	EraseIdentity(ctx context.Context, provider, subject string) error
+	HoldsIdentity(ctx context.Context, provider, subject string) (bool, error)
+}
+
 // NewDeletions builds the receiver over Sablier's tables. eraseAccount is the
 // account store's EraseAccount, which deletes the person's rows and account
-// in one transaction; erase is porte's own rows eraser, pg.Store.EraseIdentity.
+// in one transaction; identities is porte's own store. A notice for a subject
+// already handled erases it again when an account holds it again.
 func NewDeletions(
-	orm *gorm.DB, client directory.Client, eraseAccount, erase func(context.Context, string, string) error,
-	storageDir string, logger *slog.Logger,
+	orm *gorm.DB, client directory.Client, eraseAccount func(context.Context, string, string) error,
+	identities Identities, storageDir string, logger *slog.Logger,
 ) *Deletions {
 	d := &Deletions{orm: orm, storageDir: storageDir, eraseAccount: eraseAccount}
 	d.receiver = &directory.Deletions{
 		Client:          client,
 		OnPersonDeleted: d.ErasePerson,
-		Erase:           erase,
+		Erase:           identities.EraseIdentity,
+		Holds:           identities.HoldsIdentity,
 		State:           deletionState{orm: orm},
 		Logger:          logger,
 	}
@@ -45,6 +54,20 @@ func NewDeletions(
 // Run polls until ctx ends. Start it in exactly one replica.
 func (d *Deletions) Run(ctx context.Context) {
 	d.receiver.Run(ctx)
+}
+
+// Erased reports whether Sablier already erased the subject, for porte's
+// creation guard (oidc.Deps.Erased). A nil receiver erased nobody.
+func (d *Deletions) Erased(ctx context.Context, provider, subject string) (bool, error) {
+	if d == nil {
+		return false, nil
+	}
+	return d.receiver.Erased(ctx, provider, subject)
+}
+
+// Poll applies Registre's erasures listed since the saved cursor once.
+func (d *Deletions) Poll(ctx context.Context) error {
+	return d.receiver.Poll(ctx)
 }
 
 // Handler verifies and applies Registre's signed user.deleted push.

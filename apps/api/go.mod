@@ -5,8 +5,8 @@ go 1.26.11
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260811090948-95e1434bb665
 	github.com/FacileStudio/antenne-client/go v1.1.0
-	github.com/FacileStudio/porte v0.18.2
-	github.com/FacileStudio/porte/directory v0.4.0
+	github.com/FacileStudio/porte v0.19.0
+	github.com/FacileStudio/porte/directory v0.5.0
 	github.com/FacileStudio/porte/forfait v0.1.1
 	github.com/FacileStudio/tronc v0.22.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
