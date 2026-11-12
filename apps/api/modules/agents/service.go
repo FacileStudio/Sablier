@@ -28,6 +28,21 @@ func NewService(orm *gorm.DB, resolver attribution.Resolver) *Service {
 	return service
 }
 
+// RecordSession validates req at the trust boundary and upserts the session it
+// describes for ownerID, keyed by facile_id. POST /agents/sessions and the MCP tool
+// sablier_record_agent_session both book through it.
+func (service *Service) RecordSession(ctx context.Context, ownerID int64, req *RecordSessionRequest) (*RecordSessionResponse, error) {
+	session, err := toSession(ownerID, req, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	result, err := service.record(ctx, session)
+	if err != nil {
+		return nil, err
+	}
+	return &RecordSessionResponse{Entry: toEntryResponse(result), Agent: toAgentResponse(result.Agent)}, nil
+}
+
 func (service *Service) record(ctx context.Context, session agentwork.Session) (*agentwork.Result, error) {
 	result, err := agentwork.Record(ctx, service.orm.WithContext(ctx), service.resolver, session)
 	switch {

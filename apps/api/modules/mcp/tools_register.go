@@ -6,8 +6,9 @@ import (
 
 // list is the curated tool set. Reports are open world: teammates and synced tools name
 // the projects and tasks of shared spaces. Deleting an entry is the sensitive tool.
+// The agent work tools come last, so the older tools keep their order.
 func (t *toolset) list() []mcpkit.Tool {
-	return append(append(t.reads(), t.writes()...), t.sensitive()...)
+	return append(append(append(t.reads(), t.writes()...), t.sensitive()...), t.agentWork()...)
 }
 
 // reads are the four read-only tools.
@@ -74,6 +75,28 @@ func (t *toolset) writes() []mcpkit.Tool {
 				"become running again.",
 			Annotations: &mcpkit.Annotations{Destructive: true, Idempotent: true},
 		}, t.updateEntry),
+	}
+}
+
+// agentWork are the tools an agent books its own working time with, as POST
+// /api/agents/sessions and POST /api/heartbeats do.
+func (t *toolset) agentWork() []mcpkit.Tool {
+	return []mcpkit.Tool{
+		mcpkit.NewTool(mcpkit.ToolSpec{
+			Name: toolSession, Title: "Record an agent session",
+			Description: "Book one finished span of your own work as an agent to the user, under an agent user named " +
+				"after agent_key and name. Sablier finds the project and task from the Opus tasks, space and title " +
+				"given, or leaves the entry for review. facile_id keys the session: booking the same id again " +
+				"replaces that entry, so a retry never doubles the time. Returns the entry with its minutes.",
+			Annotations: &mcpkit.Annotations{Destructive: true, Idempotent: true},
+		}, t.recordAgentSession),
+		mcpkit.NewTool(mcpkit.ToolSpec{
+			Name: toolHeartbeat, Title: "Record a heartbeat",
+			Description: "Record that the user was active at a moment, from source. Sablier joins heartbeats into " +
+				"draft entries the user confirms in Review. Send at most one every 2 minutes per entity; an exact " +
+				"repeat changes nothing, and one older than 7 days is skipped.",
+			Annotations: &mcpkit.Annotations{Idempotent: true},
+		}, t.recordHeartbeat),
 	}
 }
 

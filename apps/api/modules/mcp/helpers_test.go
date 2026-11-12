@@ -11,8 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
+	"github.com/FacileStudio/Sablier/apps/api/modules/agents"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
+	"github.com/FacileStudio/Sablier/apps/api/modules/heartbeats"
 	"github.com/FacileStudio/Sablier/apps/api/modules/mcp"
 	"github.com/FacileStudio/Sablier/apps/api/modules/projects"
 	"github.com/FacileStudio/Sablier/apps/api/modules/spaces"
@@ -97,8 +100,10 @@ func (f *fixture) service(t *testing.T) *mcp.Service {
 	})
 	must(t, err)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	entries := timeentries.NewService(f.db)
 	service, err := mcp.NewService(mcp.Deps{
-		Entries: timeentries.NewService(f.db), Projects: projects.NewService(f.db), Spaces: spaces.NewService(f.db),
+		Entries: entries, Projects: projects.NewService(f.db), Spaces: spaces.NewService(f.db),
+		Agents: agents.NewService(f.db, attribution.Resolver{}), Heartbeats: heartbeats.NewService(f.db, entries, attribution.Resolver{}),
 		Accounts: auth.NewService(f.db, nil, logger),
 	}, mcp.Config{
 		Resource: f.resource, Issuer: f.issuer.URL, Version: "test", StateKey: []byte("state-key"),

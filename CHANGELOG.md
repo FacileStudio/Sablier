@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- MCP tools `sablier_record_agent_session` and `sablier_record_heartbeat`, so an agent books its own working time over MCP. They run the same validation and storage as `POST /api/agents/sessions` and `POST /api/heartbeats`: a session is upserted by `facile_id`, and an exact repeat of a heartbeat changes nothing. Both are normal writes, with no confirmation. The REST routes stay for the CLI, the desktop app and other clients.
+
+### Fixed
+
+- A person who never opened Sablier got 401 on their first MCP call, so Bulle showed Sablier as "no account" until a web sign-in. Production set `OIDC_CLAIMS_SCOPE=roles`, and porte then refuses to provision from a token without a `roles` claim, which Registre leaves out of MCP resource tokens on purpose. Sablier never reads roles, so `OIDC_CLAIMS_SCOPE` is gone and the first MCP call creates the account again.
+- An account re-created for a person Registre erased (a sign-in or MCP call racing the erasure) stayed until a restart. porte v0.19.0 and porte/directory v0.5.0: the deletion receiver erases such an account again on the next notice or poll (`Deletions.Holds`), and sign-in, MCP provisioning and the profile sync refuse an erased subject (`oidc.Deps.Erased`).
+
 ## [1.19.5] - 2026-11-11
 
 ### Fixed
