@@ -84,7 +84,6 @@ func (c Config) Porte() porte.Config {
 		ClientSecret: c.OIDC.ClientSecret,
 		RedirectURL:  c.OIDC.RedirectURL,
 		SuccessURL:   c.OIDC.SuccessURL,
-		ClaimsScope:  c.OIDCClaimsScope,
 		CLIAudience:  c.OIDC.CLIAudience,
 
 		MachineAudience: c.OIDC.MachineAudience,
@@ -98,7 +97,6 @@ type Config struct {
 	troncenv.Core
 	StorageDir      string
 	OIDC            *OIDCConfig
-	OIDCClaimsScope string
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	VAPIDSubject    string
@@ -154,7 +152,6 @@ func Load() (Config, error) {
 		VAPIDPublicKey:  troncenv.String("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey: troncenv.String("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:    troncenv.String("VAPID_SUBJECT", "mailto:admin@example.com"),
-		OIDCClaimsScope: troncenv.String("OIDC_CLAIMS_SCOPE", ""),
 		BulleURL:        troncenv.String("BULLE_URL", ""),
 		Admins:          troncenv.List("SABLIER_ADMINS"),
 
