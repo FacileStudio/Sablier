@@ -46,7 +46,7 @@ func testRouter(t *testing.T) chi.Router {
 	if err != nil {
 		t.Fatalf("oidc.New: %v", err)
 	}
-	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, nil, appEnv.StorageDir, appLogger)
+	deletions := spaces.NewDeletions(nil, directory.Client{}, nil, store, appEnv.StorageDir, appLogger)
 	ideas := &ideasConfig{URL: "https://bulle.example.test", Token: func(context.Context) (string, error) { return "", nil }}
 	router, err := buildRouter(nil, noopPinger{}, appEnv, appLogger, &authParts{sessions: sessions, kit: oidcKit, invitations: &kit.InvitationsConfig{
 		Directory:  directory.Client{Issuer: "https://sso.example.test", ClientID: "sablier", ClientSecret: "secret"},

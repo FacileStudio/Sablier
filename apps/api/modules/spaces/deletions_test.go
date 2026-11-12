@@ -36,7 +36,7 @@ func erasureReceiver(t *testing.T, db *gorm.DB) *Deletions {
 		t.Fatal(err)
 	}
 	return NewDeletions(db, directory.Client{Issuer: erasureIssuer}, accounts.Store().EraseAccount,
-		portepg.New(sqlDB).EraseIdentity, t.TempDir(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+		portepg.New(sqlDB), t.TempDir(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
 
 func count(t *testing.T, db *gorm.DB, query string, args ...any) int64 {
