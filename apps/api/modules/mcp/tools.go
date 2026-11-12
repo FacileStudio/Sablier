@@ -21,6 +21,8 @@ const (
 	toolDelete    = "sablier_delete_entry"
 	toolProjects  = "sablier_list_projects"
 	toolSummary   = "sablier_weekly_summary"
+	toolSession   = "sablier_record_agent_session"
+	toolHeartbeat = "sablier_record_heartbeat"
 	spacePersonal = "personal"
 	hintEntry     = "Call sablier_list_entries for the ids of your entries; only your own entries can be changed."
 	hintProject   = "Call sablier_list_projects for the project and task ids you can use."

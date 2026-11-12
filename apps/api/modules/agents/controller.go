@@ -33,15 +33,7 @@ func (c *Controller) recordSession(ctx context.Context, userID string, req *Reco
 	if err != nil {
 		return nil, err
 	}
-	session, err := toSession(ownerID, req, time.Now())
-	if err != nil {
-		return nil, err
-	}
-	result, err := c.service.record(ctx, session)
-	if err != nil {
-		return nil, err
-	}
-	return &RecordSessionResponse{Entry: toEntryResponse(result), Agent: toAgentResponse(result.Agent)}, nil
+	return c.service.RecordSession(ctx, ownerID, req)
 }
 
 func (c *Controller) list(ctx context.Context, userID string) ([]AgentResponse, error) {

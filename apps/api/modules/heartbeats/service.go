@@ -67,6 +67,20 @@ func validateHeartbeat(i int, h HeartbeatInput) error {
 	return nil
 }
 
+// Ingest validates a batch at the trust boundary and stores it for userID. POST
+// /heartbeats and the MCP tool sablier_record_heartbeat both ingest through it.
+func (service *Service) Ingest(ctx context.Context, userID int64, items []HeartbeatInput) (int, error) {
+	if len(items) > maxBatch {
+		return 0, errors.Invalid("at most 500 heartbeats per call")
+	}
+	for i, h := range items {
+		if err := validateHeartbeat(i, h); err != nil {
+			return 0, err
+		}
+	}
+	return service.ingest(ctx, userID, items)
+}
+
 // ingest stores the heartbeats inside the accepted window, silently skipping the
 // ones too old or too far ahead, and ignores exact repeats through the unique index.
 func (service *Service) ingest(ctx context.Context, userID int64, items []HeartbeatInput) (int, error) {

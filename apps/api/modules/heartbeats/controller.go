@@ -50,15 +50,7 @@ func (c *Controller) ingest(ctx context.Context, rawUserID string, req *IngestRe
 	if err != nil {
 		return nil, err
 	}
-	if len(req.Heartbeats) > maxBatch {
-		return nil, errors.Invalid("at most 500 heartbeats per call")
-	}
-	for i, h := range req.Heartbeats {
-		if err := validateHeartbeat(i, h); err != nil {
-			return nil, err
-		}
-	}
-	accepted, err := c.service.ingest(ctx, userID, req.Heartbeats)
+	accepted, err := c.service.Ingest(ctx, userID, req.Heartbeats)
 	if err != nil {
 		return nil, err
 	}

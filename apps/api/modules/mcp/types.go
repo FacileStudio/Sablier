@@ -75,3 +75,38 @@ type projectsInput struct {
 	IncludeDone bool   `json:"include_done,omitempty" jsonschema:"also list tasks whose status is done"`
 	Cursor      string `json:"cursor,omitempty" jsonschema:"next_cursor from the previous page"`
 }
+
+// agentSessionInput is sablier_record_agent_session's input, the body of POST
+// /api/agents/sessions.
+type agentSessionInput struct {
+	AgentKey      string `json:"agent_key" jsonschema:"the agent's stable key, 1 to 40 of a-z, 0-9 and -, such as bulle; Sablier keeps one agent user per key for the user"`
+	Name          string `json:"name" jsonschema:"the agent's display name, at most 80 characters"`
+	AvatarURL     string `json:"avatar_url,omitempty" jsonschema:"an https avatar URL; default is a blob drawn from the name"`
+	FacileID      string `json:"facile_id" jsonschema:"the session's own id, at most 200 characters; booking the same id again replaces that entry"`
+	StartedAt     string `json:"started_at" jsonschema:"when the session started, an RFC 3339 time"`
+	StoppedAt     string `json:"stopped_at" jsonschema:"when it stopped, an RFC 3339 time at most 24 hours after started_at and not in the future"`
+	ActiveSeconds *int64 `json:"active_seconds,omitempty" jsonschema:"seconds the agent actually worked; the rest of the span is paused time. Default the whole span"`
+	Cowork        bool   `json:"cowork,omitempty" jsonschema:"true when the user worked alongside the agent"`
+	Description   string `json:"description,omitempty" jsonschema:"what the session did, at most 500 characters"`
+	sessionHints
+}
+
+// sessionHints are the optional facts that tell Sablier where an agent session belongs.
+type sessionHints struct {
+	Title           string   `json:"title,omitempty" jsonschema:"a short title of the work, used to find its task"`
+	RegistreSpaceID string   `json:"registre_space_id,omitempty" jsonschema:"the Registre space the work belongs to, searched first"`
+	OpusWorkspace   string   `json:"opus_workspace,omitempty" jsonschema:"the Opus workspace the work belongs to"`
+	OpusTaskIDs     []string `json:"opus_task_ids,omitempty" jsonschema:"facile ids of the Opus tasks the session touched, most recent last, at most 50"`
+}
+
+// heartbeatInput is sablier_record_heartbeat's input, one heartbeat of POST
+// /api/heartbeats.
+type heartbeatInput struct {
+	At              string `json:"at" jsonschema:"when the user was active, an RFC 3339 time within the last 7 days"`
+	Source          string `json:"source" jsonschema:"what saw the activity: claude-code, editor, desktop, git, bulle or cli"`
+	Entity          string `json:"entity,omitempty" jsonschema:"what the user worked on, such as a file path or bulle:session/<id>, at most 1024 characters"`
+	Project         string `json:"project,omitempty" jsonschema:"a project name hint, at most 200 characters"`
+	RegistreSpaceID string `json:"registre_space_id,omitempty" jsonschema:"the Registre space the work belongs to"`
+	OpusTaskID      string `json:"opus_task_id,omitempty" jsonschema:"facile id of the Opus task being worked on"`
+	Title           string `json:"title,omitempty" jsonschema:"a short title of the work"`
+}

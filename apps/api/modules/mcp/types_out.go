@@ -119,3 +119,25 @@ type projectsOutput struct {
 	Projects   []projectOut `json:"projects"`
 	NextCursor string       `json:"next_cursor,omitempty"`
 }
+
+// agentSessionOutput answers sablier_record_agent_session with the entry the session
+// was booked as.
+type agentSessionOutput struct {
+	Status      string  `json:"status"`
+	EntryID     int64   `json:"entry_id"`
+	AgentID     int64   `json:"agent_id"`
+	Agent       string  `json:"agent"`
+	ProjectID   int64   `json:"project_id"`
+	TaskID      int64   `json:"task_id"`
+	Task        string  `json:"task"`
+	SpaceID     *string `json:"space_id"`
+	Minutes     int     `json:"minutes"`
+	NeedsReview bool    `json:"needs_review"`
+}
+
+// heartbeatOutput answers sablier_record_heartbeat.
+type heartbeatOutput struct {
+	Status   string `json:"status"`
+	Accepted int    `json:"accepted"`
+	Message  string `json:"message,omitempty"`
+}
