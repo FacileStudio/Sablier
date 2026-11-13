@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.22.4] - 2026-11-13
+
+### Changed
+
+- muse v0.21.0: icon buttons show their label as a muse tooltip on hover and keyboard focus.
+
+### Fixed
+
+- The task status dot, the icon-only rename and delete buttons for tasks and sessions, and the mobile timer button show a muse tooltip; the status dot's native `title` is gone.
+
 ## [1.22.3] - 2026-11-13
 
 ### Added
