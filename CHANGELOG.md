@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Timer reminders: a push service that answered with an HTTP error was logged at ERROR every minute as `"error":null`, because only the transport error was logged and a failed send left `last_notification_at` untouched. The log now carries the push service's status, the first 256 bytes of its answer, the subscription id and the endpoint host. A 404 or 410 (the subscription is gone) deletes that `push_subscriptions` row, so it is never tried again. Any other failure keeps the row, logs at WARN and waits an hour before the next attempt, the same cadence as a delivered reminder.
+
 ## [1.22.1] - 2026-11-13
 
 ### Changed

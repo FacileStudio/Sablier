@@ -21,3 +21,12 @@ type SubscriptionResponse struct {
 type DeleteResponse struct {
 	Deleted bool `json:"deleted"`
 }
+
+type reminderTarget struct {
+	UserID         int64  `gorm:"column:user_id"`
+	Locale         string `gorm:"column:locale"`
+	SubscriptionID int64  `gorm:"column:subscription_id"`
+	Endpoint       string `gorm:"column:endpoint"`
+	P256DH         string `gorm:"column:p256dh"`
+	Auth           string `gorm:"column:auth"`
+}

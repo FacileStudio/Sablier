@@ -91,61 +91,33 @@ func (s *Service) deleteSubscription(ctx context.Context) error {
 	return nil
 }
 
+// SendActiveTimerReminders pushes a reminder to everyone whose timer has run for an hour
+// since it started or since the last attempt. A failed attempt also waits an hour, and a
+// subscription the push service reports gone is deleted so it is never tried again.
 func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed int) {
-	var entries []struct {
-		UserID   int64  `gorm:"column:user_id"`
-		Locale   string `gorm:"column:locale"`
-		Endpoint string `gorm:"column:endpoint"`
-		P256DH   string `gorm:"column:p256dh"`
-		Auth     string `gorm:"column:auth"`
-	}
+	var targets []reminderTarget
 
 	deltaNotifyTime := "NOW() - INTERVAL '1 HOUR'"
 	if err := s.orm.WithContext(ctx).Table("time_entries").
-		Distinct("time_entries.user_id, users.locale, push_subscriptions.endpoint, push_subscriptions.p256dh, push_subscriptions.auth").
+		Distinct("time_entries.user_id, users.locale, push_subscriptions.id AS subscription_id, push_subscriptions.endpoint, push_subscriptions.p256dh, push_subscriptions.auth").
 		Joins("JOIN push_subscriptions ON time_entries.user_id = push_subscriptions.user_id").
 		Joins("JOIN users ON users.id = time_entries.user_id").
 		Where("time_entries.stopped_at IS NULL").
 		Where("(time_entries.last_notification_at IS NULL AND time_entries.started_at <= ? OR time_entries.last_notification_at <= ?)", gorm.Expr(deltaNotifyTime), gorm.Expr(deltaNotifyTime)).
-		Scan(&entries).Error; err != nil {
+		Scan(&targets).Error; err != nil {
+		s.logger.Error("failed to list active timers to remind", "error", err)
 		return 0, 0
 	}
 
-	s.logger.Info("found active timers for users", "count", len(entries))
+	s.logger.Info("found active timers for users", "count", len(targets))
 
 	opts := newWebPushOptions(s)
-
-	for _, entry := range entries {
-		payload, err := reminderPayload(entry.Locale)
-		if err != nil {
-			s.logger.Error("failed to marshal notification payload", "error", err)
+	for _, target := range targets {
+		if s.remind(ctx, opts, target) {
+			sent++
+		} else {
 			failed++
-			continue
 		}
-		resp, err := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{
-			Endpoint: entry.Endpoint,
-			Keys: webpush.Keys{
-				Auth:   entry.Auth,
-				P256dh: entry.P256DH,
-			},
-		}, opts)
-
-		if resp != nil {
-			resp.Body.Close()
-		}
-		if err != nil || (resp != nil && resp.StatusCode >= 400) {
-			s.logger.Error("failed to send notification", "user_id", entry.UserID, "error", err)
-			failed++
-			continue
-		}
-
-		if err := s.orm.WithContext(ctx).Model(&schemas.TimeEntry{}).
-			Where("user_id = ? AND stopped_at IS NULL", entry.UserID).
-			Update("last_notification_at", gorm.Expr("NOW()")).Error; err != nil {
-			s.logger.Error("failed to update last_notification_at", "user_id", entry.UserID, "error", err)
-		}
-		sent++
 	}
-
 	return sent, failed
 }
