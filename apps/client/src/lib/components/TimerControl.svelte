@@ -4,7 +4,7 @@
 	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
 	import { spaceName } from '$lib/space-context.svelte';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
-	import { Badge, Button, IconButton, icons } from '@facile/muse';
+	import { Badge, Button, IconButton, Tooltip, icons } from '@facile/muse';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
 	import TaskPalette from '$lib/components/TaskPalette.svelte';
 	import { NotificationService } from '$lib/notifications';
@@ -307,20 +307,22 @@
 				</Button>
 			</div>
 		{/if}
-		<button
-			type="button"
-			class="flex size-14 items-center justify-center rounded-fc-pill bg-fc-accent text-fc-accent-fg shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
-			onclick={() => (fabOpen = !fabOpen)}
-			aria-expanded={fabOpen}
-			aria-label={t('timer.actions')}
-		>
-			<iconify-icon
-				icon={fabOpen ? icons.close : timerIcons.play}
-				width="24"
-				height="24"
-				class="block"
-			></iconify-icon>
-		</button>
+		<Tooltip text={t('timer.actions')} describe={false} class="contents">
+			<button
+				type="button"
+				class="flex size-14 items-center justify-center rounded-fc-pill bg-fc-accent text-fc-accent-fg shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
+				onclick={() => (fabOpen = !fabOpen)}
+				aria-expanded={fabOpen}
+				aria-label={t('timer.actions')}
+			>
+				<iconify-icon
+					icon={fabOpen ? icons.close : timerIcons.play}
+					width="24"
+					height="24"
+					class="block"
+				></iconify-icon>
+			</button>
+		</Tooltip>
 	{/if}
 </div>
 

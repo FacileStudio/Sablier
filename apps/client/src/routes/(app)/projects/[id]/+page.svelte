@@ -29,6 +29,7 @@
 		StatusDot,
 		Table,
 		Tabs,
+		Tooltip,
 		icons
 	} from '@facile/muse';
 	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
@@ -556,13 +557,14 @@
 								{#each filteredTasks as task (task.id)}
 									<tr class={task.status === 'done' ? 'opacity-60' : ''}>
 										<td>
-											<button
-												type="button"
-												class="mt-0.5 block size-4 shrink-0 rounded-fc-pill transition-colors {statusDotClass(task.status)}"
-												aria-label={t('project.tasks.statusChange', { status: statusLabel(task.status) })}
-												title={statusLabel(task.status)}
-												onclick={() => toggleTaskStatus(task.id)}
-											></button>
+											<Tooltip text={statusLabel(task.status)} describe={false} class="contents">
+												<button
+													type="button"
+													class="mt-0.5 block size-4 shrink-0 rounded-fc-pill transition-colors {statusDotClass(task.status)}"
+													aria-label={t('project.tasks.statusChange', { status: statusLabel(task.status) })}
+													onclick={() => toggleTaskStatus(task.id)}
+												></button>
+											</Tooltip>
 										</td>
 										<td>
 											{#if editingTaskId === task.id}
@@ -629,23 +631,27 @@
 										</td>
 										<td>
 											<div class="flex items-center justify-end gap-1">
-												<Button
-													variant="ghost"
-													size="sm"
-													icon={icons.edit}
-													aria-label={t('project.tasks.rename')}
-													onclick={() => startTaskEdit(task.id, task.name)}
-													disabled={editingTaskId !== null && editingTaskId !== task.id}
-												/>
-												<Button
-													variant="ghost-danger"
-													size="sm"
-													icon={icons.remove}
-													aria-label={t('project.tasks.delete')}
-													onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
-													disabled={deletingTaskId === task.id ||
-														(editingTaskId !== null && editingTaskId !== task.id)}
-												/>
+												<Tooltip text={t('project.tasks.rename')} describe={false} class="contents">
+													<Button
+														variant="ghost"
+														size="sm"
+														icon={icons.edit}
+														aria-label={t('project.tasks.rename')}
+														onclick={() => startTaskEdit(task.id, task.name)}
+														disabled={editingTaskId !== null && editingTaskId !== task.id}
+													/>
+												</Tooltip>
+												<Tooltip text={t('project.tasks.delete')} describe={false} class="contents">
+													<Button
+														variant="ghost-danger"
+														size="sm"
+														icon={icons.remove}
+														aria-label={t('project.tasks.delete')}
+														onclick={() => openTaskDeleteDialog(task.id, task.name, task.sessionCount)}
+														disabled={deletingTaskId === task.id ||
+															(editingTaskId !== null && editingTaskId !== task.id)}
+													/>
+												</Tooltip>
 											</div>
 										</td>
 									</tr>
@@ -719,21 +725,25 @@
 										<td>
 											{#if entry.user_id === Number(ctx.user?.id)}
 												<div class="flex items-center justify-end gap-1">
-													<Button
-														variant="ghost"
-														size="sm"
-														icon={icons.edit}
-														aria-label={t('project.sessions.edit')}
-														onclick={() => openEditDrawer(entry)}
-													/>
-													<Button
-														variant="ghost-danger"
-														size="sm"
-														icon={icons.remove}
-														aria-label={t('project.sessions.delete')}
-														onclick={() => openEntryDeleteDialog(entry)}
-														disabled={deletingEntryId === entry.id}
-													/>
+													<Tooltip text={t('project.sessions.edit')} describe={false} class="contents">
+														<Button
+															variant="ghost"
+															size="sm"
+															icon={icons.edit}
+															aria-label={t('project.sessions.edit')}
+															onclick={() => openEditDrawer(entry)}
+														/>
+													</Tooltip>
+													<Tooltip text={t('project.sessions.delete')} describe={false} class="contents">
+														<Button
+															variant="ghost-danger"
+															size="sm"
+															icon={icons.remove}
+															aria-label={t('project.sessions.delete')}
+															onclick={() => openEntryDeleteDialog(entry)}
+															disabled={deletingEntryId === entry.id}
+														/>
+													</Tooltip>
 												</div>
 											{/if}
 										</td>
