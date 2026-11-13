@@ -4,6 +4,8 @@ Releases of the Sablier native apps (desktop tray app and Android), tagged `desk
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-13
+
 ### Added
 - Windows: `Sablier-windows-x64-setup.exe`, an NSIS installer that self-updates like the other desktop builds. It is not code-signed, so SmartScreen warns on the first run.
 
