@@ -1,11 +1,12 @@
+use crate::token::{self, Keyring, Vault};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// The server and API token `sablier login` stores in `~/.sablier.yml`.
+/// The server `sablier login` stores in `~/.sablier.yml` and the token it keeps in the OS keyring.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Credentials {
     pub server_url: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub token: String,
 }
 
@@ -14,30 +15,77 @@ fn credentials_path() -> Option<PathBuf> {
 }
 
 impl Credentials {
-    /// Reads the CLI's credentials, or `None` when the user has not signed in.
+    /// Reads the shared sign-in, or `None` when the user has not signed in.
     pub fn load() -> Option<Self> {
-        Self::parse(&std::fs::read_to_string(credentials_path()?).ok()?)
+        Self::load_from(&credentials_path()?, &Keyring)
     }
 
-    /// Writes `server` and `token` to `~/.sablier.yml` in the CLI's format, readable by the owner only.
+    /// Stores `token` in the OS keyring and `server` in `~/.sablier.yml`, in the CLI's format. Without
+    /// a usable keyring the token goes into the file, readable by the owner only.
     pub fn save(server: &str, token: &str) -> std::io::Result<()> {
         let path = credentials_path().ok_or_else(|| std::io::Error::other("no home directory"))?;
-        let text = Self::render(server, token).map_err(std::io::Error::other)?;
-        write_private(&path, &text)
+        Self::save_to(&path, &Keyring, server, token)
     }
 
-    /// Deletes `~/.sablier.yml`, signing out the app, the tray and the CLI together.
+    /// Deletes the keyring entry and `~/.sablier.yml`, signing out the app, the tray and the CLI together.
     pub fn forget() -> std::io::Result<()> {
-        let Some(path) = credentials_path() else {
-            return Ok(());
-        };
+        let path = credentials_path().ok_or_else(|| std::io::Error::other("no home directory"))?;
+        Self::forget_at(&path, &Keyring)
+    }
+
+    /// Removes the file, then the keyring entry. A keyring that cannot be reached is not an error
+    /// unless it still hands the token out.
+    fn forget_at(path: &Path, vault: &dyn Vault) -> std::io::Result<()> {
         match std::fs::remove_file(path) {
-            Err(err) if err.kind() != std::io::ErrorKind::NotFound => Err(err),
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => return Err(err),
+            _ => {}
+        }
+        match vault.delete() {
+            Err(reason) if matches!(vault.get(), Ok(Some(_))) => Err(std::io::Error::other(reason)),
             _ => Ok(()),
         }
     }
 
-    /// The YAML the CLI expects: the server with its `/api` suffix, then the token.
+    /// Reads `path` and the keyring. A token still in the file moves to the keyring and leaves the
+    /// file only once the keyring returned it; without a usable keyring it stays in the file.
+    fn load_from(path: &Path, vault: &dyn Vault) -> Option<Self> {
+        let mut stored: Self = serde_yaml::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
+        stored.token = stored.token.trim().to_string();
+        if stored.token.is_empty() {
+            stored.token = vault.get().ok().flatten()?;
+            return Self::normalize(stored);
+        }
+        match token::store(vault, &stored.token) {
+            Ok(()) => {
+                let server_only = Self {
+                    server_url: stored.server_url.clone(),
+                    token: String::new(),
+                };
+                if let Ok(text) = serde_yaml::to_string(&server_only) {
+                    let _ = write_private(path, &text);
+                }
+            }
+            Err(reason) => token::fallback_notice(path, &reason),
+        }
+        Self::normalize(stored)
+    }
+
+    fn save_to(path: &Path, vault: &dyn Vault, server: &str, token: &str) -> std::io::Result<()> {
+        let kept = match token::store(vault, token.trim()) {
+            Ok(()) => "",
+            Err(reason) => {
+                token::fallback_notice(path, &reason);
+                token
+            }
+        };
+        write_private(
+            path,
+            &Self::render(server, kept).map_err(std::io::Error::other)?,
+        )
+    }
+
+    /// The YAML the CLI expects: the server with its `/api` suffix, then the token when it has to
+    /// live in the file.
     pub fn render(server: &str, token: &str) -> Result<String, serde_yaml::Error> {
         serde_yaml::to_string(&Self {
             server_url: format!("{}/api", server.trim().trim_end_matches('/')),
@@ -45,9 +93,8 @@ impl Credentials {
         })
     }
 
-    /// Parses the YAML the CLI writes, dropping the `/api` suffix it may store; an empty token or server counts as signed out.
-    pub fn parse(text: &str) -> Option<Self> {
-        let mut credentials: Self = serde_yaml::from_str(text).ok()?;
+    /// Drops the `/api` suffix the CLI stores; an empty token or server counts as signed out.
+    fn normalize(mut credentials: Self) -> Option<Self> {
         credentials.server_url = credentials
             .server_url
             .trim()
@@ -97,22 +144,26 @@ pub fn queue_path() -> Option<PathBuf> {
 }
 
 #[cfg(test)]
+mod keyring_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
+    fn parse(text: &str) -> Option<Credentials> {
+        Credentials::normalize(serde_yaml::from_str(text).ok()?)
+    }
+
     #[test]
     fn reads_the_cli_config_and_trims_the_trailing_slash() {
-        let parsed =
-            Credentials::parse("server_url: https://sablier.facile.studio/\ntoken: abc\n").unwrap();
+        let parsed = parse("server_url: https://sablier.facile.studio/\ntoken: abc\n").unwrap();
         assert_eq!(parsed.server_url, "https://sablier.facile.studio");
         assert_eq!(parsed.token, "abc");
     }
 
     #[test]
     fn strips_the_api_suffix_the_cli_stores() {
-        let parsed =
-            Credentials::parse("server_url: https://sablier.facile.studio/api/\ntoken: abc\n")
-                .unwrap();
+        let parsed = parse("server_url: https://sablier.facile.studio/api/\ntoken: abc\n").unwrap();
         assert_eq!(parsed.server_url, "https://sablier.facile.studio");
     }
 
@@ -120,15 +171,15 @@ mod tests {
     fn rendered_credentials_read_back_as_the_cli_writes_them() {
         let text = Credentials::render("https://sablier.facile.studio/", "abc").unwrap();
         assert!(text.contains("server_url: https://sablier.facile.studio/api"));
-        let parsed = Credentials::parse(&text).unwrap();
+        let parsed = parse(&text).unwrap();
         assert_eq!(parsed.server_url, "https://sablier.facile.studio");
         assert_eq!(parsed.token, "abc");
     }
 
     #[test]
     fn a_signed_out_config_is_no_credentials() {
-        assert!(Credentials::parse("server_url: https://x.test\n").is_none());
-        assert!(Credentials::parse("server_url: https://x.test\ntoken: ''\n").is_none());
-        assert!(Credentials::parse("not yaml: [").is_none());
+        assert!(parse("server_url: https://x.test\n").is_none());
+        assert!(parse("server_url: https://x.test\ntoken: ''\n").is_none());
+        assert!(parse("not yaml: [").is_none());
     }
 }

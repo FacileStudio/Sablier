@@ -41,8 +41,8 @@ export function apiBase(): string {
 
 /**
  * Reads the bearer token an installed app holds, or null on the web. Android keeps it in the
- * Keystore-backed secure storage; the desktop app keeps it in ~/.sablier.yml, readable by its
- * owner only and shared with the tray and the CLI.
+ * Keystore-backed secure storage; the desktop app keeps it in the OS keyring, shared with the
+ * tray and the CLI, or in ~/.sablier.yml when no keyring is available.
  */
 export async function getToken(): Promise<string | null> {
 	if (!isApp()) return null;
