@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.22.3] - 2026-11-13
+
+### Added
+
+- The web client loads Vision's tracker (`https://vision.facile.studio/s.js`, with `data-mask`) on `sablier.facile.studio` only. `script-src` allows the Vision origin next to the inline script hashes.
+
 ## [1.22.2] - 2026-11-13
 
 ### Fixed
