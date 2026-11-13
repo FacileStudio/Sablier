@@ -162,7 +162,7 @@ func shareSpace(t *testing.T, orm *gorm.DB, members ...schemas.User) {
 func newDatabaseBackedService(t *testing.T) *Service {
 	t.Helper()
 
-	return NewService(testdb.Open(t), nil, nil)
+	return NewService(testdb.Migrated(t), nil, nil)
 }
 
 func seedUser(t *testing.T, orm *gorm.DB, email string, color string) schemas.User {

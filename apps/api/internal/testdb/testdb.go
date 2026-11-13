@@ -1,12 +1,17 @@
-// Package testdb opens the database a test runs its queries against: an in-memory SQLite
-// by default, or PostgreSQL when SABLIER_TEST_DATABASE_URL is set. SQLite does not catch
-// a uuid compared with text, so every query that crosses space_id should run here.
+// Package testdb opens the PostgreSQL database a test runs its queries
+// against, built by the same migrations a booting server applies. It is
+// PostgreSQL and nothing else: the schema ships as Postgres DDL under
+// migrations/, and SQLite would build a different one from the struct tags.
 package testdb
 
 import (
+	"context"
 	"crypto/sha256"
+	"database/sql"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,72 +20,21 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/FacileStudio/Sablier/apps/api/schemas"
+	"github.com/FacileStudio/Sablier/apps/api/migrations"
+	"github.com/FacileStudio/tronc/migrate"
 
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
+// EnvVar names the connection string the database tests read.
+const EnvVar = "SABLIER_TEST_DATABASE_URL"
+
 var unsafeName = regexp.MustCompile(`[^a-z0-9_]+`)
 
-// Open returns a migrated database private to t. On PostgreSQL every test gets its own
-// schema through search_path, so it never touches public, which the schemas tests drop.
-func Open(t *testing.T) *gorm.DB {
-	t.Helper()
-	models := []any{&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.Space{}, &schemas.SpaceMember{}, &schemas.Heartbeat{}, &schemas.DraftDismissal{}}
-	orm := open(t)
-	if err := orm.AutoMigrate(models...); err != nil {
-		t.Fatalf("migrate the test database: %v", err)
-	}
-	return orm
-}
-
-func open(t *testing.T) *gorm.DB {
-	t.Helper()
-	name := "t_" + unsafeName.ReplaceAllString(strings.ToLower(t.Name()), "_")
-	raw := os.Getenv("SABLIER_TEST_DATABASE_URL")
-	if raw == "" {
-		orm, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", name)), &gorm.Config{})
-		if err != nil {
-			t.Fatalf("open sqlite: %v", err)
-		}
-		return orm
-	}
-	return openPostgres(t, raw, name[:min(len(name), 60)])
-}
-
-func openPostgres(t *testing.T, raw, schema string) *gorm.DB {
-	t.Helper()
-	admin, err := gorm.Open(postgres.Open(raw), &gorm.Config{Logger: logger.Discard})
-	if err != nil {
-		t.Fatalf("open postgres: %v", err)
-	}
-	reset := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s", schema, schema)
-	if err := admin.Exec(reset).Error; err != nil {
-		t.Fatalf("reset schema %s: %v", schema, err)
-	}
-	if sqlDB, err := admin.DB(); err == nil {
-		_ = sqlDB.Close()
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		t.Fatalf("parse SABLIER_TEST_DATABASE_URL: %v", err)
-	}
-	query := parsed.Query()
-	query.Set("search_path", schema)
-	parsed.RawQuery = query.Encode()
-	orm, err := gorm.Open(postgres.Open(parsed.String()), &gorm.Config{Logger: logger.Discard})
-	if err != nil {
-		t.Fatalf("open postgres schema %s: %v", schema, err)
-	}
-	return orm
-}
-
-// migratedSchema is the schema this test binary migrated, once: schemas.Migrate
-// takes seconds, and a package runs many tests against the same shape.
+// migratedSchema is the schema this test binary migrated, once: a package
+// runs many tests against the same shape.
 var migratedSchema = sync.OnceValues(migrateSchema)
 
 func migrateSchema() (string, error) {
@@ -91,7 +45,7 @@ func migrateSchema() (string, error) {
 	sum := sha256.Sum256([]byte(dir))
 	name := "m_" + unsafeName.ReplaceAllString(strings.ToLower(filepath.Base(dir)), "_")
 	name = name[:min(len(name), 40)] + "_" + hex.EncodeToString(sum[:4])
-	admin, err := gorm.Open(postgres.Open(os.Getenv("SABLIER_TEST_DATABASE_URL")), &gorm.Config{Logger: logger.Discard})
+	admin, err := gorm.Open(postgres.Open(os.Getenv(EnvVar)), &gorm.Config{Logger: logger.Discard})
 	if err != nil {
 		return "", err
 	}
@@ -99,13 +53,26 @@ func migrateSchema() (string, error) {
 	if err := admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s", name, name)).Error; err != nil {
 		return "", err
 	}
-	orm, err := gorm.Open(postgres.Open(withSearchPath(os.Getenv("SABLIER_TEST_DATABASE_URL"), name)),
-		&gorm.Config{Logger: logger.Discard})
+	orm, err := gorm.Open(postgres.Open(WithSearchPath(os.Getenv(EnvVar), name)), &gorm.Config{Logger: logger.Discard})
 	if err != nil {
 		return "", err
 	}
 	defer closeGorm(orm)
-	return name, schemas.Migrate(orm, "")
+	sqlDB, err := orm.DB()
+	if err != nil {
+		return "", err
+	}
+	return name, migrations.Up(context.Background(), Config(sqlDB, name))
+}
+
+// Config is the migrations configuration for a test schema. The advisory lock
+// is scoped to the database, not the schema, so each schema derives its own
+// lock id instead of queueing every test package on the default one.
+func Config(db *sql.DB, schema string) migrate.Config {
+	cfg := migrations.Config(db, slog.New(slog.DiscardHandler))
+	sum := sha256.Sum256([]byte(schema))
+	cfg.LockID = int64(binary.BigEndian.Uint64(sum[:8]) >> 1)
+	return cfg
 }
 
 func closeGorm(orm *gorm.DB) {
@@ -114,7 +81,10 @@ func closeGorm(orm *gorm.DB) {
 	}
 }
 
-func withSearchPath(raw, schema string) string {
+// WithSearchPath returns raw with search_path set to schema. The search_path
+// travels in the connection string rather than in a SET: GORM hands out
+// pooled connections, so a SET would bind one of them only.
+func WithSearchPath(raw, schema string) string {
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return raw
@@ -126,36 +96,37 @@ func withSearchPath(raw, schema string) string {
 }
 
 // emptySchema deletes every row and rewinds every sequence in one
-// transaction. TRUNCATE would be the obvious statement, but it costs seconds
-// per call on an fsync-bound disk, and these tables hold a handful of rows.
+// transaction, the migration ledger excepted. TRUNCATE would be the obvious
+// statement, but it costs seconds per call on an fsync-bound disk, and these
+// tables hold a handful of rows.
 const emptySchema = `DO $$
 DECLARE name text;
 BEGIN
 	SET LOCAL session_replication_role = replica;
-	FOR name IN SELECT tablename FROM pg_tables WHERE schemaname = current_schema() LOOP
+	FOR name IN SELECT tablename FROM pg_tables WHERE schemaname = current_schema()
+		AND tablename <> '` + migrate.TableName + `' LOOP
 		EXECUTE format('DELETE FROM %I', name);
 	END LOOP;
-	FOR name IN SELECT sequencename FROM pg_sequences WHERE schemaname = current_schema() LOOP
+	FOR name IN SELECT sequencename FROM pg_sequences WHERE schemaname = current_schema()
+		AND sequencename <> '` + migrate.TableName + `_id_seq' LOOP
 		EXECUTE format('ALTER SEQUENCE %I RESTART', name);
 	END LOOP;
 END $$`
 
-// Migrated returns a PostgreSQL database brought up to date by schemas.Migrate
-// exactly as a booting server does, porte tables included, and emptied for t.
-// The schema is migrated once per test binary and emptied before each test,
-// so tests in one package must not run in parallel. It skips the test when
-// SABLIER_TEST_DATABASE_URL is unset: what it proves is PostgreSQL behaviour.
+// Migrated returns a PostgreSQL database brought up to date by the migrations
+// a booting server applies, and emptied for t. The schema is migrated once per
+// test binary and emptied before each test, so tests in one package must not
+// run in parallel. It skips the test when SABLIER_TEST_DATABASE_URL is unset.
 func Migrated(t *testing.T) *gorm.DB {
 	t.Helper()
-	if os.Getenv("SABLIER_TEST_DATABASE_URL") == "" {
-		t.Skip("SABLIER_TEST_DATABASE_URL is unset")
+	if os.Getenv(EnvVar) == "" {
+		t.Skip(EnvVar + " is unset")
 	}
 	schema, err := migratedSchema()
 	if err != nil {
 		t.Fatalf("migrate the test database: %v", err)
 	}
-	orm, err := gorm.Open(postgres.Open(withSearchPath(os.Getenv("SABLIER_TEST_DATABASE_URL"), schema)),
-		&gorm.Config{Logger: logger.Discard})
+	orm, err := gorm.Open(postgres.Open(WithSearchPath(os.Getenv(EnvVar), schema)), &gorm.Config{Logger: logger.Discard})
 	if err != nil {
 		t.Fatalf("open the test database: %v", err)
 	}

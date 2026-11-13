@@ -2,31 +2,16 @@ package spaces
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strconv"
 	"testing"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	porteSpaces "github.com/FacileStudio/porte/spaces"
 	"github.com/FacileStudio/porte/spaces/spacestest"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
-
-func newTestORM(t *testing.T, name string) *gorm.DB {
-	t.Helper()
-
-	orm, err := gorm.Open(sqlite.Open("file:"+name+"?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	if err := orm.AutoMigrate(&schemas.User{}, &schemas.Space{}, &schemas.SpaceMember{}); err != nil {
-		t.Fatalf("migrate test database: %v", err)
-	}
-	return orm
-}
 
 // aliasStore runs the conformance suite against the real Store. The suite's
 // user ids are opaque strings and space_members.user_id is an int64, so each
@@ -103,29 +88,12 @@ func (a *aliasStore) CountRole(ctx context.Context, spaceID string, role porteSp
 	return a.inner.CountRole(ctx, spaceID, role)
 }
 
+// TestStoreConformance runs porte's spaces conformance suite against the real
+// Store on the migrated PostgreSQL schema, emptied for every case.
 func TestStoreConformance(t *testing.T) {
-	instance := 0
+	testdb.Migrated(t)
 	spacestest.Conformance(t, func() porteSpaces.Store {
-		instance++
-		return newAliasStore(newTestORM(t, fmt.Sprintf("conformance-%d", instance)))
-	})
-}
-
-// TestStoreConformanceOnPostgres runs the same suite against the database the
-// app ships on. SQLite proves the Go mapping and nothing about the SQL: the
-// dialects disagree on locking, on comparison and on what a driver hands back
-// for an integer column, and only one of them is in production.
-func TestStoreConformanceOnPostgres(t *testing.T) {
-	url := os.Getenv("SABLIER_TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("SABLIER_TEST_DATABASE_URL is unset")
-	}
-	spacestest.Conformance(t, func() porteSpaces.Store {
-		orm, err := newPostgresORM(url)
-		if err != nil {
-			panic(fmt.Sprintf("open the test database: %v", err))
-		}
-		return newAliasStore(orm)
+		return newAliasStore(testdb.Migrated(t))
 	})
 }
 
@@ -138,8 +106,7 @@ func TestStoreConformanceOnPostgres(t *testing.T) {
 // because the store parses before it queries, so the returned spelling is the
 // one thing that tells a read of the row apart from a copy of the argument.
 func TestMembershipReadsEveryFieldFromTheRow(t *testing.T) {
-	t.Run("sqlite", func(t *testing.T) { assertMembershipIsFaithful(t, newTestORM(t, "faithful")) })
-	t.Run("postgres", func(t *testing.T) { assertMembershipIsFaithful(t, openPostgres(t)) })
+	assertMembershipIsFaithful(t, testdb.Migrated(t))
 }
 
 func assertMembershipIsFaithful(t *testing.T, orm *gorm.DB) {
@@ -170,7 +137,7 @@ func assertMembershipIsFaithful(t *testing.T, orm *gorm.DB) {
 }
 
 func TestMembershipReportsAbsenceAsAnError(t *testing.T) {
-	orm := newTestORM(t, "absence")
+	orm := testdb.Migrated(t)
 	store := NewStore(orm)
 
 	if _, err := store.Membership(context.Background(), "no-space", "1"); err != porteSpaces.ErrNotMember {

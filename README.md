@@ -58,7 +58,7 @@ bun run dev
 ```
 
 The client runs on <http://localhost:5173> and proxies `/api` and `/files` to the API on
-`:4000`. Migrations run on API startup, so there is no separate migration step.
+`:4000`. Migrations run on API startup (`apps/api/migrations/`), so there is no separate migration step.
 
 ## Command line
 

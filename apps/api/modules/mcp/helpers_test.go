@@ -70,8 +70,7 @@ func newFixture(t *testing.T) *fixture {
 // newFixtureOn starts the endpoint on addr, any free port when empty.
 func newFixtureOn(t *testing.T, addr string) *fixture {
 	t.Helper()
-	db := testdb.Open(t)
-	must(t, db.AutoMigrate(&schemas.AppSetting{}))
+	db := testdb.Migrated(t)
 	f := &fixture{db: db, issuer: mcptest.NewIssuer(t), users: map[string]int64{}, front: func(next http.Handler) http.Handler { return next }}
 	f.seed(t)
 	var handler http.Handler

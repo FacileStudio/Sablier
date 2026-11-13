@@ -88,10 +88,23 @@ template of what needs filling in — at minimum `DATABASE_URL` and
 
 ## Migrations
 
-There is no migration step to run. `schemas.Migrate` executes on every boot: GORM
-`AutoMigrate` over all twelve models, then the user-color backfill and the legacy
-time-entry-to-task backfill. Both backfills are idempotent — they only touch rows that
-still need it — so restarts are cheap.
+There is no migration step to run. At every boot the binary applies the pending SQL
+migrations in `apps/api/migrations/` through `tronc/migrate`, behind a Postgres advisory
+lock, then runs the idempotent data steps of `schemas.Reconcile` (Registre pictures, avatar
+paths, user colours, legacy entry tasks, facile ids, agent entries). They only touch rows
+that still need it, so restarts are cheap.
+
+A database built before v1.21.0, by GORM `AutoMigrate`, has Sablier's tables and no
+applied migration. The first boot of v1.21.0 or later records `00001_baseline.sql` as
+applied without running it (tronc/migrate's `baseline 1`), then runs `00002` and later.
+
+`docker run <image> migrate status` (also `up`, `version`, `baseline <n>`) answers without
+starting a server.
+
+Rolling back to v1.20.0 or older brings `AutoMigrate` back, and it drops every column
+default its struct tags do not declare, the ones `00002_column_defaults.sql` adds, while
+the ledger still records version 2. Before deploying v1.21.0 or later again after such a
+rollback, run `DELETE FROM goose_db_version WHERE version_id = 2`.
 
 A failed migration aborts startup and the container exits 1, which Dokploy surfaces as a
 failed deploy rather than a half-migrated database.

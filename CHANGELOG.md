@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Database: the schema is ordered goose SQL under `apps/api/migrations/`, applied at boot by `tronc/migrate` v0.1.1 behind a Postgres advisory lock. GORM `AutoMigrate` and the DDL that ran at every boot (the porte tables, `directory_deletion_state`, `mcp_actions`, the antenne outbox) are gone from the boot path; the GORM structs stay as the query layer. `scripts/check.sh` fails on an `.AutoMigrate(` outside a test file, and `schemas/columns_test.go` fails when a struct names a column the migrations do not create or a type its field cannot hold.
+- Database: `00001_baseline.sql` is production's schema as `pg_dump --schema-only` printed it on 2026-11-13, leftover columns included; a database built from it dumps byte-identical to production. A database built before this release (Sablier's tables, no applied migration) is stamped at version 1 on its first boot with tronc/migrate's `baseline` command, so the baseline is recorded without running. `apps/api/schema.sql` is the normalized dump of the whole set. `migrations_test.go` pins the `mcp_actions` and `antenne_outbox` tables to the DDL of tronc/mcp and antenne-client.
+- Boot: the data steps that still change rows run at every boot after the migrations, in the same order (`schemas.Reconcile`): the Registre picture backfill, the avatar upload path, missing user colours, legacy entry tasks, missing facile ids and Mycelium entries moved to agent users. The steps that only served databases older than production are removed, since production holds none of their input: the `nook_pool_*` column and `pool_*` table renames, the in-place conversion of the pre-v1.19.0 outbox, the copy of the pre-porte `sessions` and `api_tokens` tables, the `oidc_subject` move into `porte_identities` and the re-key of password identities.
+- Tests: every database test runs on PostgreSQL through `internal/testdb.Migrated`, on a schema the migrations build. The in-memory SQLite helpers are gone, and with them `gorm.io/driver/sqlite` and `mattn/go-sqlite3` from `go.mod` and `vendor/`; `scripts/check.sh` fails on a non-PostgreSQL driver in `go.mod`.
+- build: `github.com/FacileStudio/tronc/migrate` v0.1.1 with `pressly/goose/v3` v3.27.3; goose raises `segmentio/asm` from v1.1.3 to v1.2.1. Re-vendored.
+
+### Added
+
+- `docker run <image> migrate status` (also `up`, `version`, `baseline <n>`) answers without starting a server.
+- Database: `00002_column_defaults.sql` gives `created_at`, `updated_at`, `joined_at` and `processed_at` a `now()` default on every table that has them, and the `users` columns porte/kit does not write the values `fillNewAccount` writes (`''` and `0001-01-01 00:00:00+00`), so a row inserted outside GORM no longer gets NULL there. It has a Down. Rolling back to v1.20.0 or older drops these defaults again, because AutoMigrate removes a default its struct tags do not declare, while the ledger still records version 2: before deploying this release again after such a rollback, run `DELETE FROM goose_db_version WHERE version_id = 2`. Rolling back past v1.19.0 is not supported: its outbox shape is no longer converted.
+
 ## [1.20.0] - 2026-11-12
 
 ### Added

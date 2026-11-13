@@ -17,7 +17,7 @@ import (
 )
 
 func TestListProjectsChecksSpaceMembership(t *testing.T) {
-	orm := testdb.Open(t)
+	orm := testdb.Migrated(t)
 	service := NewService(orm)
 	mine, foreign := schemas.Space{Name: "Mine"}, schemas.Space{Name: "Foreign"}
 	for _, value := range []any{&schemas.User{ID: 1, Email: "a@example.test"}, &mine, &foreign} {
@@ -67,7 +67,7 @@ func TestListProjectsChecksSpaceMembership(t *testing.T) {
 }
 
 func TestProjectRoutesHideProjectsOfForeignSpaces(t *testing.T) {
-	orm := testdb.Open(t)
+	orm := testdb.Migrated(t)
 	service := NewService(orm)
 	foreign := schemas.Space{Name: "Foreign"}
 	for _, value := range []any{&schemas.User{ID: 1, Email: "a@example.test"}, &foreign} {

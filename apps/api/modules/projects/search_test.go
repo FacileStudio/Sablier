@@ -14,7 +14,7 @@ import (
 )
 
 func TestSearchTasksRanksRecentThenOpusThenNames(t *testing.T) {
-	orm := testdb.Open(t)
+	orm := testdb.Migrated(t)
 	service := NewService(orm)
 	mine, foreign := schemas.Space{Name: "Facile"}, schemas.Space{Name: "Elsewhere"}
 	seedAll(t, orm, &schemas.User{ID: 1, Email: "a@example.test"}, &mine, &foreign)
@@ -47,7 +47,7 @@ func TestSearchTasksRanksRecentThenOpusThenNames(t *testing.T) {
 	if got := names(rows); !slices.Equal(got, []string{"Recent", "Older", "Opus open", "Opus done", "Write docs"}) {
 		t.Fatalf("ranking: %v", got)
 	}
-	if rows[0].LastUsedAt.at == nil || !rows[0].LastUsedAt.at.Equal(stop) || !rows[2].Opus || rows[4].SpaceID != nil {
+	if rows[0].LastUsedAt == nil || !rows[0].LastUsedAt.Equal(stop) || !rows[2].Opus || rows[4].SpaceID != nil {
 		t.Fatalf("row fields: %+v", rows)
 	}
 

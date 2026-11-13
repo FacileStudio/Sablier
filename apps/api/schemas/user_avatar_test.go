@@ -1,6 +1,10 @@
 package schemas
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
+)
 
 func TestAvatarPrecedence(t *testing.T) {
 	const porte = "https://porte.facile.studio/media/user-avatars/x.png"
@@ -32,10 +36,7 @@ func TestAvatarPrecedence(t *testing.T) {
 // spellings of the same rule have to agree. This is the test that fails when someone edits
 // one and forgets the other.
 func TestAvatarSelectExprMatchesAvatar(t *testing.T) {
-	orm := openTestDatabase(t)
-	if err := orm.AutoMigrate(&User{}); err != nil {
-		t.Fatalf("prepare schema: %v", err)
-	}
+	orm := testdb.Migrated(t)
 
 	users := []User{
 		{Email: "both@example.com", OIDCPictureURL: "https://porte.facile.studio/media/user-avatars/a.png", AvatarUploadPath: "avatars/user-1-1.png"},
@@ -72,10 +73,7 @@ func TestAvatarSelectExprMatchesAvatar(t *testing.T) {
 // The row carrying both an upload and a Porte photo keeps its file on disk while still
 // rendering the Porte photo.
 func TestBackfillAvatarUploadPathKeepsPreSourceUploads(t *testing.T) {
-	orm := openTestDatabase(t)
-	if err := orm.AutoMigrate(&User{}); err != nil {
-		t.Fatalf("prepare schema: %v", err)
-	}
+	orm := testdb.Migrated(t)
 
 	rows := []struct {
 		email  string

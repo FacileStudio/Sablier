@@ -24,7 +24,7 @@ func seedAll(t *testing.T, orm *gorm.DB, values ...any) {
 }
 
 func TestSpaceScopesAndReview(t *testing.T) {
-	orm := testdb.Open(t)
+	orm := testdb.Migrated(t)
 	service := NewService(orm)
 	ctx := context.Background()
 	owner, ownerID := int64(1), int64(1)

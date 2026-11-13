@@ -2,31 +2,37 @@ package schemas
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
-	mcpkit "github.com/FacileStudio/tronc/mcp"
+	"github.com/FacileStudio/Sablier/apps/api/migrations"
 
 	"gorm.io/gorm"
 )
 
-// Migrate brings the schema up to date. issuer is the configured OIDC_ISSUER,
-// needed by AdoptPorte to key the identity rows it backfills.
-func Migrate(db *gorm.DB, issuer string) error {
+// Migrate applies the ordered migrations under migrations/ and then
+// Reconcile. issuer is the configured OIDC_ISSUER, which the picture backfill
+// derives Registre's avatar URL from.
+func Migrate(ctx context.Context, db *gorm.DB, issuer string, logger *slog.Logger) error {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	if err := migrations.Up(ctx, migrations.Config(sqlDB, logger)); err != nil {
+		return err
+	}
+	return Reconcile(ctx, db, issuer)
+}
+
+// Reconcile runs the idempotent data steps that ran at every boot before the
+// schema moved to migrations, in the same order. It changes rows, never the
+// schema.
+func Reconcile(ctx context.Context, db *gorm.DB, issuer string) error {
 	steps := []func() error{
-		func() error { return renameNookPoolColumns(db) },
-		func() error { return renamePoolTables(db) },
-		func() error {
-			return db.AutoMigrate(&User{}, &Project{}, &Task{}, &TimeEntry{}, &AppSetting{}, &PushSubscription{}, &Space{},
-				&SpaceMember{}, &AntenneProcessedEvent{}, &Heartbeat{}, &DraftDismissal{}, &ForfaitState{})
-		},
-		func() error { return migrateAntenneOutbox(db) },
-		func() error { return migrateDeletionState(db) },
-		func() error { return migrateMCPActions(db) },
-		func() error { return AdoptPorte(db, issuer) },
 		func() error { return backfillOIDCPictures(db, issuer) },
 		func() error { return backfillAvatarUploadPath(db) },
-		func() error { return usercolor.BackfillMissing(context.Background(), db) },
+		func() error { return usercolor.BackfillMissing(ctx, db) },
 		func() error { return backfillTimeEntryTasks(db) },
 		func() error { return BackfillFacileIDs(db) },
 		func() error { return backfillAgentEntries(db) },
@@ -37,32 +43,6 @@ func Migrate(db *gorm.DB, issuer string) error {
 		}
 	}
 	return nil
-}
-
-// migrateDeletionState creates the single row that holds the GDPR deletion
-// receiver's cursor and handled subjects, so a restart never replays or skips
-// a notice. PostgreSQL only: the in-memory SQLite the unit tests use has no
-// receiver to feed.
-func migrateDeletionState(db *gorm.DB) error {
-	if db.Dialector.Name() != "postgres" {
-		return nil
-	}
-	return db.Exec(`
-CREATE TABLE IF NOT EXISTS directory_deletion_state (
-	id         smallint PRIMARY KEY CHECK (id = 1),
-	state      bytea NOT NULL,
-	updated_at timestamptz NOT NULL DEFAULT now()
-)`).Error
-}
-
-// migrateMCPActions creates the table tronc/mcp keeps the MCP actions waiting for a
-// person's confirmation in. PostgreSQL only: the schema is Postgres DDL, and the unit tests
-// use an in-memory store.
-func migrateMCPActions(db *gorm.DB) error {
-	if db.Dialector.Name() != "postgres" {
-		return nil
-	}
-	return db.Exec(mcpkit.PendingSchema).Error
 }
 
 // backfillOIDCPictures stores the picture URL Registre would hand over at the next
@@ -77,7 +57,7 @@ func migrateMCPActions(db *gorm.DB) error {
 // The issuer is read from configuration and never written into a migration. A non-https
 // issuer is skipped, for the same reason PhotoURL refuses a non-https claim.
 func backfillOIDCPictures(db *gorm.DB, issuer string) error {
-	if db.Dialector.Name() != "postgres" || !strings.HasPrefix(strings.ToLower(issuer), "https://") {
+	if !strings.HasPrefix(strings.ToLower(issuer), "https://") {
 		return nil
 	}
 	return db.Exec(
@@ -120,52 +100,6 @@ func backfillAvatarUploadPath(db *gorm.DB) error {
 		return err
 	}
 	return db.Exec(`UPDATE users SET avatar_upload_path = '' WHERE avatar_upload_path IS NULL`).Error
-}
-
-func renamePoolTables(db *gorm.DB) error {
-	migrator := db.Migrator()
-
-	renames := [][2]string{
-		{"pool_outbox", "antenne_outbox"},
-		{"pool_processed_events", "antenne_processed_events"},
-	}
-
-	for _, rename := range renames {
-		from, to := rename[0], rename[1]
-		if !migrator.HasTable(from) || migrator.HasTable(to) {
-			continue
-		}
-		if err := migrator.RenameTable(from, to); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func renameNookPoolColumns(db *gorm.DB) error {
-	migrator := db.Migrator()
-	if !migrator.HasTable(&AppSetting{}) {
-		return nil
-	}
-
-	renames := [][2]string{
-		{"nook_pool_url", "antenne_url"},
-		{"nook_pool_secret", "antenne_secret"},
-		{"nook_pool_enabled", "antenne_enabled"},
-	}
-
-	for _, rename := range renames {
-		from, to := rename[0], rename[1]
-		if !migrator.HasColumn(&AppSetting{}, from) || migrator.HasColumn(&AppSetting{}, to) {
-			continue
-		}
-		if err := migrator.RenameColumn(&AppSetting{}, from, to); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func backfillTimeEntryTasks(db *gorm.DB) error {

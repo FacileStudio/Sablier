@@ -265,10 +265,7 @@ func TestErasePersonTransfersSpaceProjectsToTheLongestStandingAdmin(t *testing.T
 }
 
 func TestEraseIdentityToleratesTheSchemaWithoutMagicLinks(t *testing.T) {
-	db := openPostgres(t)
-	if err := schemas.AdoptPorte(db, ""); err != nil {
-		t.Fatal(err)
-	}
+	db := openErasureDatabase(t)
 	sqlDB, err := db.DB()
 	if err != nil {
 		t.Fatal(err)

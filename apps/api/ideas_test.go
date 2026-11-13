@@ -78,18 +78,12 @@ func (h *ideasHarness) do(method, path, user string) *httptest.ResponseRecorder 
 
 func ideasDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db := testdb.Open(t)
+	db := testdb.Migrated(t)
 	registre := "spc_registre"
 	if err := db.Create(&schemas.Space{ID: "00000000-0000-4000-8000-000000000001", Name: "Team", RegistreSpaceID: &registre}).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Create(&schemas.SpaceMember{SpaceID: "00000000-0000-4000-8000-000000000001", UserID: 1, Role: schemas.RoleMember}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(&schemas.ForfaitState{}); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(`CREATE TABLE IF NOT EXISTS porte_identities (user_id integer, provider text, subject text)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -138,6 +132,9 @@ func TestIdeasPassTheRegistreSpace(t *testing.T) {
 
 func TestAFreePlanGetsNoAIAndNoBulleCall(t *testing.T) {
 	db := ideasDB(t)
+	if err := db.Exec(`INSERT INTO users (id, email) VALUES (1, 'free@example.test'), (3, 'paid@example.test')`).Error; err != nil {
+		t.Fatal(err)
+	}
 	if err := db.Exec(`INSERT INTO porte_identities (user_id, provider, subject) VALUES (1, ?, 'sub-free'), (3, ?, 'sub-paid')`, ideasIssuer, ideasIssuer).Error; err != nil {
 		t.Fatal(err)
 	}

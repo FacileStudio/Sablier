@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/porte/directory"
 
@@ -14,27 +15,6 @@ import (
 )
 
 const registreIssuer = "https://sso.example.test"
-
-// sqliteIdentities is the slice of porte_identities Apply reads and writes. On Postgres the
-// real table comes from schemas.AdoptPorte; SQLite cannot run that, so it gets this.
-const sqliteIdentities = `CREATE TABLE porte_identities (
-	user_id integer NOT NULL, provider text NOT NULL, subject text NOT NULL,
-	password_hash text NOT NULL DEFAULT '', access_token text NOT NULL DEFAULT '',
-	refresh_token text NOT NULL DEFAULT '', PRIMARY KEY (provider, subject))`
-
-func withIdentities(t *testing.T, orm *gorm.DB) *gorm.DB {
-	t.Helper()
-	var err error
-	if orm.Dialector.Name() == "postgres" {
-		err = schemas.AdoptPorte(orm, "")
-	} else {
-		err = orm.Exec(sqliteIdentities).Error
-	}
-	if err != nil {
-		t.Fatalf("create porte_identities: %v", err)
-	}
-	return orm
-}
 
 func newRegistre(orm *gorm.DB) *Registre {
 	return NewRegistre(orm, registreIssuer, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -112,8 +92,7 @@ func roleOf(state map[string]string, key string) string {
 }
 
 func TestApplyMirrorsTheSnapshot(t *testing.T) {
-	t.Run("sqlite", func(t *testing.T) { assertApply(t, withIdentities(t, newTestORM(t, "registre-apply"))) })
-	t.Run("postgres", func(t *testing.T) { assertApply(t, withIdentities(t, openPostgres(t))) })
+	assertApply(t, testdb.Migrated(t))
 }
 
 func assertApply(t *testing.T, orm *gorm.DB) {

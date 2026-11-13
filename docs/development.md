@@ -51,9 +51,19 @@ The API listens on `:4000` (the `.env.example` pins `PORT=4000`, since `tronc` d
 `8080` and the Vite proxy targets `4000`). The client listens on `:5173` and proxies
 `/api` and `/files` through to the API, so the browser only ever talks to one origin.
 
-Migrations run automatically at startup via `schemas.Migrate`. There is no separate
-migration tool and no migration files — GORM's `AutoMigrate` plus two backfill functions
-do the work.
+Migrations run automatically at startup (`schemas.Migrate`). To change the schema, add the
+next numbered file under `apps/api/migrations/` with both `-- +goose Up` and
+`-- +goose Down`, update the struct in `schemas/` by hand, and regenerate
+`apps/api/schema.sql`:
+
+```sh
+PGTZ=UTC pg_dump --schema-only --no-owner --no-privileges --no-comments --no-tablespaces --schema=public \
+  --exclude-table=goose_db_version --exclude-table=goose_db_version_id_seq "$DATABASE_URL" \
+  | grep -vE '^(SET |SELECT pg_catalog\.set_config|\\restrict|\\unrestrict|--|CREATE SCHEMA)' | cat -s
+```
+
+`go run . migrate status` lists what is applied. `scripts/check.sh` fails on any
+`.AutoMigrate(` outside a test file.
 
 ## Tasks
 
@@ -97,11 +107,12 @@ cd apps/api
 go test ./...
 ```
 
-Tests live next to the code they cover: `schemas/migrate_test.go` (color backfill),
-`modules/projects/service_test.go`, `modules/timeentries/service_test.go`,
-`modules/users/service_test.go`, and `modules/antenne/agent_sessions_test.go`. They open
-an in-memory SQLite database through `gorm.io/driver/sqlite`, so no Postgres is needed to
-run them. There is no client-side test setup.
+Tests live next to the code they cover. The database tests run on PostgreSQL only, through
+`internal/testdb.Migrated(t)`: one schema per test package, built by the migrations and
+emptied before each test. Point `SABLIER_TEST_DATABASE_URL` at a throwaway database
+(`postgres://user:pass@127.0.0.1:5432/sablier_test?sslmode=disable`); without it those
+tests skip and `scripts/check.sh` says so. `migrations/migrations_test.go` builds fresh and
+pre-migration schemas of its own. There is no client-side test setup.
 
 ## Dependencies
 

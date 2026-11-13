@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 	"github.com/FacileStudio/tronc/errors"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -23,16 +23,7 @@ var testNow = time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
 
 func newTestService(t *testing.T) *Service {
 	t.Helper()
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
-	orm, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.Space{}, &schemas.SpaceMember{}, &schemas.Heartbeat{}, &schemas.DraftDismissal{})
-	if err != nil {
-		t.Fatalf("migrate test database: %v", err)
-	}
+	orm := testdb.Migrated(t)
 	service := NewService(orm, timeentries.NewService(orm), attribution.Resolver{})
 	service.now = func() time.Time { return testNow }
 	return service

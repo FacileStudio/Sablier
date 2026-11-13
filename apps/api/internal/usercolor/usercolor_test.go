@@ -4,24 +4,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
+
 	"github.com/FacileStudio/Sablier/apps/api/internal/usercolor"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	if err := db.AutoMigrate(&schemas.User{}); err != nil {
-		t.Fatalf("migrate db: %v", err)
-	}
-	return db
+	return testdb.Migrated(t)
 }
 
 func TestNormalize(t *testing.T) {

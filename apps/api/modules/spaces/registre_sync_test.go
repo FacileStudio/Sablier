@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 	"github.com/FacileStudio/porte/directory"
 )
 
@@ -45,7 +46,7 @@ func (f *fakeRegistre) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestRunImportsBeforeTheFirstSync(t *testing.T) {
-	orm := withIdentities(t, newTestORM(t, "registre-run"))
+	orm := testdb.Migrated(t)
 	seedTeam(t, orm)
 	fake := &fakeRegistre{}
 	server := httptest.NewServer(fake)

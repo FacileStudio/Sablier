@@ -3,31 +3,20 @@ package agentwork
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/attribution"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func openDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
-	orm, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{},
-		&schemas.Space{}, &schemas.SpaceMember{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return orm
+	return testdb.Migrated(t)
 }
 
 func create(t *testing.T, orm *gorm.DB, value any) {

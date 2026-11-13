@@ -20,7 +20,8 @@ go run .
 
 Default address: `http://localhost:4000`
 
-The API expects PostgreSQL at `DATABASE_URL` and runs migrations on startup.
+The API expects PostgreSQL at `DATABASE_URL` and applies the SQL migrations in `migrations/` on startup.
+`go run . migrate status` lists what is applied.
 
 ## Useful endpoints
 

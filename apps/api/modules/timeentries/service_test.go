@@ -2,30 +2,20 @@ package timeentries
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
+
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
-	orm, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-
-	err = orm.AutoMigrate(&schemas.User{}, &schemas.Project{}, &schemas.Task{}, &schemas.TimeEntry{}, &schemas.SpaceMember{})
-	if err != nil {
-		t.Fatalf("migrate test database: %v", err)
-	}
+	orm := testdb.Migrated(t)
 
 	return NewService(orm)
 }

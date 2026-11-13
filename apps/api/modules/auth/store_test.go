@@ -12,9 +12,7 @@ import (
 
 func TestTheKitLeavesOnlyTheAgentAndLegacySubjectColumnsUnwritten(t *testing.T) {
 	accounts, _ := accountsOn(t)
-	want := []string{"avatar_url", "avatar_source", "avatar_upload_path", "oidc_subject", "oidc_access_token",
-		"oidc_refresh_token", "oidc_token_expiry", "profile_synced_at", "color", "password_hash", "owner_user_id",
-		"agent_key"}
+	want := []string{"oidc_subject", "color", "owner_user_id", "agent_key"}
 	got := accounts.Store().Unwritten()
 	slices.Sort(got)
 	slices.Sort(want)

@@ -12,7 +12,7 @@ import (
 )
 
 func TestDraftsCarryTheSuggestionAndThreshold(t *testing.T) {
-	orm := testdb.Open(t)
+	orm := testdb.Migrated(t)
 	service := NewService(orm, timeentries.NewService(orm), attribution.Resolver{})
 	service.now = func() time.Time { return testNow }
 	registre := "reg-1"

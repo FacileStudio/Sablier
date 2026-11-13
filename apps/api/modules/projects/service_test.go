@@ -4,24 +4,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
+
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 
-	orm, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-
-	err = orm.AutoMigrate(&schemas.Project{}, &schemas.Task{}, &schemas.SpaceMember{})
-	if err != nil {
-		t.Fatalf("migrate test database: %v", err)
-	}
+	orm := testdb.Migrated(t)
 
 	return NewService(orm)
 }

@@ -52,7 +52,7 @@ type world struct {
 
 func seedWorld(t *testing.T) world {
 	t.Helper()
-	db := testdb.Open(t)
+	db := testdb.Migrated(t)
 	registre, teamFacile := "reg-team", "opus-task-1"
 	space, foreign := schemas.Space{Name: "Facile", RegistreSpaceID: &registre}, schemas.Space{Name: "Elsewhere"}
 	create(t, db, &schemas.User{ID: 1, Email: "sara@example.test"}, &space, &foreign)

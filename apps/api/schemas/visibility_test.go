@@ -9,7 +9,7 @@ import (
 )
 
 func TestPersonalEntriesStayPrivate(t *testing.T) {
-	orm := testdb.Open(t)
+	orm := testdb.Migrated(t)
 	owner := int64(1)
 	rows := []any{
 		&schemas.User{ID: 1, Email: "me@example.test"},

@@ -26,6 +26,7 @@ import (
 	"github.com/FacileStudio/Sablier/apps/api/internal/middleware"
 	"github.com/FacileStudio/Sablier/apps/api/internal/plans"
 	"github.com/FacileStudio/Sablier/apps/api/internal/worker"
+	"github.com/FacileStudio/Sablier/apps/api/migrations"
 	"github.com/FacileStudio/Sablier/apps/api/modules/agents"
 	"github.com/FacileStudio/Sablier/apps/api/modules/antenne"
 	"github.com/FacileStudio/Sablier/apps/api/modules/auth"
@@ -54,6 +55,7 @@ import (
 	"github.com/FacileStudio/tronc/httpx"
 	"github.com/FacileStudio/tronc/logger"
 	troncmiddleware "github.com/FacileStudio/tronc/middleware"
+	"github.com/FacileStudio/tronc/migrate"
 	"github.com/FacileStudio/tronc/spa"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
@@ -492,19 +494,10 @@ func run() error {
 	if journalClient != nil {
 		defer journalClient.Close()
 	}
-	go uploadSourceMaps(appEnv, appLogger)
-
 	db, err := database.Open(appEnv.DatabaseURL)
 	if err != nil {
 		appLogger.Error("failed to open database", slog.Any("error", err))
 		return err
-	}
-
-	if err := schemas.Migrate(db, appEnv.Porte().Issuer); err != nil {
-		appLogger.Error("failed to run migrations", slog.Any("error", err))
-		return err
-	} else {
-		appLogger.Info("database migrations applied")
 	}
 
 	sqlDB, err := db.DB()
@@ -518,6 +511,21 @@ func run() error {
 			appLogger.Error("failed to close database", slog.Any("error", err))
 		}
 	}()
+
+	if handled, err := migrate.Command(context.Background(), os.Args, migrations.Config(sqlDB, appLogger)); handled {
+		if err != nil {
+			appLogger.Error("migrate", slog.Any("error", err))
+		}
+		return err
+	}
+
+	go uploadSourceMaps(appEnv, appLogger)
+
+	if err := schemas.Migrate(context.Background(), db, appEnv.Porte().Issuer, appLogger); err != nil {
+		appLogger.Error("failed to run migrations", slog.Any("error", err))
+		return err
+	}
+	appLogger.Info("database migrations applied")
 
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
 	antenneService := antenne.NewService(db, appLogger)

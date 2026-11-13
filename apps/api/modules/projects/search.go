@@ -2,8 +2,6 @@ package projects
 
 import (
 	"context"
-	"database/sql/driver"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,42 +39,7 @@ type searchRow struct {
 	ProjectIcon  *string
 	SpaceID      *string
 	SpaceName    *string
-	LastUsedAt   scannedTime
-}
-
-var sqliteTimeLayouts = []string{"2006-01-02 15:04:05.999999999-07:00", "2006-01-02 15:04:05.999999999", time.RFC3339Nano}
-
-type scannedTime struct {
-	at *time.Time
-}
-
-// Value writes the timestamp back, which gorm requires of any type it scans.
-func (s scannedTime) Value() (driver.Value, error) {
-	if s.at == nil {
-		return nil, nil
-	}
-	return *s.at, nil
-}
-
-// Scan reads an aggregate timestamp: PostgreSQL hands over a time, SQLite the text it stores.
-func (s *scannedTime) Scan(value any) error {
-	switch v := value.(type) {
-	case nil:
-		s.at = nil
-	case time.Time:
-		s.at = &v
-	case string:
-		for _, layout := range sqliteTimeLayouts {
-			if parsed, err := time.Parse(layout, v); err == nil {
-				s.at = &parsed
-				return nil
-			}
-		}
-		return fmt.Errorf("unreadable timestamp %q", v)
-	default:
-		return fmt.Errorf("unsupported timestamp type %T", value)
-	}
-	return nil
+	LastUsedAt   *time.Time
 }
 
 func likePattern(q string) string {
@@ -107,7 +70,7 @@ func toSearchResult(row searchRow) TaskSearchResult {
 	result := TaskSearchResult{
 		Task:       TaskRef{ID: row.TaskID, Name: row.TaskName, FacileID: row.TaskFacileID},
 		Project:    ProjectRef{ID: row.ProjectID, Name: row.ProjectName, Icon: row.ProjectIcon},
-		LastUsedAt: row.LastUsedAt.at,
+		LastUsedAt: row.LastUsedAt,
 		Opus:       row.Opus,
 	}
 	if row.SpaceID != nil && row.SpaceName != nil {

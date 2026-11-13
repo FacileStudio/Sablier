@@ -1,8 +1,11 @@
 package schemas
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 )
 
 func TestAgentFromName(t *testing.T) {
@@ -16,10 +19,7 @@ func TestAgentFromName(t *testing.T) {
 }
 
 func TestBackfillAgentEntriesIsIdempotent(t *testing.T) {
-	orm := openTestDatabase(t)
-	if err := Migrate(orm, ""); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	orm := testdb.Migrated(t)
 	owner := User{Email: "sara@example.com", Name: "Sara"}
 	if err := orm.Create(&owner).Error; err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestBackfillAgentEntriesIsIdempotent(t *testing.T) {
 	}
 
 	for run := 0; run < 2; run++ {
-		if err := Migrate(orm, ""); err != nil {
+		if err := Migrate(context.Background(), orm, "", nil); err != nil {
 			t.Fatalf("migrate run %d: %v", run, err)
 		}
 	}

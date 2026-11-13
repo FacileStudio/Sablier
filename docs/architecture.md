@@ -31,7 +31,8 @@ that reason.
 | Entrypoint | `apps/api/main.go` | Loads config, opens the DB, migrates, builds the router, starts two workers, shuts down on `SIGINT`/`SIGTERM` |
 | Router | `tronc/httpx.NewRouter` | Chi router with the suite's logging, recovery, and CORS middleware |
 | Modules | `apps/api/modules/*` | One package per domain, each with `router.go`, `controller.go`, `service.go`, `types.go`, `documentation.go` |
-| Schemas | `apps/api/schemas` | GORM models plus `Migrate`, which runs `AutoMigrate` and the backfills |
+| Migrations | `apps/api/migrations` | Ordered goose SQL, embedded and applied at boot by `tronc/migrate` |
+| Schemas | `apps/api/schemas` | GORM models (the query layer) plus `Migrate`, which applies the migrations and then the data steps of `Reconcile` |
 | Internal | `apps/api/internal/*` | `database`, `middleware`, `env`, `authcontext`, `authcrypto`, `usercolor`, `webhook`, `worker`, `documentation` |
 | Client | `apps/client` | SvelteKit 5 with `adapter-static` and `fallback: index.html` |
 
@@ -114,10 +115,13 @@ There is no local sign-up and no password: porte mounts no register or login rou
 | `antenne_outbox` | `id`, `channel`, `payload` jsonb, `idempotency_key` unique, `sent_at` | antenne-client's outbox: events waiting for the bus, and sent ones for 7 days |
 | `pool_processed_events` | `idempotency_key` PK, `processed_at` | Inbound de-duplication ledger |
 
-`schemas.Migrate` runs `AutoMigrate` over all of them on every boot, then two backfills:
-`usercolor.BackfillMissing` assigns a color to users created before colors existed, and
-`backfillTimeEntryTasks` turns the legacy free-text `description` column into real `tasks`
-rows so every entry points at a task.
+The schema is the ordered SQL in `apps/api/migrations/`: `00001_baseline.sql` is the
+production schema GORM `AutoMigrate` had built by v1.20.0, and every later file is an
+ordinary migration. `apps/api/schema.sql` is the normalized dump of the whole set.
+`schemas.Migrate` applies them on every boot, then `schemas.Reconcile` runs the data steps,
+among them `usercolor.BackfillMissing`, which assigns a color to users created before
+colors existed, and `backfillTimeEntryTasks`, which turns the legacy free-text
+`description` column into real `tasks` rows so every entry points at a task.
 
 ## Background workers
 

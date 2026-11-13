@@ -67,6 +67,20 @@ for dir in $GO_MODULES; do
       s=1
     fi
 
+    automigrate="$(grep -rn --include='*.go' --exclude='*_test.go' --exclude-dir=vendor -E '\.AutoMigrate\(' . || true)"
+    if [ -n "$automigrate" ]; then
+      echo "AutoMigrate found; schema changes go in apps/api/migrations/:"
+      echo "$automigrate"
+      s=1
+    fi
+
+    drivers="$(grep -nE 'gorm\.io/driver/(sqlite|mysql|sqlserver|clickhouse)|mattn/go-sqlite3|modernc\.org/sqlite' go.mod || true)"
+    if [ -n "$drivers" ]; then
+      echo "non-PostgreSQL database driver in go.mod; tests run on PostgreSQL through internal/testdb:"
+      echo "$drivers"
+      s=1
+    fi
+
     "$GO" vet ./... || s=1
     "$GO" test ./... || s=1
 

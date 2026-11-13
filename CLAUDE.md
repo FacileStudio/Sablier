@@ -20,7 +20,8 @@ apps/
     main.go             Entrypoint: env, DB, migrations, router, graceful shutdown
     modules/            Domain modules (auth, projects, timeentries, users, settings, spaces)
     internal/           Shared infra (database, middleware, logger, env, errors, etc.)
-    schemas/            GORM models and migrations (auto-run on startup)
+    migrations/         Ordered goose SQL, embedded and applied at boot by tronc/migrate
+    schemas/            GORM models (the query layer) and the boot data steps
     vendor/             Vendored Go dependencies
   client/               SvelteKit frontend
     src/
@@ -108,16 +109,23 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 ## Conventions
 
 - **Go modules are vendored** -- run `go mod vendor` after changing dependencies.
-- **Migrations run on startup** via `schemas.Migrate(db)`. No separate migration tool.
+- **Migrations are ordered SQL** in `apps/api/migrations/`, applied at boot by `tronc/migrate` and embedded in the
+  binary. GORM is the query layer only: `AutoMigrate` never runs, and `scripts/check.sh` fails on an
+  `.AutoMigrate(` outside a test file. To change the schema, add the next numbered file with `-- +goose Up` and
+  `-- +goose Down`, update the struct in `schemas/` by hand (`schemas/columns_test.go` fails otherwise), and
+  regenerate `apps/api/schema.sql` (`docs/development.md`). `schemas.Reconcile` runs the idempotent data steps
+  after the migrations at every boot. `/api migrate status` (also `up`, `version`, `baseline <n>`) answers
+  without starting a server.
 - **Sign-in is porte/kit** (`modules/auth/store.go`, `kit.NewStore`). `store_test.go` pins `Unwritten()` and
   checks a kit account has the same NULL columns as a GORM one: a new nullable `users` column must be filled in
   `fillNewAccount` or accepted there. The agent-user refusal lives app-side in `Accounts.UpsertFromOIDC`.
-- **The bus is antenne-client v1** (`modules/antenne`). `antenne_outbox` is the library's table, created or
-  converted by `schemas.migrateAntenneOutbox`; there is no GORM struct for it. The drainer re-encodes jsonb rows
+- **The bus is antenne-client v1** (`modules/antenne`). `antenne_outbox` is the library's table, created by
+  the baseline migration and pinned to the library's DDL by `migrations_test.go`; there is no GORM struct for it. The drainer re-encodes jsonb rows
   through their payload struct so the wire bytes match `modules/antenne/testdata/wire`; a new published payload
   type needs a case in `canonical` and a fixture.
-- **Database tests** use `internal/testdb.Migrated(t)`: one migrated PostgreSQL schema per package, emptied
-  before each test, skipped without `SABLIER_TEST_DATABASE_URL`. Never `t.Parallel()` in those packages.
+- **Database tests** use `internal/testdb.Migrated(t)`: one PostgreSQL schema per package, built by the
+  migrations, emptied before each test, skipped without `SABLIER_TEST_DATABASE_URL`. Never `t.Parallel()` in those
+  packages. There is no SQLite: `scripts/check.sh` fails on a non-PostgreSQL driver in `go.mod`.
 - **Client uses static adapter** -- output is plain HTML/CSS/JS served by the Go binary through tronc's `spa` package, mounted as the catch-all after `/api`.
 - **shadcn-svelte** provides the UI component primitives in `src/lib/components/ui/`. The Nova style is configured.
 - **Svelte 5 runes** are enforced (`$state`, `$props`, `$derived`, `$effect`). No legacy Svelte 4 syntax.

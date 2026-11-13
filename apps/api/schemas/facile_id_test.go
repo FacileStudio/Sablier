@@ -3,18 +3,11 @@ package schemas
 import (
 	"testing"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"github.com/FacileStudio/Sablier/apps/api/internal/testdb"
 )
 
 func TestBackfillFacileIDs(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:facileid?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(&Project{}, &Task{}, &TimeEntry{}); err != nil {
-		t.Fatal(err)
-	}
+	db := testdb.Migrated(t)
 	keep := "fac_keep"
 	db.Create(&Project{Name: "a"})
 	db.Create(&Project{Name: "b", FacileID: &keep})
