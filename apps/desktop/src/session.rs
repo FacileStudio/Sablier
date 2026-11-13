@@ -6,7 +6,7 @@ use tauri::State;
 /// Menu id that makes the worker re-read the credentials at once.
 pub const REFRESH: &str = "refresh";
 
-/// The shared token from `~/.sablier.yml`, when it belongs to the server the window talks to.
+/// The shared token from the OS keyring (or `~/.sablier.yml` without one), when it belongs to the server the window talks to.
 #[tauri::command]
 pub fn stored_token() -> Option<String> {
     Credentials::load()

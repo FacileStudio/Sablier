@@ -10,6 +10,7 @@ mod popup;
 mod rules;
 mod session;
 mod suggest;
+mod token;
 mod tray;
 mod update;
 mod window;
