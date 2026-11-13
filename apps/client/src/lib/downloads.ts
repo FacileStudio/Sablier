@@ -1,43 +1,40 @@
-const RELEASES = 'https://github.com/FacileStudio/Sablier/releases';
-const LATEST = `${RELEASES}/latest/download`;
+import type { CliCommand, DownloadEntry } from '@facile/muse';
+import { t } from '$lib/i18n/index.svelte';
 
-export const APK_ASSET = 'Sablier-android-universal.apk';
-export const APK_URL = `${LATEST}/${APK_ASSET}`;
+const RELEASES = 'https://github.com/FacileStudio/Sablier/releases';
+
+const latest = (asset: string) => `${RELEASES}/latest/download/${asset}`;
+
+export const APK_URL = latest('Sablier-android-universal.apk');
 export const APK_SHA256_URL = `${APK_URL}.sha256`;
 export const RELEASES_URL = RELEASES;
-export const DESKTOP_CHECKSUMS_URL = `${LATEST}/desktop-checksums.txt`;
+export const DESKTOP_CHECKSUMS_URL = latest('desktop-checksums.txt');
 
-export type DesktopOS = 'macos' | 'linux';
-
-export type DesktopBuild = { id: 'dmg' | 'deb' | 'rpm'; os: DesktopOS; url: string };
-
-export const DESKTOP_BUILDS: readonly DesktopBuild[] = [
-	{
-		id: 'dmg',
-		os: 'macos',
-		url: `${LATEST}/Sablier-macos-universal.dmg`
-	},
-	{
-		id: 'deb',
-		os: 'linux',
-		url: `${LATEST}/Sablier-linux-x64.deb`
-	},
-	{
-		id: 'rpm',
-		os: 'linux',
-		url: `${LATEST}/Sablier-linux-x64.rpm`
-	}
+export const DOWNLOADS: DownloadEntry[] = [
+	{ platform: 'macos', href: latest('Sablier-macos-universal.dmg'), label: '.dmg', arch: 'universal' },
+	{ platform: 'windows', href: latest('Sablier-windows-x64-setup.exe'), label: '.exe', arch: 'x64' },
+	{ platform: 'linux', href: latest('Sablier-linux-x64.deb'), label: '.deb', arch: 'x64' },
+	{ platform: 'linux', href: latest('Sablier-linux-x64.rpm'), label: '.rpm', arch: 'x64' },
+	{ platform: 'android', href: APK_URL, label: 'APK', arch: 'universal', checksumHref: APK_SHA256_URL }
 ];
 
-/** Guesses the visitor's desktop OS from the user agent, or null on a phone or an unknown system. */
-export function detectOS(userAgent: string): DesktopOS | null {
-	if (/android|iphone|ipad/i.test(userAgent)) return null;
-	if (/mac os x|macintosh/i.test(userAgent)) return 'macos';
-	if (/linux|x11/i.test(userAgent)) return 'linux';
-	return null;
-}
-
-/** True on an Android phone or tablet, where the APK is the build to offer first. */
-export function isAndroid(userAgent: string): boolean {
-	return /android/i.test(userAgent);
-}
+export const INSTALL_METHODS: CliCommand[] = [
+	{
+		get label() {
+			return t('downloads.install.script');
+		},
+		command: 'curl -fsSL https://raw.githubusercontent.com/FacileStudio/sablier-cli/main/install.sh | bash'
+	},
+	{
+		get label() {
+			return t('downloads.install.facile');
+		},
+		command: 'facile install sablier'
+	},
+	{
+		get label() {
+			return t('downloads.install.brew');
+		},
+		command: 'brew install FacileStudio/tap/sablier'
+	}
+];

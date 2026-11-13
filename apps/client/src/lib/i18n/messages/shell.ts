@@ -98,51 +98,65 @@ export const shell = {
 		'Sablier · Abrechenbare Stunden mit einem Klick erfasst'
 	],
 	'landing.description': [
-		'One click to start, one click to stop. Time split by project, with sessions shared live with the team.',
-		'Un clic pour démarrer, un clic pour arrêter. Le temps réparti par projet, avec des sessions partagées en direct avec l’équipe.',
-		'Un clic para empezar, un clic para parar. El tiempo repartido por proyecto, con sesiones compartidas en directo con el equipo.',
-		'Ein Klick zum Starten, ein Klick zum Stoppen. Zeit nach Projekt aufgeteilt, mit Sitzungen, die live mit dem Team geteilt werden.'
+		'One click starts a timer. Sablier files every hour under the right project, on the web, desktop, Android and the terminal.',
+		'Un clic lance le minuteur. Sablier range chaque heure dans le bon projet, sur le web, le bureau, Android et le terminal.',
+		'Un clic inicia el temporizador. Sablier guarda cada hora en el proyecto correcto, en la web, el escritorio, Android y la terminal.',
+		'Ein Klick startet den Timer. Sablier bucht jede Stunde auf das richtige Projekt, im Web, auf dem Desktop, auf Android und im Terminal.'
 	],
 	'landing.nav.features': ['Features', 'Fonctionnalités', 'Funciones', 'Funktionen'],
+	'landing.nav.download': ['Download', 'Télécharger', 'Descargar', 'Download'],
 	'landing.nav.pricing': ['Pricing', 'Tarifs', 'Precios', 'Preise'],
-	'landing.nav.apps': ['Apps', 'Applications', 'Apps', 'Apps'],
-	'landing.skip': ['Skip to content', 'Aller au contenu', 'Saltar al contenido', 'Zum Inhalt springen'],
 	'landing.hero.line1': ['Track time.', 'Suivez le temps.', 'Registra el tiempo.', 'Zeit erfassen.'],
-	'landing.hero.line2': ['Ship faster.', 'Livrez plus vite.', 'Entrega más rápido.', 'Schneller liefern.'],
+	'landing.hero.line2': ['Bill every hour.', 'Facturez chaque heure.', 'Factura cada hora.', 'Jede Stunde abrechnen.'],
 	'landing.hero.body': [
-		'Sablier is a no-nonsense time tracker for individuals and teams. Log hours per project, see where your time goes, stay accountable.',
-		'Sablier est un suivi du temps sans fioritures pour les indépendants et les équipes. Enregistrez vos heures par projet, voyez où passe votre temps, restez responsable.',
-		'Sablier es un control del tiempo sin rodeos para personas y equipos. Registra horas por proyecto, ve en qué se va tu tiempo y mantén el control.',
-		'Sablier ist eine unkomplizierte Zeiterfassung für Einzelne und Teams. Buche Stunden pro Projekt, sieh, wohin deine Zeit geht, und behalte den Überblick.'
+		'One click starts the timer. Every hour lands on the right project.',
+		'Un clic lance le minuteur. Chaque heure arrive dans le bon projet.',
+		'Un clic inicia el temporizador. Cada hora va al proyecto correcto.',
+		'Ein Klick startet den Timer. Jede Stunde landet im richtigen Projekt.'
 	],
-	'landing.features.timers.title': ['One-click timers', 'Minuteurs en un clic', 'Temporizadores en un clic', 'Timer mit einem Klick'],
-	'landing.features.timers.body': [
-		'Start and stop timers instantly. Add a description and pick a project — that’s it.',
-		'Démarrez et arrêtez un minuteur instantanément. Choisissez un projet, c’est tout.',
-		'Inicia y detén temporizadores al instante. Elige un proyecto y listo.',
-		'Starte und stoppe Timer sofort. Wähle ein Projekt, mehr braucht es nicht.'
+	'landing.demo.label': [
+		'A timer runs on a project, then stops and joins today’s sessions.',
+		'Un minuteur tourne sur un projet, puis s’arrête et rejoint les sessions du jour.',
+		'Un temporizador corre en un proyecto, se detiene y se suma a las sesiones del día.',
+		'Ein Timer läuft auf einem Projekt, stoppt und landet bei den heutigen Sitzungen.'
 	],
-	'landing.features.team.title': ['Multi-user', 'Multi-utilisateur', 'Multiusuario', 'Mehrere Personen'],
-	'landing.features.team.body': [
-		'Every team member has their own account. Time entries are private and per-user.',
-		'Chaque membre de l’équipe a son propre compte. Les entrées de temps sont privées et propres à chacun.',
-		'Cada miembro del equipo tiene su propia cuenta. Los registros de tiempo son privados y por persona.',
-		'Jede Person im Team hat ein eigenes Konto. Zeiteinträge sind privat und pro Person.'
+	'landing.demo.project': ['Client website', 'Site du client', 'Web del cliente', 'Kunden-Website'],
+	'landing.demo.task': ['Homepage', 'Page d’accueil', 'Página de inicio', 'Startseite'],
+	'landing.features.everywhere.title': ['One timer, everywhere', 'Un minuteur, partout', 'Un temporizador, en todas partes', 'Ein Timer, überall'],
+	'landing.features.everywhere.body': [
+		'Start it on your phone, stop it from the desktop tray or the terminal.',
+		'Lancez-le sur votre téléphone, arrêtez-le depuis la barre système ou le terminal.',
+		'Inícialo en el móvil y detenlo desde la bandeja del escritorio o la terminal.',
+		'Starte ihn auf dem Handy und stoppe ihn in der Desktop-Leiste oder im Terminal.'
 	],
-	'landing.features.projects.title': ['Project breakdown', 'Détail par projet', 'Desglose por proyecto', 'Aufschlüsselung nach Projekt'],
-	'landing.features.projects.body': [
-		'Organize work by project. Filter your log, see total hours, know where time went.',
-		'Organisez le travail par projet. Filtrez votre journal, voyez le total d’heures, sachez où le temps est passé.',
-		'Organiza el trabajo por proyecto. Filtra tu registro, consulta las horas totales y sabe en qué se fue el tiempo.',
-		'Organisiere die Arbeit nach Projekt. Filtere dein Protokoll, sieh die Gesamtstunden und wisse, wohin die Zeit ging.'
+	'landing.features.drafts.title': ['Tracks when you forget', 'Il suit quand vous oubliez', 'Registra cuando lo olvidas', 'Erfasst, wenn du es vergisst'],
+	'landing.features.drafts.body': [
+		'Your tools report activity, and Sablier turns it into drafts you confirm.',
+		'Vos outils signalent leur activité, et Sablier en fait des brouillons à confirmer.',
+		'Tus herramientas envían actividad y Sablier la convierte en borradores para confirmar.',
+		'Deine Werkzeuge melden Aktivität, und Sablier macht daraus Entwürfe zum Bestätigen.'
+	],
+	'landing.features.agents.title': ['Agents clock in too', 'Les agents pointent aussi', 'Los agentes también fichan', 'Agenten stempeln auch'],
+	'landing.features.agents.body': [
+		'AI agents log their sessions as teammates, next to your own time.',
+		'Les agents IA enregistrent leurs sessions comme des coéquipiers, à côté de votre temps.',
+		'Los agentes de IA registran sus sesiones como compañeros, junto a tu tiempo.',
+		'KI-Agenten buchen ihre Sitzungen wie Teammitglieder, neben deiner Zeit.'
+	],
+	'landing.features.spaces.title': ['Shared spaces', 'Espaces partagés', 'Espacios compartidos', 'Geteilte Bereiche'],
+	'landing.features.spaces.body': [
+		'Your Facile spaces sync in. Personal time stays private.',
+		'Vos espaces Facile se synchronisent. Le temps personnel reste privé.',
+		'Tus espacios de Facile se sincronizan. El tiempo personal sigue siendo privado.',
+		'Deine Facile-Bereiche werden synchronisiert. Persönliche Zeit bleibt privat.'
 	],
 	'landing.pricing': ['Pricing', 'Tarifs', 'Precios', 'Preise'],
-	'landing.cta.title': ['Ready to start?', 'Prêt à commencer ?', '¿Listo para empezar?', 'Bereit loszulegen?'],
+	'landing.cta.title': ['Start your first timer', 'Lancez votre premier minuteur', 'Inicia tu primer temporizador', 'Starte deinen ersten Timer'],
 	'landing.cta.body': [
-		'Create a Facile account and track your first hour in minutes.',
-		'Créez un compte Facile et suivez votre première heure en quelques minutes.',
-		'Crea una cuenta Facile y registra tu primera hora en minutos.',
-		'Erstelle ein Facile-Konto und erfasse deine erste Stunde in Minuten.'
+		'Sign in with your Facile account. It takes a minute.',
+		'Connectez-vous avec votre compte Facile. Une minute suffit.',
+		'Inicia sesión con tu cuenta Facile. Lleva un minuto.',
+		'Melde dich mit deinem Facile-Konto an. Das dauert eine Minute.'
 	],
 	'landing.tagline': [
 		'Time tracking for small teams.',
@@ -152,7 +166,6 @@ export const shell = {
 	],
 	'landing.footer.product': ['Product', 'Produit', 'Producto', 'Produkt'],
 	'landing.footer.getApps': ['Get the apps', 'Obtenir les applications', 'Descargar las apps', 'Apps herunterladen'],
-	'landing.footer.signIn': ['Sign in', 'Connexion', 'Iniciar sesión', 'Anmelden'],
 	'welcome.title': ['Welcome — Sablier', 'Bienvenue — Sablier', 'Bienvenido — Sablier', 'Willkommen — Sablier'],
 	'welcome.skip': ['Skip to sign in', 'Passer à la connexion', 'Ir al inicio de sesión', 'Zur Anmeldung springen'],
 	'welcome.back': ['Back', 'Retour', 'Atrás', 'Zurück'],
@@ -216,35 +229,32 @@ export const shell = {
 		'Inicia sesión con tu cuenta Facile y tu primer temporizador está a un toque.',
 		'Melde dich mit deinem Facile-Konto an, und dein erster Timer ist nur einen Fingertipp entfernt.'
 	],
-	'downloads.title': ['Get the app — Sablier', 'Obtenir l’application — Sablier', 'Descargar la app — Sablier', 'App herunterladen — Sablier'],
+	'downloads.title': ['Get the app · Sablier', 'Obtenir l’application · Sablier', 'Descargar la app · Sablier', 'App herunterladen · Sablier'],
 	'downloads.description': [
-		'Download Sablier for macOS, Linux and Android, or use it in any browser.',
-		'Téléchargez Sablier pour macOS, Linux et Android, ou utilisez-le dans n’importe quel navigateur.',
-		'Descarga Sablier para macOS, Linux y Android, o úsalo en cualquier navegador.',
-		'Lade Sablier für macOS, Linux und Android herunter oder nutze es in jedem Browser.'
+		'Download Sablier for macOS, Windows, Linux and Android, install the CLI, or use it in any browser.',
+		'Téléchargez Sablier pour macOS, Windows, Linux et Android, installez la CLI, ou utilisez-le dans n’importe quel navigateur.',
+		'Descarga Sablier para macOS, Windows, Linux y Android, instala la CLI o úsalo en cualquier navegador.',
+		'Lade Sablier für macOS, Windows, Linux und Android herunter, installiere die CLI oder nutze es in jedem Browser.'
 	],
 	'downloads.home': ['Sablier home', 'Accueil Sablier', 'Inicio de Sablier', 'Sablier Startseite'],
 	'downloads.open': ['Open Sablier', 'Ouvrir Sablier', 'Abrir Sablier', 'Sablier öffnen'],
 	'downloads.heading': ['Get Sablier', 'Obtenir Sablier', 'Descargar Sablier', 'Sablier herunterladen'],
 	'downloads.intro': [
-		'The apps track the same projects and timers as the web. Sign in once with your Facile account.',
-		'Les applications suivent les mêmes projets et minuteurs que le web. Connectez-vous une fois avec votre compte Facile.',
-		'Las apps usan los mismos proyectos y temporizadores que la web. Inicia sesión una vez con tu cuenta Facile.',
-		'Die Apps nutzen dieselben Projekte und Timer wie das Web. Melde dich einmal mit deinem Facile-Konto an.'
+		'The apps share your projects and timers. Sign in once with Facile.',
+		'Les applications partagent vos projets et minuteurs. Connectez-vous une fois avec Facile.',
+		'Las apps comparten tus proyectos y temporizadores. Inicia sesión una vez con Facile.',
+		'Die Apps teilen deine Projekte und Timer. Melde dich einmal mit Facile an.'
 	],
-	'downloads.android.detail': [
-		'Signed APK, Android 7 or later.',
-		'APK signé, Android 7 ou version ultérieure.',
-		'APK firmado, Android 7 o posterior.',
-		'Signierte APK, Android 7 oder neuer.'
-	],
-	'downloads.android.download': ['Download the APK', 'Télécharger l’APK', 'Descargar el APK', 'APK herunterladen'],
+	'downloads.install.script': ['Install script', 'Script d’installation', 'Script de instalación', 'Installationsskript'],
+	'downloads.install.facile': ['With facile', 'Avec facile', 'Con facile', 'Mit facile'],
+	'downloads.install.brew': ['Homebrew', 'Homebrew', 'Homebrew', 'Homebrew'],
+	'downloads.android.heading': ['Installing the APK', 'Installer l’APK', 'Instalar el APK', 'Die APK installieren'],
 	'downloads.android.step1.title': ['Download the APK', 'Téléchargez l’APK', 'Descarga el APK', 'APK herunterladen'],
 	'downloads.android.step1.body': [
-		'Tap the button above on your phone.',
-		'Touchez le bouton ci-dessus sur votre téléphone.',
-		'Toca el botón de arriba en tu móvil.',
-		'Tippe auf deinem Handy auf die Schaltfläche oben.'
+		'On your phone, tap Download on the Android card.',
+		'Sur votre téléphone, touchez Télécharger sur la carte Android.',
+		'En tu móvil, toca Descargar en la tarjeta de Android.',
+		'Tippe auf dem Handy in der Android-Karte auf Herunterladen.'
 	],
 	'downloads.android.step2.title': ['Allow this source', 'Autorisez cette source', 'Permite este origen', 'Quelle zulassen'],
 	'downloads.android.step2.body': [
@@ -260,62 +270,12 @@ export const shell = {
 		'Abre el archivo descargado, instálalo e inicia sesión con tu cuenta Facile.',
 		'Öffne die heruntergeladene Datei, installiere sie und melde dich mit deinem Facile-Konto an.'
 	],
-	'downloads.android.verify': [
-		'To check the file, compare {command} with the {link}.',
-		'Pour vérifier le fichier, comparez {command} avec la {link}.',
-		'Para comprobar el archivo, compara {command} con la {link}.',
-		'Zum Prüfen der Datei vergleiche {command} mit der {link}.'
-	],
-	'downloads.android.checksum': ['published checksum', 'somme de contrôle publiée', 'suma de comprobación publicada', 'veröffentlichten Prüfsumme'],
-	'downloads.desktop.heading': ['Desktop', 'Bureau', 'Escritorio', 'Desktop'],
-	'downloads.desktop.detail': [
-		'A tray app that tracks your time, with signed installers that update themselves.',
-		'Une application de barre système qui suit votre temps, avec des installeurs signés qui se mettent à jour seuls.',
-		'Una app de bandeja que registra tu tiempo, con instaladores firmados que se actualizan solos.',
-		'Eine Tray-App, die deine Zeit erfasst, mit signierten Installern, die sich selbst aktualisieren.'
-	],
-	'downloads.desktop.macos': ['macOS', 'macOS', 'macOS', 'macOS'],
-	'downloads.desktop.macosDetail': [
-		'Apple silicon and Intel, .dmg',
-		'Apple silicon et Intel, .dmg',
-		'Apple silicon e Intel, .dmg',
-		'Apple Silicon und Intel, .dmg'
-	],
-	'downloads.desktop.deb': [
-		'Linux (Debian, Ubuntu)',
-		'Linux (Debian, Ubuntu)',
-		'Linux (Debian, Ubuntu)',
-		'Linux (Debian, Ubuntu)'
-	],
-	'downloads.desktop.rpm': [
-		'Linux (Fedora, openSUSE)',
-		'Linux (Fedora, openSUSE)',
-		'Linux (Fedora, openSUSE)',
-		'Linux (Fedora, openSUSE)'
-	],
-	'downloads.desktop.debDetail': ['x86-64, .deb', 'x86-64, .deb', 'x86-64, .deb', 'x86-64, .deb'],
-	'downloads.desktop.rpmDetail': ['x86-64, .rpm', 'x86-64, .rpm', 'x86-64, .rpm', 'x86-64, .rpm'],
-	'downloads.desktop.download': ['Download', 'Télécharger', 'Descargar', 'Herunterladen'],
-	'downloads.desktop.verify': [
-		'To check a file, compare it with the {checksums}. Older versions are on the {releases}.',
-		'Pour vérifier un fichier, comparez-le avec les {checksums}. Les versions plus anciennes sont sur la {releases}.',
-		'Para comprobar un archivo, compáralo con las {checksums}. Las versiones anteriores están en la {releases}.',
-		'Zum Prüfen einer Datei vergleiche sie mit den {checksums}. Ältere Versionen findest du auf der {releases}.'
-	],
-	'downloads.desktop.checksums': [
-		'published checksums',
-		'sommes de contrôle publiées',
-		'sumas de comprobación publicadas',
-		'veröffentlichten Prüfsummen'
-	],
-	'downloads.desktop.releases': ['releases page', 'page des versions', 'página de versiones', 'Release-Seite'],
 	'downloads.web.heading': ['Any browser', 'Tout navigateur', 'Cualquier navegador', 'Jeder Browser'],
 	'downloads.web.detail': [
-		'No install needed: Sablier works in any modern browser, on any computer or phone.',
-		'Rien à installer : Sablier fonctionne dans tout navigateur récent, sur n’importe quel ordinateur ou téléphone.',
-		'Sin instalar nada: Sablier funciona en cualquier navegador moderno, en cualquier ordenador o móvil.',
-		'Keine Installation nötig: Sablier läuft in jedem modernen Browser, auf jedem Computer oder Handy.'
+		'Nothing to install. Sablier works in any recent browser, on a computer or a phone.',
+		'Rien à installer. Sablier fonctionne dans tout navigateur récent, sur ordinateur ou téléphone.',
+		'Nada que instalar. Sablier funciona en cualquier navegador reciente, en ordenador o móvil.',
+		'Nichts zu installieren. Sablier läuft in jedem aktuellen Browser, auf Computer oder Handy.'
 	],
-	'downloads.web.open': ['Open the web app', 'Ouvrir l’application web', 'Abrir la app web', 'Web-App öffnen'],
-	'downloads.cta': ['Get the apps', 'Obtenir les applications', 'Descargar las apps', 'Apps herunterladen']
+	'downloads.web.open': ['Open the web app', 'Ouvrir l’application web', 'Abrir la app web', 'Web-App öffnen']
 } satisfies Record<string, Row>;
