@@ -4,6 +4,9 @@ Releases of the Sablier native apps (desktop tray app and Android), tagged `desk
 
 ## [Unreleased]
 
+### Added
+- Windows: `Sablier-windows-x64-setup.exe`, an NSIS installer that self-updates like the other desktop builds. It is not code-signed, so SmartScreen warns on the first run.
+
 ### Security
 - Android keeps its bearer token in the Keystore through `capacitor-secure-storage-plugin` instead of plain `@capacitor/preferences`. The first launch of the updated app moves an existing token across and deletes the Preferences key, so nobody is signed out; signing out clears both.
 - The desktop app keeps its bearer token in the OS keyring (Keychain, Credential Manager, Secret Service) under `studio.facile.sablier` / `session`, the entry `sablier` CLI 0.6.0 uses, so the window, the tray and the CLI still share one sign-in. A token in `~/.sablier.yml` moves to the keyring on the first launch and leaves the file only once the keyring returned it. Without a usable keyring, such as Linux with no Secret Service, it stays in `~/.sablier.yml` (mode 0600). Signing out clears both.

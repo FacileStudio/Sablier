@@ -143,6 +143,6 @@ Then install the desktop app and turn on start at login. Bulle reports runs on i
 ## Open items
 
 - The owner cannot edit or delete an agent's entries yet.
-- The desktop app is released by a `desktop-v*` tag (`.github/workflows/desktop.yml`): a universal dmg plus deb and rpm. The dmg is not signed or notarized, and there is no updater yet. Both need Apple and Tauri signing secrets.
+- The desktop app is released by a `desktop-v*` tag (`.github/workflows/desktop.yml`): a universal dmg, deb and rpm, a Windows NSIS installer and the Android APK, plus the signed `latest.json` the updater reads. The dmg is not notarized and the Windows installer is not code-signed.
 - The macOS build and the GNOME, KDE and Hyprland window backends have not been run on real desktops.
 - Token counts sent with agent sessions are accepted but not stored.

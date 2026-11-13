@@ -45,7 +45,8 @@
       "deb",
       "rpm",
       "dmg",
-      "app"
+      "app",
+      "nsis"
     ],
     "category": "Productivity",
     "shortDescription": "Sablier time tracker in your menu bar",
