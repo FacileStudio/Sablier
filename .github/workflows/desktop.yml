@@ -28,6 +28,11 @@ jobs:
             rust_targets: x86_64-unknown-linux-gnu
             tauri_args: --bundles deb,rpm
             bundle_dir: apps/desktop/target/release/bundle
+          - name: windows-x64
+            runner: windows-latest
+            rust_targets: x86_64-pc-windows-msvc
+            tauri_args: --bundles nsis
+            bundle_dir: apps/desktop/target/release/bundle
     defaults:
       run:
         shell: bash
@@ -90,6 +95,9 @@ jobs:
               cp "$bundle"/deb/*.deb.sig out/Sablier-linux-x64.deb.sig
               cp "$bundle"/rpm/*.rpm out/Sablier-linux-x64.rpm
               cp "$bundle"/rpm/*.rpm.sig out/Sablier-linux-x64.rpm.sig ;;
+            windows-x64)
+              cp "$bundle"/nsis/*-setup.exe out/Sablier-windows-x64-setup.exe
+              cp "$bundle"/nsis/*-setup.exe.sig out/Sablier-windows-x64-setup.exe.sig ;;
           esac
           ls -l out
 
@@ -240,10 +248,10 @@ jobs:
           cd out
           test -f Sablier-android-universal.apk
           test -f Sablier-android-universal.apk.sha256
-          sha256sum Sablier-*.dmg Sablier-*.deb Sablier-*.rpm > desktop-checksums.txt
+          sha256sum Sablier-*.dmg Sablier-*.deb Sablier-*.rpm Sablier-*.exe > desktop-checksums.txt
           cat desktop-checksums.txt
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
             --title "Sablier desktop ${GITHUB_REF_NAME#desktop-v}" \
-            --notes "Tray app for Sablier, see docs/automatic-time-tracking.md. The macOS build is not notarized yet: right-click the app and choose Open the first time. Sablier-android-universal.apk is the Android app." \
+            --notes "Tray app for Sablier, see docs/automatic-time-tracking.md. The macOS build is not notarized yet: right-click the app and choose Open the first time. The Windows installer is not code-signed: choose More info, then Run anyway. Sablier-android-universal.apk is the Android app." \
             --latest \
             Sablier-* desktop-checksums.txt latest.json

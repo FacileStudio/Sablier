@@ -6,7 +6,8 @@ export const ASSETS: Record<string, string> = {
 	'linux-x86_64-deb': 'Sablier-linux-x64.deb',
 	'linux-x86_64-rpm': 'Sablier-linux-x64.rpm',
 	'darwin-aarch64': 'Sablier-macos-universal.app.tar.gz',
-	'darwin-x86_64': 'Sablier-macos-universal.app.tar.gz'
+	'darwin-x86_64': 'Sablier-macos-universal.app.tar.gz',
+	'windows-x86_64': 'Sablier-windows-x64-setup.exe'
 };
 
 export const TAG_PREFIX = 'desktop-v';

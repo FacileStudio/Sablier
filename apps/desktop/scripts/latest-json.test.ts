@@ -54,12 +54,13 @@ describe('buildLatest', () => {
 		expect(latest.pub_date).toBe('2026-10-27T09:30:15Z');
 	});
 
-	test('lists deb, rpm and both macOS architectures with asset urls and signature text', () => {
+	test('lists deb, rpm, both macOS architectures and Windows with asset urls and signature text', () => {
 		expect(Object.keys(latest.platforms).sort()).toEqual([
 			'darwin-aarch64',
 			'darwin-x86_64',
 			'linux-x86_64-deb',
-			'linux-x86_64-rpm'
+			'linux-x86_64-rpm',
+			'windows-x86_64'
 		]);
 		const deb = latest.platforms['linux-x86_64-deb'];
 		expect(deb.url).toBe(
