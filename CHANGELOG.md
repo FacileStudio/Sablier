@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.23.0] - 2026-11-14
+
+### Added
+
+- The landing page has an animated demo built with mise-en-scene v0.2.0: a timer starts on a project, counts up, stops, and the session joins the day's list.
+- The landing page has a download section (muse `DownloadSection`) with the desktop, Android and CLI installs; the hero's download button scrolls to it.
+- The Windows installer (`Sablier-windows-x64-setup.exe`, shipped since desktop-v0.4.0) is listed on the landing and downloads pages.
+- The CLI install commands (install script, `facile install sablier`, `brew install FacileStudio/tap/sablier`) are listed on both pages.
+
+### Changed
+
+- muse v0.22.0: titles and body text use Magnetik.
+- Landing copy is shorter, with four features: one timer everywhere, drafts from activity, agents, shared spaces.
+- The downloads page uses muse `DownloadSection` instead of its own cards, and keeps the APK install steps.
+
 ## [1.22.4] - 2026-11-13
 
 ### Changed
