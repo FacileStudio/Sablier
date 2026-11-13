@@ -46,6 +46,7 @@
 		"@tauri-apps/api": "^2",
 		"@tauri-apps/plugin-deep-link": "^2",
 		"@tauri-apps/plugin-opener": "^2",
+		"capacitor-secure-storage-plugin": "0.13.0",
 		"iconify-icon": "^3.0.2"
 	}
 }

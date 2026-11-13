@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- Android: the app keeps its bearer token in the Keystore through `capacitor-secure-storage-plugin` 0.13.0 instead of plain `@capacitor/preferences`. The first launch of an updated app moves an existing token into the secure storage and deletes the Preferences key, so nobody is signed out; when the Keystore refuses it, the token still serves that run and the Preferences copy stays for the next launch. Signing out clears both stores. The web build is unchanged, and the desktop app keeps its token in `~/.sablier.yml` (mode 0600), shared with the tray and the `sablier` CLI. The Android app ships with the next `desktop-v*` tag.
+
 ## [1.21.0] - 2026-11-13
 
 ### Changed

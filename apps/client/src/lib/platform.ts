@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { SecureStoragePlugin } from 'capacitor-secure-storage-plugin';
 
 export const APP_SCHEME = 'studio.facile.sablier';
 
@@ -39,33 +40,68 @@ export function apiBase(): string {
 }
 
 /**
- * Reads the bearer token an installed app holds, or null on the web. Android keeps it in its
- * preferences; the desktop app keeps it in ~/.sablier.yml, shared with the tray and the CLI.
+ * Reads the bearer token an installed app holds, or null on the web. Android keeps it in the
+ * Keystore-backed secure storage; the desktop app keeps it in ~/.sablier.yml, readable by its
+ * owner only and shared with the tray and the CLI.
  */
 export async function getToken(): Promise<string | null> {
 	if (!isApp()) return null;
 	if (cachedToken === undefined) {
-		cachedToken = isDesktop()
-			? await invoke<string | null>('stored_token')
-			: (await Preferences.get({ key: TOKEN_KEY })).value;
+		cachedToken = isDesktop() ? await invoke<string | null>('stored_token') : await readNativeToken();
 	}
 	return cachedToken;
 }
 
-/** Stores the bearer token the app sign-in returned. */
+async function readNativeToken(): Promise<string | null> {
+	try {
+		return (await SecureStoragePlugin.get({ key: TOKEN_KEY })).value || (await moveLegacyToken());
+	} catch {
+		return moveLegacyToken();
+	}
+}
+
+/**
+ * Moves the token older app releases kept in plain Preferences into the secure storage and
+ * deletes the Preferences key, so the update signs nobody out. When the secure storage refuses
+ * it, the token still serves this run and the Preferences copy stays for the next launch.
+ */
+async function moveLegacyToken(): Promise<string | null> {
+	const legacy = (await Preferences.get({ key: TOKEN_KEY }).catch(() => ({ value: null }))).value;
+	if (!legacy) return null;
+	try {
+		await SecureStoragePlugin.set({ key: TOKEN_KEY, value: legacy });
+	} catch {
+		return legacy;
+	}
+	await Preferences.remove({ key: TOKEN_KEY });
+	return legacy;
+}
+
+/** Stores the bearer token the app sign-in returned. It stays in memory for this run even if the store refuses it. */
 export async function setToken(token: string): Promise<void> {
 	if (!isApp()) return;
 	cachedToken = token;
-	if (isDesktop()) await invoke('store_token', { token });
-	else await Preferences.set({ key: TOKEN_KEY, value: token });
+	if (isDesktop()) {
+		await invoke('store_token', { token });
+		return;
+	}
+	try {
+		await SecureStoragePlugin.set({ key: TOKEN_KEY, value: token });
+		await Preferences.remove({ key: TOKEN_KEY });
+	} catch (error) {
+		console.warn('sablier: the secure storage refused the token', error);
+	}
 }
 
-/** Forgets the bearer token, signing the installed app out. */
+/** Forgets the bearer token, signing the installed app out. A leftover Preferences copy goes too. */
 export async function clearToken(): Promise<void> {
 	if (!isApp()) return;
 	cachedToken = null;
-	if (isDesktop()) await invoke('forget_token');
-	else await Preferences.remove({ key: TOKEN_KEY });
+	if (isDesktop()) {
+		await invoke('forget_token');
+		return;
+	}
+	await Promise.allSettled([SecureStoragePlugin.remove({ key: TOKEN_KEY }), Preferences.remove({ key: TOKEN_KEY })]);
 }
 
 /** Encodes bytes as unpadded base64url. */

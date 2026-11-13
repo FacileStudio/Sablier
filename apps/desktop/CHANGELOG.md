@@ -2,6 +2,11 @@
 
 Releases of the Sablier native apps (desktop tray app and Android), tagged `desktop-v<version>`.
 
+## [Unreleased]
+
+### Security
+- Android keeps its bearer token in the Keystore through `capacitor-secure-storage-plugin` instead of plain `@capacitor/preferences`. The first launch of the updated app moves an existing token across and deletes the Preferences key, so nobody is signed out; signing out clears both. The desktop app is unchanged: its token stays in `~/.sablier.yml` (mode 0600), shared with the tray and the `sablier` CLI.
+
 ## [0.3.0] - 2026-11-03
 
 ### Changed

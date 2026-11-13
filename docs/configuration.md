@@ -78,6 +78,11 @@ The Android app signs in through the system browser with PKCE and gets a bearer 
 from `POST /api/auth/oidc/exchange`. While SSO is on, the API adds the Capacitor origin
 `https://localhost` to the CORS list by itself, so a deploy that sets `CORS_ALLOWED_ORIGINS` explicitly cannot lock the app out. The Registre
 client needs no new redirect URI: the browser still returns to `/api/auth/oidc/callback`.
+The app keeps that token in the Android Keystore through `capacitor-secure-storage-plugin`;
+the first launch of an updated app moves a token an older release left in plain
+`@capacitor/preferences` across and deletes the old key. The desktop app keeps its token in
+`~/.sablier.yml` (mode 0600), the file `sablier login` writes, so the window, the tray and
+the CLI share one sign-in.
 
 ## Web push
 
