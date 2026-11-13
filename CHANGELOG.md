@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.22.1] - 2026-11-13
+
+### Changed
+
+- Compose healthchecks run every 30 s instead of every 5 s (db) and 10 s (api), which cuts the steady `docker exec` load on the host. `start_interval: 1s` during `start_period` keeps a fresh container's first passing check, and so Traefik's cutover on deploy, at about one second.
+
 ## [1.22.0] - 2026-11-13
 
 ### Security
