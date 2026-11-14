@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.25.2] - 2026-11-14
+
+### Fixed
+
+- muse v0.26.0: every landing pricing button opens Registre's sign-up page in the page locale (`https://sso.facile.studio/signup?lang=fr`) instead of `/spaces`, which asked a signed-out visitor to sign in.
+
 ## [1.25.1] - 2026-11-14
 
 ### Changed
