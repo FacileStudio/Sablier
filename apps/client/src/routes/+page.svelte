@@ -104,7 +104,7 @@
 				<p class="mx-auto mt-6 max-w-xl text-fc-md text-fc-fg-muted">{t('landing.hero.body')}</p>
 				<div class="mt-10 flex flex-col items-center gap-4">
 					<SignInWithFacile href={signInHref} />
-					<DownloadCta href="/#download" class="self-center" platforms={['macos', 'windows', 'linux', 'android']} />
+					<DownloadCta href="#download" class="self-center" platforms={['macos', 'windows', 'linux', 'android']} />
 				</div>
 			</section>
 
@@ -134,6 +134,8 @@
 				<DownloadSection
 					downloads={DOWNLOADS}
 					commands={INSTALL_METHODS}
+					mode="device"
+					allHref="/downloads"
 					releasesHref={RELEASES_URL}
 					checksumsHref={DESKTOP_CHECKSUMS_URL}
 					headingLevel={3}
