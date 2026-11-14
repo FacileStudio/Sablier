@@ -15,7 +15,7 @@ Status: approved by the user on 2026-11-07. Ships as the next Sablier minor rele
 | Space model | No global switch. The default view shows every space you can see. A space filter narrows the dashboard and reports. This is the pattern Agenda adopted in v0.9.0 (commits `6d323f6`, `5b968d5`). |
 | Starting a session | One search field (also `Ctrl+K`). Results are tasks grouped by space, then project. Recent tasks and Opus tasks come first. Choosing a task also chooses its project and space. |
 | Attribution | Layered. Explicit ids first, then hard facts (Opus task, Registre space), then an AI choice among that space's tasks. |
-| Who resolves | Sablier runs the resolver. Bulle answers the AI question through its API (`POST /api/ai/decide`, wrapping `core/jev`). A Sablier deployed without the rest of the suite calls Jev itself, configured by its own env vars (A5). |
+| Who resolves | Sablier runs the resolver. Bulle answers the AI question through its API (`POST /api/ai/decide`, wrapping `core/jev`). Bulle is the only backend; without Bulle, AI is off (A5). |
 | Approval | Confident results book on their own and show a "why" chip. A confident result is an id match, or an AI confidence of at least the threshold (default 0.8, a user setting). Anything below the threshold waits in Review, prefilled with the best guess. |
 | AI off | The AI step is skipped when no backend is configured or the call fails. The rules still run, and the result goes to Review. |
 | Rollout | Every new field is optional, so an old Bulle keeps working against the new Sablier. Release Sablier first, then Bulle. |
@@ -76,25 +76,18 @@ The resolver tries each step in order:
 
 `needs_review = confidence < user threshold`.
 
-### A5. The decider: Bulle first, direct Jev for standalone installs
+### A5. The decider: Bulle only
 
-Add `internal/decide` with one interface, `Decide(ctx, userEmail, state, questions) (answers, error)`. Both backends speak the same Jev contract `{state, questions}` → `{answers}`, so they share one set of types. Each call has a 5 s timeout. Any error is treated as "no answer".
+Add `internal/decide` with one interface, `Decide(ctx, userEmail, state, questions) (answers, error)`. It speaks the Jev contract `{state, questions}` → `{answers}` through Bulle. Each call has a 5 s timeout. Any error is treated as "no answer".
 
 The backend is picked once at boot:
 
-1. **Bulle**, when `BULLE_URL` is set. It calls `POST {BULLE_URL}/api/ai/decide` with `BULLE_SERVICE_KEY` (the auth choice is still open, see "Open"). This is the suite default, so Bulle stays the one place that does AI.
-2. **Direct Jev**, when `BULLE_URL` is unset and `JEV_API_KEY` is set. This is for a Sablier deployed without the rest of the suite. It uses these env vars, with the same meaning as in Bulle's `core/jev`:
-   - `JEV_API_KEY`
-   - `JEV_ENDPOINT`: `systemone` (default) or `decisions`
-   - `JEV_BASE_URL`: default `https://api.typesafe.ai`
-   - `JEV_MODEL`: default `jev-latest`
-3. **Off**, when neither is set.
+1. **Bulle**, when `BULLE_URL` and `BULLE_SERVICE_KEY` are set. It calls `POST {BULLE_URL}/api/ai/decide`. Bulle is the one place that does AI.
+2. **Off** otherwise.
 
-Bulle wins when both are set. A failed Bulle call does not fall back to direct Jev. An install that chose Bulle has chosen where its data goes, and a silent second route would break that.
+Since v1.24.0 Sablier has no direct Jev backend: every AI feature needs a paid plan and goes through Bulle. The `JEV_*` env vars are no longer read.
 
-The direct client is a small copy of the request and response types from `core/jev`, about 80 lines in `internal/decide/jev.go`. Importing `github.com/FacileStudio/Bulle/core` would vendor the whole Bulle core for three JSON fields.
-
-Log the chosen backend at boot. Document the five env vars in `apps/api/.env.example`, the root `.env.example` and `docs/configuration.md`.
+Log the chosen backend at boot. Document the two env vars in `apps/api/.env.example`, the root `.env.example` and `docs/configuration.md`.
 
 The state contains only the session title, the project hint, the entity and the candidate labels in the form `Space › Project › Task`. It never contains message content.
 

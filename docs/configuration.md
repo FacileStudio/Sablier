@@ -117,8 +117,9 @@ fallback path the connection is only attempted when both values are non-empty.
 The backend is chosen once at boot and logged as `attribution: AI backend chosen`: `bulle`
 when both `BULLE_URL` and `BULLE_SERVICE_KEY` are set, else `off`. Sablier has no other AI
 path: every AI feature needs a paid plan and goes through Bulle. Before each call Sablier
-checks the user's `ai.access` entitlement from the Registre directory snapshot, and a user
-without it is never sent to Bulle. Each call has a 5 second timeout, and any error, a
+checks the user's `ai.access` entitlement from the Registre directory snapshot. Once the
+Registre directory has sent entitlements, a user without it is never sent to Bulle; before
+that first push, every user passes this check and Bulle's own plan check decides. Each call has a 5 second timeout, and any error, a
 redirect, an older Bulle's 404 or a 402 `payment_required` included, counts as no answer: the
 work then waits in Review. The AI sees only the session title, the project hint, the
 entity and the candidate labels (`Space › Project › Task`), never message content.

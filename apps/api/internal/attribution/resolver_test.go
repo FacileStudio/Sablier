@@ -88,7 +88,6 @@ func seedWorld(t *testing.T) world {
 
 func TestResolveSteps(t *testing.T) {
 	w := seedWorld(t)
-
 	cases := []struct {
 		name        string
 		facts       Facts
