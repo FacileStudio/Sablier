@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.24.0] - 2026-11-14
+
+### Changed
+
+- Attribution AI goes through Bulle only, with `tronc/bulle` `DecideAI`. Sablier checks the owner's `ai.access` entitlement once per batch before any call; without it, the work waits in Review. Without both `BULLE_URL` and `BULLE_SERVICE_KEY`, the AI step is off.
+- Only a browser session cookie can confirm or dismiss a pending MCP action (porte/mcpauth `RequireOwnSession`). A CLI session, bearer token, API key or delegated token gets 403. Cookies issued before this release are refused until the person signs in again.
+- The pending page shows a translated warning on that refusal: sign in again in your browser; the mobile and desktop apps cannot confirm.
+- tronc v0.23.0, porte v0.20.0, porte/mcpauth v0.3.0, porte/forfait v0.1.3. The MCP confirm page, state key, account check, pruning, waiting text and list pager use the shared kit helpers.
+- `sablier_list_entries` and `sablier_list_projects` use the kit cursor. Old cursors are refused; clients start the list again.
+
+### Removed
+
+- The direct Jev backend and the `JEV_*` variables. Sablier no longer calls typesafe.ai or openrouter.ai.
+
+### Fixed
+
+- Account erasure deletes the person's and their agents' pending MCP actions with `ErasePending`, in the same transaction.
+- A negative list offset is refused instead of panicking.
+
 ## [1.23.0] - 2026-11-14
 
 ### Added
