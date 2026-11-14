@@ -1,23 +1,26 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { Badge, Button, StatusDot } from '@facile/muse';
+	import { Badge, Button, Icon, StatusDot } from '@facile/muse';
 	import { Bar, Cursor, Roll, Stage, Window, cursorAt, grow, type Act } from '@facile/mise-en-scene';
 	import { t } from '$lib/i18n/index.svelte';
 	import { formatDuration } from '$lib/utils';
+	import { formatEuroRounded } from '$lib/i18n/format';
+	import { LANDING_ICONS } from '$lib/landing-icons';
 
 	type Phase = 'idle' | 'running' | 'stopped';
 
 	const STEP_SECONDS = 47;
 	const TICKS = 60;
 	const PAST_SECONDS = 3 * 3600 + 52 * 60;
+	const RATE = 60;
 	const PAST = [
-		{ color: 'var(--color-fc-accent)', project: 34, task: 52, time: '1h 20min' },
-		{ color: 'var(--color-fc-warning)', project: 46, task: 38, time: '55min' },
-		{ color: 'var(--color-fc-success)', project: 28, task: 60, time: '57min' },
-		{ color: 'var(--color-fc-info)', project: 40, task: 44, time: '30min' },
-		{ color: 'var(--color-fc-danger)', project: 22, task: 50, time: '10min' }
-	];
+		{ color: 'var(--color-fc-accent)', project: 'Atelier Lune', task: 'landing.demo.task.logo', time: '1h 20min' },
+		{ color: 'var(--color-fc-warning)', project: 'Café Martin', task: 'landing.demo.task.menu', time: '55min' },
+		{ color: 'var(--color-fc-success)', project: 'Studio Nord', task: 'landing.demo.task.call', time: '57min' },
+		{ color: 'var(--color-fc-info)', project: 'Maison Duval', task: 'landing.demo.task.photos', time: '30min' },
+		{ color: 'var(--color-fc-danger)', project: 'Ferme Rivière', task: 'landing.demo.task.news', time: '10min' }
+	] as const;
 
 	let phase = $state<Phase>('idle');
 	let seconds = $state(0);
@@ -26,7 +29,11 @@
 	let stop = $state<HTMLElement>();
 
 	const clock = $derived(formatDuration(Math.max(seconds, 1) * 1000, { includeSeconds: true }));
-	const total = $derived(formatDuration((PAST_SECONDS + (phase === 'stopped' ? seconds : 0)) * 1000));
+	const booked = $derived(PAST_SECONDS + (phase === 'stopped' ? seconds : 0));
+	const total = $derived(formatDuration(booked * 1000));
+	const earned = $derived(
+		t('landing.demo.earned', { amount: formatEuroRounded(Math.round((booked / 3600) * RATE)), rate: formatEuroRounded(RATE) })
+	);
 
 	function reset() {
 		phase = 'idle';
@@ -66,7 +73,7 @@
 
 {#snippet nav()}
 	<div class="flex items-center gap-2 px-5 pt-3 pb-5 font-fc-title text-[15px] font-bold text-fc-fg">
-		<iconify-icon icon="solar:hourglass-bold-duotone" width="20" height="20"></iconify-icon>
+		<Icon icon={LANDING_ICONS.sablier} size={20} />
 		<span>Sablier</span>
 	</div>
 	<div class="grid gap-1 px-3">
@@ -101,22 +108,25 @@
 						{#if !compact}<Badge>{t('landing.demo.project')}</Badge>{/if}
 						<span class="flex items-center gap-2">
 							{#if !compact}
-								<Button variant="outline" icon="solar:pause-linear">{t('timer.pause')}</Button>
+								<Button variant="outline" icon={LANDING_ICONS.pause}>{t('timer.pause')}</Button>
 							{/if}
 							<span bind:this={stop}>
-								<Button variant="ghost-danger" icon="solar:stop-linear">{t('timer.stop')}</Button>
+								<Button variant="ghost-danger" icon={LANDING_ICONS.stop}>{t('timer.stop')}</Button>
 							</span>
 						</span>
 					{:else}
 						<span bind:this={start}>
-							<Button icon="solar:play-linear">{t('timer.start')}</Button>
+							<Button icon={LANDING_ICONS.play}>{t('timer.start')}</Button>
 						</span>
 					{/if}
 				</div>
 
 				<div class="flex items-baseline justify-between gap-3">
 					<span class="font-fc-title text-fc-lg font-bold">{t('dash.recent.heading')}</span>
-					<Roll class="text-fc-sm text-fc-fg-muted tabular-nums" value={total} />
+					<span class="flex flex-col items-end gap-0.5">
+						<Roll class="text-fc-sm font-bold tabular-nums" value={total} />
+						<Roll class="text-fc-xs text-fc-fg-muted tabular-nums" value={earned} />
+					</span>
 				</div>
 
 				<ul class="td-list">
@@ -137,8 +147,8 @@
 					{#each compact ? PAST.slice(0, 3) : PAST as row, i (i)}
 						<li class="td-row">
 							<span class="size-6 shrink-0 rounded-fc-pill" style="background:{row.color}"></span>
-							<span class="td-project"><Bar w="{row.project + 30}%" /></span>
-							{#if !compact}<span class="td-task"><Bar w="{row.task}%" /></span>{/if}
+							<span class="td-project">{row.project}</span>
+							{#if !compact}<span class="td-task">{t(row.task)}</span>{/if}
 							<span class="td-time text-fc-fg-muted">{row.time}</span>
 						</li>
 					{/each}
@@ -209,13 +219,17 @@
 	.td-project {
 		flex: 1.2;
 		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.td-task {
 		flex: 1;
 		min-width: 0;
+		overflow: hidden;
 		color: var(--color-fc-fg-muted);
 		font-weight: 400;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.td-time {

@@ -32,3 +32,8 @@ export function formatEuro(value: number): string {
 export function weekdayShort(index: number): string {
 	return formatDate(new Date(2024, 0, 7 + index), { weekday: 'short' });
 }
+
+/** Formats a whole amount in euros, without cents, in the current locale. */
+export function formatEuroRounded(value: number): string {
+	return formatNumber(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+}

@@ -7,6 +7,8 @@ import { settings } from './settings';
 import { timer } from './timer';
 import { ideas } from './ideas';
 import { pending } from './pending';
+import { landing } from './landing';
+import { landingSections } from './landing-sections';
 
 const rows = {
 	...shell,
@@ -15,7 +17,9 @@ const rows = {
 	...settings,
 	...timer,
 	...ideas,
-	...pending
+	...pending,
+	...landing,
+	...landingSections
 };
 
 export type AppKey = keyof typeof rows;

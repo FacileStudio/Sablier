@@ -5,17 +5,22 @@
 	import { t } from '$lib/i18n/index.svelte';
 	import { landingTarget } from '$lib/onboarding/steps';
 	import { isApp } from '$lib/platform';
-	import { DESKTOP_CHECKSUMS_URL, DOWNLOADS, INSTALL_METHODS, RELEASES_URL } from '$lib/downloads';
+	import { DESKTOP_CHECKSUMS_URL, DOWNLOADS, RELEASES_URL } from '$lib/downloads';
+	import { LANDING_ICONS } from '$lib/landing-icons';
 	import TimerDemo from '$lib/components/landing/TimerDemo.svelte';
+	import LandingCards from '$lib/components/landing/LandingCards.svelte';
+	import LandingDevelopers from '$lib/components/landing/LandingDevelopers.svelte';
+	import LandingFeatures from '$lib/components/landing/LandingFeatures.svelte';
+	import LandingOffers from '$lib/components/landing/LandingOffers.svelte';
 	import {
-		DownloadCta,
 		DownloadSection,
+		LandingCta,
 		LandingFooter,
 		LandingHeader,
-		PricingPlans,
 		SignInWithFacile,
 		TextElevate,
-		icons
+		WorksWith,
+		type WorksWithApp
 	} from '@facile/muse';
 
 	let redirecting = $state(true);
@@ -41,33 +46,15 @@
 		redirecting = false;
 	});
 
-	const features = $derived([
-		{
-			icon: icons.clock,
-			title: t('landing.features.everywhere.title'),
-			description: t('landing.features.everywhere.body')
-		},
-		{
-			icon: icons.history,
-			title: t('landing.features.drafts.title'),
-			description: t('landing.features.drafts.body')
-		},
-		{
-			icon: icons.bolt,
-			title: t('landing.features.agents.title'),
-			description: t('landing.features.agents.body')
-		},
-		{
-			icon: icons.usersGroup,
-			title: t('landing.features.spaces.title'),
-			description: t('landing.features.spaces.body')
-		}
+	const apps: WorksWithApp[] = $derived([
+		{ name: 'Opus', icon: LANDING_ICONS.opus, line: t('landing.with.opus'), href: 'https://opus.facile.studio' },
+		{ name: 'Bulle', icon: LANDING_ICONS.bulle, line: t('landing.with.bulle'), href: 'https://bulle.facile.studio' }
 	]);
 
 	const links = $derived([
 		{ href: '#features', label: t('landing.nav.features') },
-		{ href: '#download', label: t('landing.nav.download') },
-		{ href: '#pricing', label: t('landing.nav.pricing') }
+		{ href: '#pricing', label: t('landing.nav.pricing') },
+		{ href: '#download', label: t('landing.nav.download') }
 	]);
 
 	const columns = $derived([
@@ -76,7 +63,8 @@
 			links: [
 				{ href: '#features', label: t('landing.nav.features') },
 				{ href: '#pricing', label: t('landing.nav.pricing') },
-				{ href: '/downloads', label: t('landing.footer.getApps') }
+				{ href: '/downloads', label: t('landing.footer.getApps') },
+				{ href: '#developers', label: t('landing.nav.developers') }
 			]
 		}
 	]);
@@ -89,7 +77,7 @@
 
 {#if !redirecting}
 	<div class="min-h-dvh overflow-x-clip bg-fc-page text-fc-fg">
-		<LandingHeader appName="Sablier" icon="solar:hourglass-bold-duotone" {links} skipHref="#main">
+		<LandingHeader appName="Sablier" icon={LANDING_ICONS.sablier} {links} skipHref="#main">
 			{#snippet actions()}
 				<SignInWithFacile href={signInHref} />
 			{/snippet}
@@ -101,30 +89,21 @@
 					<span class="block"><TextElevate text={t('landing.hero.line1')} delay={0.1} /></span>
 					<span class="block"><TextElevate text={t('landing.hero.line2')} delay={0.25} /></span>
 				</h1>
-				<p class="mx-auto mt-6 max-w-xl text-fc-md text-fc-fg-muted">{t('landing.hero.body')}</p>
-				<div class="mt-10 flex flex-col items-center gap-4">
-					<SignInWithFacile href={signInHref} />
-					<DownloadCta href="#download" class="self-center" platforms={['macos', 'windows', 'linux', 'android']} />
-				</div>
+				<p class="mx-auto mt-6 max-w-2xl text-fc-md text-balance text-fc-fg-muted">{t('landing.hero.body')}</p>
+				<LandingCta class="mt-10" {signInHref} align="center" />
 			</section>
 
 			<section class="mx-auto max-w-5xl px-4 pb-8 sm:px-6">
 				<TimerDemo />
 			</section>
 
-			<section id="features" class="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-				<ul class="grid gap-4 sm:grid-cols-2">
-					{#each features as feature (feature.icon)}
-						<li class="rounded-fc-lg bg-fc-component p-6">
-							<div class="mb-4 flex size-10 items-center justify-center rounded-fc-md bg-fc-surface">
-								<iconify-icon icon={feature.icon} width="20" height="20" class="block shrink-0"></iconify-icon>
-							</div>
-							<h2 class="text-fc-lg font-bold">{feature.title}</h2>
-							<p class="mt-1.5 text-fc-sm text-fc-fg-muted">{feature.description}</p>
-						</li>
-					{/each}
-				</ul>
-			</section>
+			<LandingCards />
+
+			<WorksWith class="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6" {apps} description={t('landing.with.line')} />
+
+			<LandingFeatures />
+
+			<LandingOffers />
 
 			<section id="download" class="mx-auto flex max-w-5xl scroll-mt-20 flex-col gap-8 px-4 py-20 sm:px-6">
 				<div class="text-center">
@@ -133,7 +112,6 @@
 				</div>
 				<DownloadSection
 					downloads={DOWNLOADS}
-					commands={INSTALL_METHODS}
 					mode="device"
 					allHref="/downloads"
 					releasesHref={RELEASES_URL}
@@ -142,17 +120,15 @@
 				/>
 			</section>
 
-			<PricingPlans id="pricing" title={t('landing.pricing')} class="mx-auto max-w-5xl px-4 py-20 sm:px-6" />
+			<LandingDevelopers />
 
 			<section class="mx-auto max-w-5xl px-4 py-20 text-center sm:px-6">
 				<h2 class="font-fc-title text-fc-2xl font-bold tracking-tight">{t('landing.cta.title')}</h2>
 				<p class="mt-4 text-fc-sm text-fc-fg-muted">{t('landing.cta.body')}</p>
-				<div class="mt-8 flex justify-center">
-					<SignInWithFacile href={signInHref} />
-				</div>
+				<LandingCta class="mt-8" {signInHref} align="center" />
 			</section>
 		</main>
 
-		<LandingFooter appName="Sablier" icon="solar:hourglass-bold-duotone" tagline={t('landing.tagline')} {columns} />
+		<LandingFooter appName="Sablier" icon={LANDING_ICONS.sablier} tagline={t('landing.tagline')} {columns} />
 	</div>
 {/if}

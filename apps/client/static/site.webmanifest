@@ -1,7 +1,7 @@
 {
   "name": "Sablier",
   "short_name": "Sablier",
-  "description": "One click to start, one click to stop. Time split by project, with sessions shared live with the team.",
+  "description": "One click starts the timer. Every hour lands in the right project, at your hourly rate.",
   "icons": [
     {
       "src": "/icon-192.png",
