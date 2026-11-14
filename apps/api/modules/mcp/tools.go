@@ -43,14 +43,11 @@ type toolset struct {
 // userOf reads the Sablier user id from the verified token, refused the way RequireAuth
 // refuses it: an agent user or a deleted account never acts.
 func (t *toolset) userOf(ctx context.Context, req *sdk.CallToolRequest) (int64, error) {
-	identity, ok := mcpauth.Identity(req.Extra.TokenInfo)
-	if !ok {
+	account, err := mcpauth.AccountExists(ctx, req.Extra.TokenInfo, t.Accounts.Identity)
+	if err != nil {
 		return 0, errNoCaller
 	}
-	if _, err := t.Accounts.Identity(ctx, identity.UserID); err != nil {
-		return 0, errNoCaller
-	}
-	return identity.UserID, nil
+	return account.UserID, nil
 }
 
 // scopeOf maps the space argument to the REST filter: all by default, personal for the

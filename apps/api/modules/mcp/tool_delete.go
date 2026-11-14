@@ -10,11 +10,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const (
-	statusDeleted = "deleted"
-	waiting       = "Nothing happened yet: your client cannot ask the user to confirm. Give the user confirm_url and " +
-		"ask them to confirm there. Do not call this tool again for the same entry; the request stays open for 7 days."
-)
+const statusDeleted = "deleted"
 
 // deleteEntry is sablier_delete_entry: the entry goes once the user confirms.
 func (t *toolset) deleteEntry(ctx context.Context, req *sdk.CallToolRequest, in deleteInput) (*sdk.CallToolResult, entryOutput, error) {
@@ -36,7 +32,7 @@ func (t *toolset) deleteEntry(ctx context.Context, req *sdk.CallToolRequest, in 
 	if result != nil {
 		return result, entryOutput{}, nil
 	}
-	return nil, entryOutput{Status: outcome.Status, EntryID: in.EntryID, ConfirmURL: outcome.ConfirmURL, Message: waiting}, nil
+	return nil, entryOutput{Status: outcome.Status, EntryID: in.EntryID, ConfirmURL: outcome.ConfirmURL, Message: outcome.Message}, nil
 }
 
 // resumeDelete handles the retry that carries the person's answer.

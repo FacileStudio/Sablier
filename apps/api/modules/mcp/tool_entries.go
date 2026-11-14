@@ -25,11 +25,6 @@ var (
 	errTooMany = fmt.Errorf("more than %d entries match. Narrow from and to, or pass project_id", maxRows)
 )
 
-// cursor is the position a page of entries or projects starts at.
-type cursor struct {
-	Offset int `json:"o"`
-}
-
 // listEntries is sablier_list_entries.
 func (t *toolset) listEntries(ctx context.Context, req *sdk.CallToolRequest, in entriesInput) (*sdk.CallToolResult, entriesOutput, error) {
 	userID, c, err := t.callerClock(ctx, req, in.Timezone)
@@ -40,8 +35,8 @@ func (t *toolset) listEntries(ctx context.Context, req *sdk.CallToolRequest, in 
 	if err != nil {
 		return nil, entriesOutput{}, err
 	}
-	var at cursor
-	if err := mcpkit.DecodeCursor(in.Cursor, &at); err != nil {
+	offset, err := mcpkit.Offset(in.Cursor)
+	if err != nil {
 		return nil, entriesOutput{}, err
 	}
 	from, to, err := c.rangeOf(in.From, in.To)
@@ -53,7 +48,7 @@ func (t *toolset) listEntries(ctx context.Context, req *sdk.CallToolRequest, in 
 		return nil, entriesOutput{}, err
 	}
 	v := view{clock: c, callerID: userID, detailed: detailed}
-	return nil, entriesPage(v, entries, from, to, at.Offset), nil
+	return nil, entriesPage(v, entries, from, to, offset), nil
 }
 
 // entriesPage renders the totals of the whole range and one page of entries from offset.
@@ -72,9 +67,7 @@ func entriesPage(v view, entries []timeentries.TimeEntryResponse, from, to time.
 	}
 	n := mcpkit.FitCount(len(page), func(n int) int { out.Entries = page[:n]; return mcpkit.EncodedSize(out) })
 	out.Entries = page[:max(n, min(1, len(page)))]
-	if next := offset + len(out.Entries); next < len(entries) {
-		out.NextCursor = mcpkit.EncodeCursor(cursor{Offset: next})
-	}
+	out.NextCursor = mcpkit.Cursor(offset+len(out.Entries), len(entries))
 	return out
 }
 

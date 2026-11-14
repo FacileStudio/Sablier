@@ -3,6 +3,9 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"strconv"
+
+	mcpkit "github.com/FacileStudio/tronc/mcp"
 )
 
 const (
@@ -23,7 +26,6 @@ const (
 	deleteDismissals       = `DELETE FROM draft_dismissals WHERE user_id = ANY($1)`
 	deletePushSubscription = `DELETE FROM push_subscriptions WHERE user_id = ANY($1)`
 	deleteMemberships      = `DELETE FROM space_members WHERE user_id = ANY($1)`
-	deleteMCPActions       = `DELETE FROM mcp_actions WHERE user_id = ANY($1::bigint[]::text[])`
 	deleteOutboxMentions   = `DELETE FROM antenne_outbox o
 		WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ANY($1) AND coalesce(u.email, '') <> ''
 			AND strpos(o.payload::text, '"' || lower(u.email) || '"') > 0)
@@ -61,12 +63,23 @@ func eraseData(ctx context.Context, tx *sql.Tx, userID int64) error {
 	for _, statement := range []string{
 		deleteOutboxMentions, deletePersonalEntries, deletePersonalTasks, deletePersonalProjects, deleteOwnEntries,
 		anonymiseTaskActor, transferSpaceProjects, deleteHeartbeats, deleteDismissals,
-		deletePushSubscription, deleteMemberships, deleteMCPActions,
+		deletePushSubscription, deleteMemberships,
 	} {
 		if _, err := tx.ExecContext(ctx, statement, ids); err != nil {
 			return err
 		}
 	}
+	if err := mcpkit.ErasePending(ctx, tx, pendingOwners(ids)...); err != nil {
+		return err
+	}
 	_, err = tx.ExecContext(ctx, deleteAgents, userID)
 	return err
+}
+
+func pendingOwners(ids []int64) []string {
+	owners := make([]string, len(ids))
+	for i, id := range ids {
+		owners[i] = strconv.FormatInt(id, 10)
+	}
+	return owners
 }

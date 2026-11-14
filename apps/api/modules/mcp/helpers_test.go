@@ -195,8 +195,8 @@ func must(t testing.TB, err error) {
 	}
 }
 
-// sessions stands in for porte on the confirm page: X-Test-User is the signed-in user,
-// and X-Test-Actor makes the request a delegated token.
+// sessions stands in for porte on the confirm page: X-Test-User is the signed-in user in
+// a browser session, X-Test-CLI makes it a CLI session and X-Test-Actor a delegated token.
 type sessions struct {
 	db *gorm.DB
 }
@@ -209,9 +209,10 @@ func (s sessions) RequireAuth(next http.Handler) http.Handler {
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
-		identity := porte.Identity{UserID: id, SessionID: 1, Actor: r.Header.Get("X-Test-Actor")}
+		identity := porte.Identity{UserID: id, SessionID: 1, BrowserSession: r.Header.Get("X-Test-CLI") == "",
+			Actor: r.Header.Get("X-Test-Actor")}
 		if identity.Actor != "" {
-			identity.SessionID = 0
+			identity.SessionID, identity.BrowserSession = 0, false
 		}
 		next.ServeHTTP(w, r.WithContext(porte.WithIdentity(r.Context(), identity)))
 	})
