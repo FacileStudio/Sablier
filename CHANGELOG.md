@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.24.1] - 2026-11-14
+
+### Changed
+
+- The landing download section shows only the visitor's device (muse `DownloadSection` `mode="device"`), with an "Other platforms" link to `/downloads`. The downloads page still lists every platform and the APK steps.
+- The hero download button points at `#download` on the same page.
+- muse v0.23.0 and mise-en-scene v0.2.2. mise-en-scene needs no Vite `optimizeDeps` entry any more.
+
 ## [1.24.0] - 2026-11-14
 
 ### Changed
