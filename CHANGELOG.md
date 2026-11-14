@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.25.1] - 2026-11-14
+
+### Changed
+
+- Share image, web manifest and page head carry the suite copy: "Sablier · Track time. Count every hour." and "One click starts the timer. Every hour lands in the right project, at your hourly rate. Free to start."
+- muse v0.25.1: the `brew install FacileStudio/tap/sablier` line in the developer block wraps after a path segment on narrow screens instead of scrolling.
+
+### Fixed
+
+- The developer block's self-hosting link opens the Suite page in the visitor's language (`/en`, `/es`, `/de`), not always the French one.
+
 ## [1.25.0] - 2026-11-14
 
 ### Changed
