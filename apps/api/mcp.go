@@ -43,7 +43,7 @@ func newMCPSetup(ctx context.Context, appEnv *env.Config, sqlDB *sql.DB, parts *
 		Issuer:   appEnv.OIDC.Issuer,
 		Version:  version,
 		Origins:  appEnv.CORSAllowedOrigins,
-		StateKey: appEnv.OIDC.MCPStateKey(),
+		StateKey: mcpkit.StateKey("sablier", appEnv.OIDC.ClientSecret),
 		Verifier: verifier,
 		Pending:  mcpkit.PostgresPending{DB: sqlDB},
 		Logger:   appLogger,

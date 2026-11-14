@@ -73,9 +73,16 @@ type Result struct {
 	NeedsReview bool
 }
 
-// Resolver runs the steps. A nil Decider skips the AI step.
+// Access answers whether a user's plan includes AI (forfait ai.access).
+type Access interface {
+	HasAI(ctx context.Context, userID int64) (bool, error)
+}
+
+// Resolver runs the steps. A nil Decider skips the AI step, and so does a nil Access or
+// an owner whose plan Access says has no AI: the decision model is never asked for them.
 type Resolver struct {
 	Decider decide.Decider
+	Access  Access
 }
 
 // Resolve attributes every item of facts for owner, asking the decider once per batch of

@@ -49,6 +49,18 @@ export const pending = {
 		'No se pudieron cargar las acciones pendientes.',
 		'Die ausstehenden Aktionen konnten nicht geladen werden.'
 	],
+	'pending.signInAgain': [
+		'Sign in again to confirm',
+		'Reconnectez-vous pour confirmer',
+		'Vuelve a iniciar sesión para confirmar',
+		'Melden Sie sich erneut an, um zu bestätigen'
+	],
+	'pending.signInAgainBody': [
+		'Only your own browser session can confirm these actions. Sign out, then sign in again in your browser. The mobile and desktop apps cannot confirm them.',
+		'Seule votre propre session de navigateur peut confirmer ces actions. Déconnectez-vous, puis reconnectez-vous dans votre navigateur. Les applications mobile et de bureau ne peuvent pas les confirmer.',
+		'Solo tu propia sesión del navegador puede confirmar estas acciones. Cierra la sesión y vuelve a iniciarla en tu navegador. Las aplicaciones móvil y de escritorio no pueden confirmarlas.',
+		'Nur Ihre eigene Browsersitzung kann diese Aktionen bestätigen. Melden Sie sich ab und in Ihrem Browser erneut an. Die Mobil- und Desktop-Apps können sie nicht bestätigen.'
+	],
 	'pending.failed': [
 		'That did not work. Try again.',
 		'Cela n’a pas fonctionné. Réessayez.',

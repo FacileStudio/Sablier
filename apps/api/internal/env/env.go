@@ -1,7 +1,6 @@
 package env
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"os"
 	"slices"
@@ -53,13 +52,6 @@ type OIDCConfig struct {
 	// resource Registre binds its tokens to, from MCP_RESOURCE. Empty leaves
 	// /mcp unmounted.
 	MCPResource string
-}
-
-// MCPStateKey derives the key that signs MCP confirmation state from the client
-// secret, which is secret, stable across restarts and set whenever OIDC is.
-func (o OIDCConfig) MCPStateKey() []byte {
-	sum := sha256.Sum256([]byte("sablier-mcp-state:" + o.ClientSecret))
-	return sum[:]
 }
 
 // NativeOrigins are the origins the installed apps serve their pages from: the

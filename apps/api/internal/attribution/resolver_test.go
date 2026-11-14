@@ -31,6 +31,19 @@ func (s *stubDecider) Decide(_ context.Context, _ string, _ any, questions map[s
 	return answers, nil
 }
 
+const aiLabel = "Facile › Team › Billing"
+
+type access struct {
+	ai     bool
+	err    error
+	checks int
+}
+
+func (a *access) HasAI(context.Context, int64) (bool, error) {
+	a.checks++
+	return a.ai, a.err
+}
+
 func create(t *testing.T, db *gorm.DB, values ...any) {
 	t.Helper()
 	for _, value := range values {
@@ -75,7 +88,6 @@ func seedWorld(t *testing.T) world {
 
 func TestResolveSteps(t *testing.T) {
 	w := seedWorld(t)
-	aiLabel := "Facile › Team › Billing"
 	cases := []struct {
 		name        string
 		facts       Facts
@@ -97,7 +109,7 @@ func TestResolveSteps(t *testing.T) {
 		{"ai off falls back", Facts{Title: "invoice export"}, &stubDecider{}, SourceFallback, 0, 0, true},
 	}
 	for _, tc := range cases {
-		resolver := Resolver{}
+		resolver := Resolver{Access: &access{ai: true}}
 		if tc.decider != nil {
 			resolver.Decider = tc.decider
 		}
@@ -122,8 +134,29 @@ func TestResolveSteps(t *testing.T) {
 		t.Fatalf("a project in a foreign space must be refused, got %v", err)
 	}
 	batch := &stubDecider{choice: aiLabel, confidence: 0.9}
-	results, err := Resolver{Decider: batch}.Resolve(context.Background(), w.db, w.owner, []Facts{{Title: "a"}, {Title: "b"}, {ProjectHint: "Sablier"}})
+	results, err := Resolver{Decider: batch, Access: &access{ai: true}}.Resolve(context.Background(), w.db, w.owner, []Facts{{Title: "a"}, {Title: "b"}, {ProjectHint: "Sablier"}})
 	if err != nil || batch.calls != 1 || results[0].Source != SourceAI || results[1].Source != SourceAI || results[2].Source != SourceName {
 		t.Fatalf("one decide call must cover every open item: calls=%d results=%+v err=%v", batch.calls, results, err)
+	}
+}
+
+func TestAIStepNeedsAIAccess(t *testing.T) {
+	w := seedWorld(t)
+	facts := []Facts{{Title: "invoice export"}}
+	for name, gate := range map[string]Access{
+		"no ai.access":   &access{},
+		"check failed":   &access{ai: true, err: stderrors.New("db down")},
+		"no access gate": nil,
+	} {
+		decider := &stubDecider{choice: aiLabel, confidence: 0.9}
+		results, err := Resolver{Decider: decider, Access: gate}.Resolve(context.Background(), w.db, w.owner, facts)
+		if err != nil || decider.calls != 0 || results[0].Source != SourceFallback {
+			t.Fatalf("%s: Bulle must not be asked: calls=%d results=%+v err=%v", name, decider.calls, results, err)
+		}
+	}
+	gate := &access{ai: true}
+	decider := &stubDecider{choice: aiLabel, confidence: 0.9}
+	if _, err := (Resolver{Decider: decider, Access: gate}).Resolve(context.Background(), w.db, w.owner, append(facts, Facts{Title: "b"})); err != nil || decider.calls != 1 || gate.checks != 1 {
+		t.Fatalf("one plan check per batch, then one call: checks=%d calls=%d err=%v", gate.checks, decider.calls, err)
 	}
 }

@@ -84,6 +84,14 @@ func TestMCPConfirmPage(t *testing.T) {
 	if code, _ := f.page(http.MethodPost, "/api/mcp/pending/"+id+"/confirm", owner, "bulle"); code != http.StatusForbidden {
 		t.Fatalf("a delegated token must not confirm, got %d", code)
 	}
+	cli := httptest.NewRequest(http.MethodPost, "/api/mcp/pending/"+id+"/confirm", strings.NewReader("{}"))
+	cli.Header.Set("X-Test-User", owner)
+	cli.Header.Set("X-Test-CLI", "1")
+	recorder := httptest.NewRecorder()
+	f.router.ServeHTTP(recorder, cli)
+	if recorder.Code != http.StatusForbidden || f.exists(e.ID) != 1 {
+		t.Fatalf("a CLI session must not confirm, got %d", recorder.Code)
+	}
 	if code, _ := f.page(http.MethodPost, "/api/mcp/pending/"+id+"/confirm", strconv.FormatInt(f.users["teammate"], 10), ""); code != 404 {
 		t.Fatalf("someone else cannot confirm, got %d", code)
 	}

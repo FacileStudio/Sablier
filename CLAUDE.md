@@ -85,8 +85,8 @@ Core variables (see `.env.example` and `apps/api/.env.example` for full list):
 - `JOURNAL_BROWSER_URL`, `JOURNAL_BROWSER_KEY` -- Browser error reporting. The URL is **not**
   `JOURNAL_URL`: that one is the server SDK's and points inside the Docker network, which no
   browser can resolve. It must end in `/api`, and the app refuses to boot otherwise
-- `BULLE_URL`, `BULLE_SERVICE_KEY` / `JEV_API_KEY`, `JEV_ENDPOINT`, `JEV_BASE_URL`, `JEV_MODEL` -- AI step of the
-  attribution resolver (`internal/attribution`, `internal/decide`). Bulle wins; no fallback to Jev; neither = off
+- `BULLE_URL`, `BULLE_SERVICE_KEY` -- AI step of the attribution resolver (`internal/attribution`,
+  `internal/decide`, through `tronc/bulle` `DecideAI`), only for users with `ai.access`. Either unset = off
 - `SOURCEMAP_DIR` -- where the built client's maps live, **outside `CLIENT_DIR`** so nothing
   serves them. The API uploads them to Journal at boot, keyed on the release in
   `_app/version.json` — the exact string the browser reports. Set by the Dockerfile, which moves

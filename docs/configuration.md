@@ -113,15 +113,14 @@ fallback path the connection is only attempted when both values are non-empty.
 |---|---|---|---|
 | `BULLE_URL` | no | — | Bulle base URL. Sablier calls `POST {BULLE_URL}/api/ai/decide` |
 | `BULLE_SERVICE_KEY` | no | — | Bearer key Bulle issues to Sablier. Each call also sends `X-Bulle-Acting-For: <user email>` |
-| `JEV_API_KEY` | no | — | Jev key for a Sablier deployed without Bulle |
-| `JEV_ENDPOINT` | no | `systemone` | `systemone` (`/v1/systemone`) or `decisions` (`/api/alpha/decisions`) |
-| `JEV_BASE_URL` | no | `https://api.typesafe.ai` (`https://openrouter.ai` for `decisions`) | Jev host |
-| `JEV_MODEL` | no | `jev-latest` | Jev model name |
 
-The backend is chosen once at boot and logged as `attribution: AI backend chosen`:
-Bulle when `BULLE_URL` is set, else direct Jev when `JEV_API_KEY` is set, else off. Bulle
-wins when both are set, and a failed Bulle call never falls back to Jev. Each call has a
-5 second timeout, and any error, an older Bulle's 404 or a 402 `payment_required` included, counts as no answer: the
+The backend is chosen once at boot and logged as `attribution: AI backend chosen`: `bulle`
+when both `BULLE_URL` and `BULLE_SERVICE_KEY` are set, else `off`. Sablier has no other AI
+path: every AI feature needs a paid plan and goes through Bulle. Before each call Sablier
+checks the user's `ai.access` entitlement from the Registre directory snapshot. Once the
+Registre directory has sent entitlements, a user without it is never sent to Bulle; before
+that first push, every user passes this check and Bulle's own plan check decides. Each call has a 5 second timeout, and any error, a
+redirect, an older Bulle's 404 or a 402 `payment_required` included, counts as no answer: the
 work then waits in Review. The AI sees only the session title, the project hint, the
 entity and the candidate labels (`Space › Project › Task`), never message content.
 

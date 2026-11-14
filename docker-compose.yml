@@ -82,10 +82,6 @@ services:
       # Emails allowed to change the app-wide webhook and Antenne settings. Empty closes them.
       SABLIER_ADMINS: ${SABLIER_ADMINS:-}
       BULLE_SERVICE_KEY: ${BULLE_SERVICE_KEY:-}
-      JEV_API_KEY: ${JEV_API_KEY:-}
-      JEV_ENDPOINT: ${JEV_ENDPOINT:-}
-      JEV_BASE_URL: ${JEV_BASE_URL:-}
-      JEV_MODEL: ${JEV_MODEL:-}
       # Browser error reporting. Separate from JOURNAL_URL above, which is the
       # server SDK's and points inside the Docker network — the browser needs a
       # public address, ending in /api or every report is silently discarded.

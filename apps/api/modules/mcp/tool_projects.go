@@ -29,8 +29,8 @@ func (t *toolset) listProjects(ctx context.Context, req *sdk.CallToolRequest, in
 	if err != nil {
 		return nil, projectsOutput{}, err
 	}
-	var at cursor
-	if err := mcpkit.DecodeCursor(in.Cursor, &at); err != nil {
+	offset, err := mcpkit.Offset(in.Cursor)
+	if err != nil {
 		return nil, projectsOutput{}, err
 	}
 	spaces, err := t.Spaces.Of(ctx, userID)
@@ -49,7 +49,7 @@ func (t *toolset) listProjects(ctx context.Context, req *sdk.CallToolRequest, in
 	for _, task := range tasks {
 		cat.tasks[task.ProjectID] = append(cat.tasks[task.ProjectID], task)
 	}
-	return nil, cat.page(out, cat.matching(projects), at.Offset), nil
+	return nil, cat.page(out, cat.matching(projects), offset), nil
 }
 
 // matching renders the projects the filters keep, in the REST list's order.
@@ -100,8 +100,6 @@ func (c catalog) page(out projectsOutput, projects []projectOut, offset int) pro
 	rest = rest[:min(len(rest), projectsPerPage)]
 	n := mcpkit.FitCount(len(rest), func(n int) int { out.Projects = rest[:n]; return mcpkit.EncodedSize(out) })
 	out.Projects = rest[:max(n, min(1, len(rest)))]
-	if next := offset + len(out.Projects); next < len(projects) {
-		out.NextCursor = mcpkit.EncodeCursor(cursor{Offset: next})
-	}
+	out.NextCursor = mcpkit.Cursor(offset+len(out.Projects), len(projects))
 	return out
 }
