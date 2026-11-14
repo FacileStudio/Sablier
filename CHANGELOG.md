@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.25.0] - 2026-11-14
+
+### Changed
+
+- Landing: the slogan is now "Suivez le temps. Comptez chaque heure." and the page no longer promises invoicing. The subtitle, title, meta description and footer line follow the suite copy in fr, en, es and de.
+- Landing: "Créer un compte gratuit" is the main button, with sign-in beside it (muse `LandingCta`); the header keeps sign-in.
+- Landing: the timer demo shows real project and task names and the day's total at an hourly rate. Three demo cards: a timer on phone and computer, hours by project, Opus sync.
+- Landing: new "Works with" block (Opus, Bulle), a feature list, a per-app plan note linking to Suite pricing, and a "For developers" block (CLI, API, MCP, source, self-hosting link). CLI install commands left the download section; `/downloads` still lists them.
+- Landing icons are bundled through `registerIcons`, so none waits on the network.
+- muse v0.24.0.
+
 ## [1.24.3] - 2026-11-14
 
 ### Fixed
