@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/FacileStudio/tronc/bulle"
 )
 
 type seen struct {
@@ -16,7 +18,7 @@ type seen struct {
 func stub(t *testing.T, status int, got *seen) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got.path, got.auth, got.actingFor = r.URL.Path, r.Header.Get("Authorization"), r.Header.Get(bulleActingFor)
+		got.path, got.auth, got.actingFor = r.URL.Path, r.Header.Get("Authorization"), r.Header.Get(bulle.ActingForHeader)
 		if err := json.NewDecoder(r.Body).Decode(&got.body); err != nil {
 			t.Errorf("decode: %v", err)
 		}
@@ -32,30 +34,30 @@ func TestBackends(t *testing.T) {
 	var got seen
 	server := stub(t, http.StatusOK, &got)
 
-	decider, backend := New(Config{BulleURL: server.URL, BulleServiceKey: "k", JevAPIKey: "j"}, nil)
-	answers, err := decider.Decide(context.Background(), "sara@example.test", "state", questions)
-	if backend != BackendBulle || err != nil || answers["task"].Choice != "A" {
-		t.Fatalf("bulle: backend=%s answers=%v err=%v", backend, answers, err)
+	decider, backend, err := New(Config{BulleURL: server.URL, BulleServiceKey: "k"})
+	if backend != BackendBulle || err != nil {
+		t.Fatalf("bulle: backend=%s err=%v", backend, err)
 	}
-	if got.path != bulleDecidePath || got.auth != "Bearer k" || got.actingFor != "sara@example.test" || got.body["model"] != nil {
+	answers, err := decider.Decide(context.Background(), "sara@example.test", "state", questions)
+	if err != nil || answers["task"].Choice != "A" {
+		t.Fatalf("bulle: answers=%v err=%v", answers, err)
+	}
+	if got.path != "/api/ai/decide" || got.auth != "Bearer k" || got.actingFor != "sara@example.test" || got.body["model"] != nil {
 		t.Fatalf("bulle request: %+v", got)
 	}
 
-	decider, backend = New(Config{JevAPIKey: "j", JevBaseURL: server.URL + "/api", JevEndpoint: "decisions"}, nil)
-	if _, err := decider.Decide(context.Background(), "sara@example.test", "state", questions); backend != BackendJev || err != nil {
-		t.Fatalf("jev: backend=%s err=%v", backend, err)
+	for _, cfg := range []Config{{}, {BulleURL: server.URL}, {BulleServiceKey: "k"}} {
+		if decider, backend, err := New(cfg); decider != nil || backend != BackendOff || err != nil {
+			t.Fatalf("%+v must turn the AI step off, got %s %v", cfg, backend, err)
+		}
 	}
-	if got.path != jevDecisionsPath || got.auth != "Bearer j" || got.actingFor != "" || got.body["model"] != jevDefaultModel {
-		t.Fatalf("jev request: %+v", got)
-	}
-
-	if decider, backend = New(Config{}, nil); decider != nil || backend != BackendOff {
-		t.Fatalf("no configuration must turn the AI step off, got %s", backend)
+	if _, backend, err := New(Config{BulleURL: "ftp://bulle", BulleServiceKey: "k"}); backend != BackendOff || err == nil {
+		t.Fatalf("an invalid BULLE_URL must be refused, got %s %v", backend, err)
 	}
 
-	for _, status := range []int{http.StatusNotFound, http.StatusPaymentRequired} {
+	for _, status := range []int{http.StatusNotFound, http.StatusPaymentRequired, http.StatusFound} {
 		refused := stub(t, status, &got)
-		decider, _ = New(Config{BulleURL: refused.URL}, nil)
+		decider, _, _ = New(Config{BulleURL: refused.URL, BulleServiceKey: "k"})
 		if _, err := decider.Decide(context.Background(), "sara@example.test", "state", questions); err == nil {
 			t.Fatalf("a %d from Bulle must be no answer", status)
 		}
@@ -65,7 +67,7 @@ func TestBackends(t *testing.T) {
 func TestBulleRequestCarriesCriteria(t *testing.T) {
 	var got seen
 	server := stub(t, http.StatusOK, &got)
-	decider, _ := New(Config{BulleURL: server.URL}, nil)
+	decider, _, _ := New(Config{BulleURL: server.URL, BulleServiceKey: "k"})
 	questions := map[string]Question{"task": {Type: "choice", Instructions: "pick",
 		Criteria: map[string]string{"A": "work on A", "B": "work on B"}, Options: []string{"A", "B"}}}
 	if _, err := decider.Decide(context.Background(), "sara@example.test", "state", questions); err != nil {

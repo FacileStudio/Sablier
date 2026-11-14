@@ -34,7 +34,7 @@ func TestAIRequestsFitBulleDecideContract(t *testing.T) {
 	}
 	facts = append(facts, Facts{Title: "single", RegistreSpaceID: "reg-team"})
 	recorder := &recordingDecider{}
-	if _, err := (Resolver{Decider: recorder}).Resolve(context.Background(), w.db, w.owner, facts); err != nil {
+	if _, err := (Resolver{Decider: recorder, Access: &access{ai: true}}).Resolve(context.Background(), w.db, w.owner, facts); err != nil {
 		t.Fatal(err)
 	}
 	if len(recorder.questions) < 3 {

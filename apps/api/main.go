@@ -54,6 +54,7 @@ import (
 	"github.com/FacileStudio/tronc/healthcheck"
 	"github.com/FacileStudio/tronc/httpx"
 	"github.com/FacileStudio/tronc/logger"
+	mcpkit "github.com/FacileStudio/tronc/mcp"
 	troncmiddleware "github.com/FacileStudio/tronc/middleware"
 	"github.com/FacileStudio/tronc/migrate"
 	"github.com/FacileStudio/tronc/spa"
@@ -533,21 +534,24 @@ func run() error {
 
 	notificationsService := notifications.NewService(db, appEnv.VAPIDPublicKey, appEnv.VAPIDPrivateKey, appEnv.VAPIDSubject, appLogger)
 	antenneService := antenne.NewService(db, appLogger)
-	decider, backend := decide.New(decide.ConfigFromEnv(), nil)
+	gate := plans.New(db, appEnv.Porte().Issuer, appLogger)
+	if err := gate.Load(context.Background()); err != nil {
+		appLogger.Error("failed to load the saved entitlements", slog.Any("error", err))
+		return err
+	}
+	decider, backend, err := decide.New(decide.ConfigFromEnv())
+	if err != nil {
+		appLogger.Error("attribution: BULLE_URL is not usable, AI step off", slog.Any("error", err))
+	}
 	if decider != nil {
 		decider = decide.Cached(decider)
 	}
-	resolver := attribution.Resolver{Decider: decider}
+	resolver := attribution.Resolver{Decider: decider, Access: gate}
 	antenneService.SetResolver(resolver)
 	appLogger.Info("attribution: AI backend chosen", slog.String("backend", backend))
 
 	if appEnv.OIDC != nil {
 		antenneService.SetIssuer(appEnv.OIDC.Issuer)
-	}
-	gate := plans.New(db, appEnv.Porte().Issuer, appLogger)
-	if err := gate.Load(context.Background()); err != nil {
-		appLogger.Error("failed to load the saved entitlements", slog.Any("error", err))
-		return err
 	}
 	registre, syncer := newDirectory(db, &appEnv, appLogger, gate, antenneService.ReconcileAtBoot)
 	accounts, err := auth.NewAccounts(context.Background(), sqlDB, appLogger)
@@ -579,6 +583,7 @@ func run() error {
 	appLogger.Info("notification worker started")
 
 	go antenneService.RunOutboxWorker(shutdownSignal)
+	go mcpkit.KeepPruned(shutdownSignal, mcpkit.PostgresPending{DB: sqlDB}, 0, 0, appLogger)
 
 	if deletions != nil {
 		go deletions.Run(shutdownSignal)

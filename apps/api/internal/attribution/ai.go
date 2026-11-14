@@ -90,7 +90,7 @@ func buildPrompts(db *gorm.DB, ownerID int64, batch aiBatch) []prompt {
 }
 
 func (r Resolver) ask(ctx context.Context, db *gorm.DB, owner Owner, batch aiBatch) {
-	if r.Decider == nil || len(batch.open) == 0 {
+	if r.Decider == nil || len(batch.open) == 0 || !r.allowed(ctx, owner.ID) {
 		return
 	}
 	for _, p := range buildPrompts(db, owner.ID, batch) {
@@ -104,6 +104,15 @@ func (r Resolver) ask(ctx context.Context, db *gorm.DB, owner Owner, batch aiBat
 			}
 		}
 	}
+}
+
+// allowed reports whether ownerID's plan includes AI; a failed check counts as no.
+func (r Resolver) allowed(ctx context.Context, ownerID int64) bool {
+	if r.Access == nil {
+		return false
+	}
+	ok, err := r.Access.HasAI(ctx, ownerID)
+	return err == nil && ok
 }
 
 func pick(db *gorm.DB, asked question, answer decide.Answer) *Result {
