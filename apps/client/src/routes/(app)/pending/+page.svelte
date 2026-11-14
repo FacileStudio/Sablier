@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { Alert, EmptyState, Spinner, icons, toast } from '@facile/muse';
 	import { ApiError, backend, type PendingAction } from '$lib/backend';
+	import { notOwnSession as ownSessionRefused } from '$lib/own-session';
 	import PendingCard from '$lib/components/PendingCard.svelte';
 	import { t } from '$lib/i18n/index.svelte';
 
@@ -23,8 +24,13 @@
 
 	/** Records and reports whether the server refused the request as not coming from the person's own browser session. */
 	function notOwnSession(err: unknown) {
-		refused = err instanceof ApiError && err.status === 403;
+		refused = ownSessionRefused(err);
 		return refused;
+	}
+
+	/** The server's own words for any other refusal, else the fallback text. */
+	function reason(err: unknown, fallback: string): string {
+		return err instanceof ApiError && err.status === 403 ? err.message : fallback;
 	}
 
 	/** Loads the open actions. */
@@ -33,7 +39,7 @@
 		try {
 			actions = (await backend.listPending(ctx.token)).actions;
 		} catch (err) {
-			if (!notOwnSession(err)) toast.danger(t('pending.loadFailed'));
+			if (!notOwnSession(err)) toast.danger(reason(err, t('pending.loadFailed')));
 		}
 		loading = false;
 	}

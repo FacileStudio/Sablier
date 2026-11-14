@@ -64,6 +64,18 @@ describe('the web kernel', () => {
 		expect(error).toBeInstanceOf(ApiError);
 		expect(error).toMatchObject({ status: 403, code: 'forbidden', message: 'nope' });
 	});
+
+	it('asks to sign in again only for the own-session refusal, not for a lost edit right', async () => {
+		const refusal = "only the person's own session can confirm actions";
+		stubFetch(403, JSON.stringify({ error: { code: 'permission_denied', message: refusal } }));
+		const { backend } = await load();
+		const { notOwnSession } = await import('./own-session');
+		expect(notOwnSession(await backend.confirmPending('', 'a').catch((e: unknown) => e))).toBe(true);
+		stubFetch(403, '{"error":{"code":"permission_denied","message":"access denied"}}');
+		expect(notOwnSession(await backend.confirmPending('', 'a').catch((e: unknown) => e))).toBe(false);
+		stubFetch(403, JSON.stringify({ error: { code: 'forbidden', message: refusal } }));
+		expect(notOwnSession(await backend.confirmPending('', 'a').catch((e: unknown) => e))).toBe(false);
+	});
 });
 
 describe('the installed apps kernel', () => {
