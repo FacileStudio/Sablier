@@ -81,7 +81,6 @@ services:
       BULLE_URL: ${BULLE_URL:-}
       # Emails allowed to change the app-wide webhook and Antenne settings. Empty closes them.
       SABLIER_ADMINS: ${SABLIER_ADMINS:-}
-      BULLE_SERVICE_KEY: ${BULLE_SERVICE_KEY:-}
       # Browser error reporting. Separate from JOURNAL_URL above, which is the
       # server SDK's and points inside the Docker network — the browser needs a
       # public address, ending in /api or every report is silently discarded.

@@ -1,6 +1,6 @@
-// Package decide asks Bulle's POST /api/ai/decide to pick among options, as Sablier's
-// service acting for a user. Bulle is the only way to the decision model: without
-// BULLE_URL and BULLE_SERVICE_KEY there is no AI step. Any failure, a timeout, an older
+// Package decide asks Bulle's POST /api/ai/decide to pick among options, as the user,
+// with the token exchanged for them. Bulle is the only way to the decision model: without
+// BULLE_URL and the token exchange there is no AI step. Any failure, a timeout, an older
 // Bulle's 404 or a 402 for a user without AI included, is an error the caller reads as
 // "no answer".
 package decide
@@ -20,7 +20,7 @@ type Question = bulle.Question
 // probability of every option.
 type Answer = bulle.Answer
 
-// Decider answers questions about a state on behalf of the user named by userEmail.
+// Decider answers questions about a state on behalf of the user named by userID.
 type Decider interface {
-	Decide(ctx context.Context, userEmail string, state any, questions map[string]Question) (map[string]Answer, error)
+	Decide(ctx context.Context, userID int64, state any, questions map[string]Question) (map[string]Answer, error)
 }

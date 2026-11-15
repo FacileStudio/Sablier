@@ -16,7 +16,7 @@ type recordingDecider struct {
 	questions []map[string]decide.Question
 }
 
-func (r *recordingDecider) Decide(_ context.Context, _ string, state any, questions map[string]decide.Question) (map[string]decide.Answer, error) {
+func (r *recordingDecider) Decide(_ context.Context, _ int64, state any, questions map[string]decide.Question) (map[string]decide.Answer, error) {
 	r.states = append(r.states, state)
 	r.questions = append(r.questions, questions)
 	return map[string]decide.Answer{}, nil

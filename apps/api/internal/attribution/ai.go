@@ -94,7 +94,7 @@ func (r Resolver) ask(ctx context.Context, db *gorm.DB, owner Owner, batch aiBat
 		return
 	}
 	for _, p := range buildPrompts(db, owner.ID, batch) {
-		answers, err := r.Decider.Decide(ctx, owner.Email, p.state, p.questions)
+		answers, err := r.Decider.Decide(ctx, owner.ID, p.state, p.questions)
 		if err != nil {
 			continue
 		}

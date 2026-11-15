@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Attribution AI asks Bulle as the user, with their exchanged token (tronc v0.25.0), not with a shared service key. `BULLE_SERVICE_KEY` is gone: drop it from the deployment env. The step is on when `BULLE_URL` and OIDC are set; a user who must sign in again skips it.
+
 ## [1.25.2] - 2026-11-14
 
 ### Fixed

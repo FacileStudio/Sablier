@@ -82,7 +82,7 @@ Add `internal/decide` with one interface, `Decide(ctx, userEmail, state, questio
 
 The backend is picked once at boot:
 
-1. **Bulle**, when `BULLE_URL` and `BULLE_SERVICE_KEY` are set. It calls `POST {BULLE_URL}/api/ai/decide`. Bulle is the one place that does AI.
+1. **Bulle**, when `BULLE_URL` and OIDC are set. It calls `POST {BULLE_URL}/api/ai/decide`. Bulle is the one place that does AI.
 2. **Off** otherwise.
 
 Since v1.24.0 Sablier has no direct Jev backend: every AI feature needs a paid plan and goes through Bulle. The `JEV_*` env vars are no longer read.
@@ -130,7 +130,7 @@ The contract above holds. These are the additions and the points the plan left o
 - `review_threshold` lives in `GET/PUT /api/heartbeats/settings` next to `auto_confirm_drafts`. A PUT without it keeps the stored value; outside 0.5 to 1 is a 400.
 - `POST /api/review/{entry_id}` accepts `{"task_id": n}`, `{}` or an empty body.
 - `review_threshold` and `attribution_confidence` are `double precision`, not `real`: a `real` 0.8 reads back as 0.800000011920929.
-- Bulle auth: `Authorization: Bearer <BULLE_SERVICE_KEY>` plus `X-Bulle-Acting-For: <email>`. Any non-200 (404 from an older Bulle, 402 `payment_required` from C4) is no answer. Drafts send one decide call per listing, one question per unplaced draft.
+- Bulle auth: `Authorization: Bearer <the user's exchanged Bulle token>`. Any non-200 (404 from an older Bulle, 402 `payment_required` from C4) is no answer. Drafts send one decide call per listing, one question per unplaced draft.
 
 ## Track B: Sablier client
 

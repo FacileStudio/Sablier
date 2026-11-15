@@ -111,11 +111,10 @@ fallback path the connection is only attempted when both values are non-empty.
 
 | Variable | Required | Default | What it does |
 |---|---|---|---|
-| `BULLE_URL` | no | — | Bulle base URL. Sablier calls `POST {BULLE_URL}/api/ai/decide` |
-| `BULLE_SERVICE_KEY` | no | — | Bearer key Bulle issues to Sablier. Each call also sends `X-Bulle-Acting-For: <user email>` |
+| `BULLE_URL` | no | — | Bulle base URL. Sablier calls `POST {BULLE_URL}/api/ai/decide` with the user's exchanged Bulle token, so it needs OIDC |
 
 The backend is chosen once at boot and logged as `attribution: AI backend chosen`: `bulle`
-when both `BULLE_URL` and `BULLE_SERVICE_KEY` are set, else `off`. Sablier has no other AI
+when `BULLE_URL` and OIDC are set, else `off`. A user with no usable Registre grant skips the step. Sablier has no other AI
 path: every AI feature needs a paid plan and goes through Bulle. Before each call Sablier
 checks the user's `ai.access` entitlement from the Registre directory snapshot. Once the
 Registre directory has sent entitlements, a user without it is never sent to Bulle; before

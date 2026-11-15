@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/FacileStudio/Sablier/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Sablier/apps/api/internal/decide"
 	"github.com/FacileStudio/Sablier/apps/api/internal/env"
 	"github.com/FacileStudio/Sablier/apps/api/internal/plans"
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
@@ -30,12 +31,26 @@ type ideasConfig struct {
 
 type registreSpaceKey struct{}
 
+var bulleTarget = exchange.Target{Audience: "bulle", Scopes: []string{"bulle.read", "bulle.write"}}
+
+// decideConfig wires the attribution AI step to the app's one exchanger; without it the
+// step stays off.
+func decideConfig(exchanger *exchange.Exchanger) decide.Config {
+	cfg := decide.ConfigFromEnv()
+	if exchanger != nil {
+		cfg.Token = func(ctx context.Context, userID int64) (string, error) {
+			return exchanger.Token(ctx, userID, bulleTarget)
+		}
+	}
+	return cfg
+}
+
 func newIdeasConfig(exchanger *exchange.Exchanger, gate *plans.Gate, appEnv *env.Config) *ideasConfig {
 	bulleURL := strings.TrimSpace(appEnv.BulleURL)
 	if exchanger == nil || bulleURL == "" || appEnv.OIDC == nil {
 		return nil
 	}
-	source := exchanger.Source(exchange.Target{Audience: "bulle", Scopes: []string{"bulle.read", "bulle.write"}})
+	source := exchanger.Source(bulleTarget)
 	return &ideasConfig{
 		URL:        bulleURL,
 		UpgradeURL: strings.TrimRight(appEnv.OIDC.Issuer, "/") + "/spaces",

@@ -337,12 +337,8 @@ func buildRouter(db *gorm.DB, sqlDB sqlPinger, appEnv *env.Config, appLogger *sl
 	return router, nil
 }
 
-func createApiServer(db *gorm.DB, sqlDB sqlPinger, accounts *auth.Accounts, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
+func createApiServer(db *gorm.DB, sqlDB sqlPinger, parts *authParts, appEnv *env.Config, appLogger *slog.Logger, notificationsService *notifications.Service, antenneService *antenne.Service, syncer *directory.Syncer, deletions *spaces.Deletions, resolver attribution.Resolver, gate *plans.Gate) (*http.Server, error) {
 	rawDB, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
-	parts, err := buildAuth(context.Background(), rawDB, people{accounts: accounts, erased: deletions}, appEnv, appLogger)
 	if err != nil {
 		return nil, err
 	}
@@ -539,17 +535,6 @@ func run() error {
 		appLogger.Error("failed to load the saved entitlements", slog.Any("error", err))
 		return err
 	}
-	decider, backend, err := decide.New(decide.ConfigFromEnv())
-	if err != nil {
-		appLogger.Error("attribution: BULLE_URL is not usable, AI step off", slog.Any("error", err))
-	}
-	if decider != nil {
-		decider = decide.Cached(decider)
-	}
-	resolver := attribution.Resolver{Decider: decider, Access: gate}
-	antenneService.SetResolver(resolver)
-	appLogger.Info("attribution: AI backend chosen", slog.String("backend", backend))
-
 	if appEnv.OIDC != nil {
 		antenneService.SetIssuer(appEnv.OIDC.Issuer)
 	}
@@ -560,7 +545,21 @@ func run() error {
 		return err
 	}
 	deletions := newDeletions(db, accounts, &appEnv, appLogger)
-	server, err := createApiServer(db, sqlDB, accounts, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver, gate)
+	parts, err := buildAuth(context.Background(), sqlDB, people{accounts: accounts, erased: deletions}, &appEnv, appLogger)
+	if err != nil {
+		return err
+	}
+	decider, backend, err := decide.New(decideConfig(parts.exchanger))
+	if err != nil {
+		appLogger.Error("attribution: BULLE_URL is not usable, AI step off", slog.Any("error", err))
+	}
+	if decider != nil {
+		decider = decide.Cached(decider)
+	}
+	resolver := attribution.Resolver{Decider: decider, Access: gate}
+	antenneService.SetResolver(resolver)
+	appLogger.Info("attribution: AI backend chosen", slog.String("backend", backend))
+	server, err := createApiServer(db, sqlDB, parts, &appEnv, appLogger, notificationsService, antenneService, syncer, deletions, resolver, gate)
 	if err != nil {
 		appLogger.Error("failed to create server", slog.Any("error", err))
 		return err

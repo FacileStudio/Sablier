@@ -19,7 +19,7 @@ type stubDecider struct {
 	calls      int
 }
 
-func (s *stubDecider) Decide(_ context.Context, _ string, _ any, questions map[string]decide.Question) (map[string]decide.Answer, error) {
+func (s *stubDecider) Decide(_ context.Context, _ int64, _ any, questions map[string]decide.Question) (map[string]decide.Answer, error) {
 	s.calls++
 	if s.choice == "" {
 		return nil, stderrors.New("bulle answered 404")

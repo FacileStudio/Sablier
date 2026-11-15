@@ -34,10 +34,10 @@ func Cached(next Decider) Decider {
 	return &cache{next: next, now: time.Now, entries: map[[32]byte]cached{}}
 }
 
-func (c *cache) Decide(ctx context.Context, userEmail string, state any, questions map[string]Question) (map[string]Answer, error) {
-	key, err := keyOf(userEmail, state, questions)
+func (c *cache) Decide(ctx context.Context, userID int64, state any, questions map[string]Question) (map[string]Answer, error) {
+	key, err := keyOf(userID, state, questions)
 	if err != nil {
-		return c.next.Decide(ctx, userEmail, state, questions)
+		return c.next.Decide(ctx, userID, state, questions)
 	}
 	now := c.now()
 	c.mu.Lock()
@@ -46,7 +46,7 @@ func (c *cache) Decide(ctx context.Context, userEmail string, state any, questio
 	if ok && now.Before(hit.expires) {
 		return hit.answers, hit.err
 	}
-	answers, err := c.next.Decide(ctx, userEmail, state, questions)
+	answers, err := c.next.Decide(ctx, userID, state, questions)
 	ttl := answerTTL
 	if err != nil {
 		ttl = failureTTL
@@ -71,8 +71,8 @@ func (c *cache) store(key [32]byte, entry cached, now time.Time) {
 	c.entries[key] = entry
 }
 
-func keyOf(userEmail string, state any, questions map[string]Question) ([32]byte, error) {
-	body, err := json.Marshal([]any{userEmail, state, questions})
+func keyOf(userID int64, state any, questions map[string]Question) ([32]byte, error) {
+	body, err := json.Marshal([]any{userID, state, questions})
 	if err != nil {
 		return [32]byte{}, err
 	}

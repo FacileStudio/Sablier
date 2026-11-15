@@ -12,7 +12,7 @@ type counting struct {
 	err   error
 }
 
-func (c *counting) Decide(context.Context, string, any, map[string]Question) (map[string]Answer, error) {
+func (c *counting) Decide(context.Context, int64, any, map[string]Question) (map[string]Answer, error) {
 	c.calls++
 	if c.err != nil {
 		return nil, c.err
@@ -27,7 +27,7 @@ func TestCachedAnswersRepeatsFromMemory(t *testing.T) {
 	decider.now = func() time.Time { return clock }
 	questions := map[string]Question{"q0": {Type: "choice", Options: []string{"a", "b"}}}
 	ask := func(state string) {
-		if _, err := decider.Decide(context.Background(), "a@example.test", state, questions); err != nil {
+		if _, err := decider.Decide(context.Background(), 1, state, questions); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -43,10 +43,10 @@ func TestCachedAnswersRepeatsFromMemory(t *testing.T) {
 		t.Fatalf("a new state and an expired answer must ask again, got %d calls", inner.calls)
 	}
 	inner.err = errors.New("down")
-	if _, err := decider.Decide(context.Background(), "a@example.test", "z", questions); err == nil {
+	if _, err := decider.Decide(context.Background(), 1, "z", questions); err == nil {
 		t.Fatal("want the failure")
 	}
-	if _, err := decider.Decide(context.Background(), "a@example.test", "z", questions); err == nil || inner.calls != 4 {
+	if _, err := decider.Decide(context.Background(), 1, "z", questions); err == nil || inner.calls != 4 {
 		t.Fatalf("a recent failure must be served from memory, got %d calls", inner.calls)
 	}
 }
