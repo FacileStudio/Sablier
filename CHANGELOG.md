@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.27.0] - 2026-11-16
+
+### Added
+
+- The start palette offers "+ New task "X" in another project or space…": pick any project, grouped by space, and Sablier creates the task, sets it in progress and starts the timer in one step. Opus gets the new task through the usual sync. Backspace on the empty project search goes back to the task search.
+
+### Changed
+
+- The quick "+ New task" rows show the project's space.
+
 ## [1.26.0] - 2026-11-15
 
 ### Changed
