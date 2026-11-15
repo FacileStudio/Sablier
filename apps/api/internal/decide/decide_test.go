@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/FacileStudio/porte/exchange"
-	"github.com/FacileStudio/tronc/bulle"
 )
 
 type seen struct {
@@ -21,7 +20,7 @@ type seen struct {
 func stub(t *testing.T, status int, got *seen) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got.path, got.auth, got.actingFor = r.URL.Path, r.Header.Get("Authorization"), r.Header.Get(bulle.ActingForHeader)
+		got.path, got.auth, got.actingFor = r.URL.Path, r.Header.Get("Authorization"), r.Header.Get("X-Bulle-Acting-For")
 		if err := json.NewDecoder(r.Body).Decode(&got.body); err != nil {
 			t.Errorf("decode: %v", err)
 		}
