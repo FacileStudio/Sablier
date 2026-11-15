@@ -4,7 +4,8 @@ export type PaletteProject = { id: number; name: string; icon: string | null; sp
 
 export type PaletteOption =
 	| { kind: 'task'; result: TaskSearchResult }
-	| { kind: 'create'; project: PaletteProject; name: string };
+	| { kind: 'create'; project: PaletteProject; name: string }
+	| { kind: 'pick'; name: string };
 
 export type PaletteGroup = { key: string; label: string | null; start: number; options: PaletteOption[] };
 
@@ -61,9 +62,37 @@ export function groupResults(
 	}
 	const name = query.trim();
 	if (name) {
-		const creates = createTargets(results, fallback).map((project) => ({ kind: 'create' as const, project, name }));
+		const creates: PaletteOption[] = createTargets(results, fallback).map((project) => ({ kind: 'create', project, name }));
+		if (fallback.length > creates.length) creates.push({ kind: 'pick', name });
 		if (creates.length) raw.push({ key: 'create', label: null, options: creates });
 	}
+	return placeGroups(raw);
+}
+
+/**
+ * Groups the projects a new task named `name` can go into, one group per space, personal first,
+ * keeping only the projects whose name or space contains `query`.
+ */
+export function projectGroups(projects: PaletteProject[], name: string, query: string, personalLabel: string): PaletteGroup[] {
+	const needle = query.trim().toLowerCase();
+	const groups = new Map<string, PaletteProject[]>();
+	for (const project of projects) {
+		const haystack = `${project.name} ${project.space?.name ?? personalLabel}`.toLowerCase();
+		if (needle && !haystack.includes(needle)) continue;
+		const key = project.space?.id ?? '';
+		groups.set(key, [...(groups.get(key) ?? []), project]);
+	}
+	const keys = [...groups.keys()].sort((a, b) => (a === '' ? -1 : b === '' ? 1 : 0));
+	return placeGroups(
+		keys.map((key) => {
+			const items = groups.get(key)!;
+			const options = items.map((project): PaletteOption => ({ kind: 'create', project, name }));
+			return { key: `space:${key}`, label: items[0].space?.name ?? personalLabel, options };
+		})
+	);
+}
+
+function placeGroups(raw: Omit<PaletteGroup, 'start'>[]): PaletteGroup[] {
 	let start = 0;
 	return raw.map((group) => {
 		const placed = { ...group, start };

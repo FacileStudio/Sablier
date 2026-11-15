@@ -149,6 +149,19 @@ export const timer = {
 		'+ Nueva tarea «{name}» en {project}',
 		'+ Neue Aufgabe „{name}“ in {project}'
 	],
+	'palette.newTaskElsewhere': [
+		'+ New task "{name}" in another project or space…',
+		'+ Nouvelle tâche « {name} » dans un autre projet ou espace…',
+		'+ Nueva tarea «{name}» en otro proyecto o espacio…',
+		'+ Neue Aufgabe „{name}“ in einem anderen Projekt oder Bereich…'
+	],
+	'palette.pickPlaceholder': [
+		'Project or space for "{name}"',
+		'Projet ou espace pour « {name} »',
+		'Proyecto o espacio para «{name}»',
+		'Projekt oder Bereich für „{name}“'
+	],
+	'palette.noProject': ['No matching project', 'Aucun projet correspondant', 'Ningún proyecto coincide', 'Kein passendes Projekt'],
 	'palette.empty': ['No matching task', 'Aucune tâche correspondante', 'Ninguna tarea coincide', 'Keine passende Aufgabe'],
 	'palette.opusTitle': ['Linked to an Opus task', 'Liée à une tâche Opus', 'Vinculada a una tarea de Opus', 'Mit einer Opus-Aufgabe verknüpft'],
 	'palette.failed': ['Request failed', 'La requête a échoué', 'La solicitud falló', 'Anfrage fehlgeschlagen'],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TaskSearchResult } from './backend';
-import { flatOptions, groupResults } from './task-search';
+import { flatOptions, groupResults, projectGroups } from './task-search';
 
 function result(id: number, project: number, space: string | null, lastUsed: string | null = null): TaskSearchResult {
 	return {
@@ -45,5 +45,35 @@ describe('groupResults', () => {
 			[10, 'Write'],
 			[99, 'Write']
 		]);
+	});
+
+	it('adds a pick row when some projects have no quick row', () => {
+		const fallback = [1, 2, 3, 4].map((id) => ({ id, name: `P${id}`, icon: null, space: null }));
+		const create = groupResults([], 'Write', fallback, 'Personal').at(-1)!;
+		expect(create.options.map((o) => o.kind)).toEqual(['create', 'create', 'create', 'pick']);
+		expect(groupResults([], 'Write', fallback.slice(0, 3), 'Personal').at(-1)!.options.map((o) => o.kind)).not.toContain('pick');
+	});
+});
+
+describe('projectGroups', () => {
+	const projects = [
+		{ id: 1, name: 'Site', icon: null, space: { id: 'a', name: 'Acme' } },
+		{ id: 2, name: 'Notes', icon: null, space: null },
+		{ id: 3, name: 'Billing', icon: null, space: { id: 'a', name: 'Acme' } }
+	];
+
+	it('groups projects by space, personal first, each option creating the named task', () => {
+		const groups = projectGroups(projects, 'Write', '', 'Personal');
+		expect(groups.map((g) => [g.label, g.start])).toEqual([['Personal', 0], ['Acme', 1]]);
+		expect(flatOptions(groups).map((o) => o.kind === 'create' && [o.project.id, o.name])).toEqual([
+			[2, 'Write'],
+			[1, 'Write'],
+			[3, 'Write']
+		]);
+	});
+
+	it('filters by project or space name', () => {
+		expect(flatOptions(projectGroups(projects, 'Write', 'acme', 'Personal'))).toHaveLength(2);
+		expect(flatOptions(projectGroups(projects, 'Write', 'bill', 'Personal'))).toHaveLength(1);
 	});
 });

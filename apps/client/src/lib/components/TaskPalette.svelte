@@ -2,7 +2,8 @@
 	import { getContext } from 'svelte';
 	import { Badge, Modal, cn, controlLine, solarIconId } from '@facile/muse';
 	import { backend, type Project, type TaskSearchResult } from '$lib/backend';
-	import { flatOptions, groupResults, type PaletteOption } from '$lib/task-search';
+	import { flatOptions, groupResults, projectGroups, type PaletteOption, type PaletteProject } from '$lib/task-search';
+	import { spaceName } from '$lib/space-context.svelte';
 	import { t } from '$lib/i18n/index.svelte';
 
 	type Props = {
@@ -26,19 +27,25 @@
 	let pending = $state(false);
 	let error = $state('');
 	let searchSeq = 0;
+	let picking = $state<string | null>(null);
 
-	const fallback = $derived(projects.map((p) => ({ id: p.id, name: p.name, icon: p.icon, space: null })));
-	const groups = $derived(groupResults(results, query, fallback, t('spaceFilter.personal')));
+	const fallback = $derived(projects.map(paletteProject));
+	const groups = $derived(
+		picking === null
+			? groupResults(results, query, fallback, t('spaceFilter.personal'))
+			: projectGroups(fallback, picking, query, t('spaceFilter.personal'))
+	);
 	const options = $derived(flatOptions(groups));
 
 	$effect(() => {
 		if (!open) return;
 		query = '';
 		error = '';
+		picking = null;
 	});
 
 	$effect(() => {
-		if (!open) return;
+		if (!open || picking !== null) return;
 		const q = query.trim();
 		const seq = ++searchSeq;
 		loading = true;
@@ -56,13 +63,34 @@
 		return () => clearTimeout(timer);
 	});
 
+	$effect(() => {
+		if (picking !== null && query !== null) activeIndex = 0;
+	});
+
+	function paletteProject(project: Project): PaletteProject {
+		const space = project.space_id ? { id: project.space_id, name: spaceName(project.space_id) ?? '' } : null;
+		return { id: project.id, name: project.name, icon: project.icon, space };
+	}
+
+	function startPicking(name: string) {
+		picking = name;
+		query = '';
+		activeIndex = 0;
+	}
+
+	function stopPicking() {
+		query = picking ?? '';
+		picking = null;
+		activeIndex = 0;
+	}
+
 	function groupLabel(key: string, label: string | null) {
 		if (key === 'recent') return t('palette.recent');
 		if (key === 'create') return t('palette.create');
 		return label ?? '';
 	}
 
-	async function resolve(option: PaletteOption): Promise<TaskSearchResult> {
+	async function resolve(option: Exclude<PaletteOption, { kind: 'pick' }>): Promise<TaskSearchResult> {
 		if (option.kind === 'task') return option.result;
 		const task = await backend.createTask(ctx.token, option.project.id, option.name);
 		const { space, ...project } = option.project;
@@ -71,6 +99,7 @@
 
 	async function choose(option: PaletteOption | undefined) {
 		if (!option || pending) return;
+		if (option.kind === 'pick') return startPicking(option.name);
 		pending = true;
 		error = '';
 		try {
@@ -85,6 +114,11 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		const count = options.length;
+		if (picking !== null && e.key === 'Backspace' && query === '') {
+			e.preventDefault();
+			stopPicking();
+			return;
+		}
 		if (e.key === 'Enter') {
 			e.preventDefault();
 			void choose(options[activeIndex]);
@@ -104,7 +138,7 @@
 			class={controlLine}
 			bind:value={query}
 			onkeydown={handleKeydown}
-			placeholder={t('palette.placeholder')}
+			placeholder={picking === null ? t('palette.placeholder') : t('palette.pickPlaceholder', { name: picking })}
 			autocomplete="off"
 			spellcheck="false"
 			role="combobox"
@@ -154,18 +188,27 @@
 								{#if option.result.opus}
 									<Badge tone="info" title={t('palette.opusTitle')}>Opus</Badge>
 								{/if}
+							{:else if option.kind === 'pick'}
+								<iconify-icon icon="solar:folder-open-linear" width="16" height="16" class="block shrink-0"></iconify-icon>
+								<span class="min-w-0 flex-1 truncate">{t('palette.newTaskElsewhere', { name: option.name })}</span>
+							{:else if picking !== null}
+								<iconify-icon icon={solarIconId(option.project.icon)} width="16" height="16" class="block shrink-0"></iconify-icon>
+								<span class="min-w-0 flex-1 truncate">{option.project.name}</span>
 							{:else}
 								<iconify-icon icon="solar:add-circle-linear" width="16" height="16" class="block shrink-0"></iconify-icon>
 								<span class="min-w-0 flex-1 truncate">
 									{t('palette.newTask', { name: option.name, project: option.project.name })}
 								</span>
+								{#if option.project.space?.name}
+									<span class="hidden shrink-0 truncate text-fc-xs opacity-70 sm:block">{option.project.space.name}</span>
+								{/if}
 							{/if}
 						</div>
 					{/each}
 				</div>
 			{:else}
 				<p class="px-2.5 py-2 text-fc-sm text-fc-fg-muted">
-					{loading ? t('combobox.loading') : t('palette.empty')}
+					{picking !== null ? t('palette.noProject') : loading ? t('combobox.loading') : t('palette.empty')}
 				</p>
 			{/each}
 		</div>

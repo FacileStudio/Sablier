@@ -37,6 +37,7 @@ export type Project = {
 	description: string;
 	icon: string | null;
 	owner_id: number;
+	space_id: string | null;
 	created_at: string;
 	updated_at: string;
 };
