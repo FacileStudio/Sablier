@@ -104,8 +104,8 @@ func sections(t *testing.T, name string) (string, string) {
 
 func assertVersions(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if got := appliedVersions(t, db); !slices.Equal(got, []int64{1, 2}) {
-		t.Fatalf("applied versions %v, want [1 2]", got)
+	if got := appliedVersions(t, db); !slices.Equal(got, []int64{1, 2, 3}) {
+		t.Fatalf("applied versions %v, want [1 2 3]", got)
 	}
 }
 

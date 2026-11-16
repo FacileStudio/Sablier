@@ -577,6 +577,10 @@ func run() error {
 
 	appLogger.Info("notification worker started")
 
+	idleTimers := timeentries.NewService(db)
+	idleTimers.SetPoolService(antenneService)
+	go worker.RunIdleTimerWorker(shutdownSignal, idleTimers, notificationsService, appLogger)
+
 	go antenneService.RunOutboxWorker(shutdownSignal)
 	go mcpkit.KeepPruned(shutdownSignal, mcpkit.PostgresPending{DB: sqlDB}, 0, 0, appLogger)
 

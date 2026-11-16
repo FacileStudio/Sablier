@@ -18,6 +18,7 @@ type TimeEntry struct {
 	CreatedAt          time.Time  `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at;autoUpdateTime"`
 	LastNotificationAt *time.Time `gorm:"column:last_notification_at"`
+	CheckedAt          *time.Time `gorm:"column:checked_at"`
 	Cowork             bool       `gorm:"column:cowork;not null;default:false"`
 	Attribution
 }

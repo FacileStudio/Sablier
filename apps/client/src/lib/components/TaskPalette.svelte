@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { Badge, Modal, cn, controlLine, solarIconId } from '@facile/muse';
+	import { Badge, Button, Modal, cn, controlLine, solarIconId } from '@facile/muse';
 	import { backend, type Project, type TaskSearchResult } from '$lib/backend';
 	import { flatOptions, groupResults, projectGroups, type PaletteOption, type PaletteProject } from '$lib/task-search';
 	import { spaceName } from '$lib/space-context.svelte';
@@ -134,6 +134,11 @@
 
 <Modal bind:open {title} size="lg">
 	<div class="flex flex-col gap-3">
+		{#if picking !== null}
+			<Button variant="ghost" size="sm" icon="solar:arrow-left-linear" class="self-start" onclick={stopPicking}>
+				{t('palette.back')}
+			</Button>
+		{/if}
 		<input
 			class={controlLine}
 			bind:value={query}
@@ -208,7 +213,7 @@
 				</div>
 			{:else}
 				<p class="px-2.5 py-2 text-fc-sm text-fc-fg-muted">
-					{picking !== null ? t('palette.noProject') : loading ? t('combobox.loading') : t('palette.empty')}
+					{picking !== null ? t('palette.noProject') : loading ? t('combobox.loading') : query.trim() ? t('palette.empty') : t('palette.typeToCreate')}
 				</p>
 			{/each}
 		</div>

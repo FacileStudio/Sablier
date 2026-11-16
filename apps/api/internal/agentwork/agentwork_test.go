@@ -109,3 +109,27 @@ func TestRecordFlagsTheCatchAllAndKeepsAReviewedEntry(t *testing.T) {
 		t.Fatalf("a replay must keep the owner's reassignment, got project %d", replay.Entry.ProjectID)
 	}
 }
+
+func TestRecordIgnoresTheOwnersRunningTimer(t *testing.T) {
+	orm := openDB(t)
+	owner := schemas.User{Email: "noah@example.com"}
+	create(t, orm, &owner)
+	project := schemas.Project{Name: "EpiKodi", OwnerID: owner.ID}
+	create(t, orm, &project)
+	task := schemas.Task{ProjectID: project.ID, Name: "Branding"}
+	create(t, orm, &task)
+	create(t, orm, &schemas.TimeEntry{UserID: owner.ID, ProjectID: project.ID, TaskID: task.ID, StartedAt: start.Add(-time.Hour)})
+
+	work := session(owner.ID, "bulle_run_ideas", 1)
+	work.Facts = attribution.Facts{}
+	result, err := Record(context.Background(), orm, attribution.Resolver{}, work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source := *result.Entry.AttributionSource; source != attribution.SourceFallback {
+		t.Fatalf("attribution source %q, want %q", source, attribution.SourceFallback)
+	}
+	if !result.Entry.NeedsReview || result.Entry.TaskID == task.ID {
+		t.Fatalf("entry went to the running task %d (needs review %v)", result.Entry.TaskID, result.Entry.NeedsReview)
+	}
+}

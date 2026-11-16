@@ -40,7 +40,7 @@ func (service *Service) Start(ctx context.Context, userID, projectID, taskID int
 
 // Stop is POST /time-entries/stop for userID.
 func (service *Service) Stop(ctx context.Context, userID int64) (*TimeEntryResponse, error) {
-	return service.controller.stop(ctx, userKey(userID))
+	return service.controller.stop(ctx, userKey(userID), &StopTimerRequest{})
 }
 
 // Update is PUT /time-entries/{id} for userID.

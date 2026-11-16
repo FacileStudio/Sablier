@@ -114,6 +114,7 @@ export type TimeEntry = {
 	attribution_source?: AttributionSource | null;
 	attribution_confidence?: number | null;
 	needs_review?: boolean;
+	last_active_at?: string;
 };
 
 export type PendingEntry = {
@@ -444,8 +445,12 @@ export const backend = {
 			body: JSON.stringify({ project_id: projectId, task_id: taskId })
 		}, token).then(normalizeEntry);
 	},
-	stopTimer(token: string) {
-		return apiFetch<TimeEntry>('/api/time-entries/stop', { method: 'POST' }, token).then(normalizeEntry);
+	stopTimer(token: string, at?: string) {
+		const init: RequestInit = at ? { method: 'POST', body: JSON.stringify({ at }) } : { method: 'POST' };
+		return apiFetch<TimeEntry>('/api/time-entries/stop', init, token).then(normalizeEntry);
+	},
+	checkTimer(token: string) {
+		return apiFetch<TimeEntry>('/api/time-entries/check', { method: 'POST' }, token).then(normalizeEntry);
 	},
 	pauseTimer(token: string) {
 		return apiFetch<TimeEntry>('/api/time-entries/pause', { method: 'POST' }, token).then(normalizeEntry);

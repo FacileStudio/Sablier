@@ -247,7 +247,7 @@ func TestStopTimerWhilePausedFinalizesPausedDuration(t *testing.T) {
 
 	time.Sleep(15 * time.Millisecond)
 
-	stopped, _, err := service.stopTimer(context.Background(), "1")
+	stopped, _, err := service.stopTimer(context.Background(), "1", nil)
 	if err != nil {
 		t.Fatalf("stop timer: %v", err)
 	}

@@ -3,10 +3,7 @@ package notifications
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/FacileStudio/Sablier/apps/api/schemas"
@@ -24,53 +21,35 @@ var reminders = map[string]reminderText{
 	"de": {"Arbeitest du noch?", "Es läuft ein Timer. Vergiss nicht, ihn zu stoppen, wenn du fertig bist!"},
 }
 
+var idleStops = map[string]reminderText{
+	"en": {"Timer stopped", "Your timer ran 10 hours with no activity, so Sablier stopped it at your last activity. Fix the entry if that is wrong."},
+	"fr": {"Minuteur arrêté", "Votre minuteur a tourné 10 heures sans activité : Sablier l’a arrêté à votre dernière activité. Corrigez l’entrée si besoin."},
+	"es": {"Temporizador detenido", "Tu temporizador estuvo 10 horas sin actividad, así que Sablier lo detuvo en tu última actividad. Corrige la entrada si hace falta."},
+	"de": {"Timer gestoppt", "Dein Timer lief 10 Stunden ohne Aktivität, deshalb hat Sablier ihn bei deiner letzten Aktivität gestoppt. Korrigiere den Eintrag bei Bedarf."},
+}
+
 // reminderPayload is the web-push body asking someone whether their running timer is meant
 // to run, in their Registre locale and in English for any other value.
 func reminderPayload(locale string) ([]byte, error) {
-	text, ok := reminders[strings.ToLower(locale)]
+	return pushPayload(reminders, locale)
+}
+
+func pushPayload(texts map[string]reminderText, locale string) ([]byte, error) {
+	text, ok := texts[strings.ToLower(locale)]
 	if !ok {
-		text = reminders["en"]
+		text = texts["en"]
 	}
 	return json.Marshal(map[string]string{"title": text.title, "body": text.body, "icon": "/favicon.svg"})
 }
 
 func (s *Service) remind(ctx context.Context, opts *webpush.Options, target reminderTarget) bool {
-	log := s.logger.With("user_id", target.UserID, "subscription_id", target.SubscriptionID, "endpoint_host", endpointHost(target.Endpoint))
+	log := targetLog(s.logger, target)
 	payload, err := reminderPayload(target.Locale)
 	if err != nil {
 		log.Error("failed to marshal notification payload", "error", err)
 		return false
 	}
-	resp, err := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{
-		Endpoint: target.Endpoint,
-		Keys:     webpush.Keys{Auth: target.Auth, P256dh: target.P256DH},
-	}, opts)
-	if err != nil {
-		log.Warn("push notification request failed, retrying in an hour", "error", err)
-		s.markReminded(ctx, log, target.UserID)
-		return false
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 400 {
-		s.markReminded(ctx, log, target.UserID)
-		return true
-	}
-	s.rejected(ctx, log, target, resp)
-	return false
-}
-
-func (s *Service) rejected(ctx context.Context, log *slog.Logger, target reminderTarget, resp *http.Response) {
-	detail := readDetail(resp.Body)
-	if resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusGone {
-		log.Warn("push service rejected notification, retrying in an hour", "status", resp.StatusCode, "detail", detail)
-		s.markReminded(ctx, log, target.UserID)
-		return
-	}
-	if err := s.orm.WithContext(ctx).Where("id = ? AND endpoint = ?", target.SubscriptionID, target.Endpoint).Delete(&schemas.PushSubscription{}).Error; err != nil {
-		log.Error("failed to delete expired push subscription", "status", resp.StatusCode, "error", err)
-		return
-	}
-	log.Info("push subscription expired, deleted it", "status", resp.StatusCode, "detail", detail)
+	return s.deliver(ctx, opts, target, payload, func() { s.markReminded(ctx, log, target.UserID) })
 }
 
 func (s *Service) markReminded(ctx context.Context, log *slog.Logger, userID int64) {
@@ -79,17 +58,4 @@ func (s *Service) markReminded(ctx context.Context, log *slog.Logger, userID int
 		Update("last_notification_at", gorm.Expr("NOW()")).Error; err != nil {
 		log.Error("failed to update last_notification_at", "error", err)
 	}
-}
-
-func endpointHost(endpoint string) string {
-	parsed, err := url.Parse(endpoint)
-	if err != nil {
-		return ""
-	}
-	return parsed.Host
-}
-
-func readDetail(body io.Reader) string {
-	detail, _ := io.ReadAll(io.LimitReader(body, 256))
-	return strings.TrimSpace(string(detail))
 }

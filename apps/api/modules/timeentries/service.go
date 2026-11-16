@@ -141,6 +141,7 @@ func (service *Service) resumeTimer(ctx context.Context, userID string) (*schema
 	now := time.Now().UTC()
 	record.PausedDurationMs += now.Sub(*record.PausedAt).Milliseconds()
 	record.PausedAt = nil
+	record.CheckedAt = &now
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to resume timer", err)
 	}
@@ -152,7 +153,7 @@ func (service *Service) resumeTimer(ctx context.Context, userID string) (*schema
 	return &record, taskName, nil
 }
 
-func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.TimeEntry, string, error) {
+func (service *Service) stopTimer(ctx context.Context, userID string, at *time.Time) (*schemas.TimeEntry, string, error) {
 	uid, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
 		return nil, "", errors.Invalid("invalid user id")
@@ -168,16 +169,16 @@ func (service *Service) stopTimer(ctx context.Context, userID string) (*schemas.
 	}
 
 	now := time.Now().UTC()
-	if record.PausedAt != nil {
-		record.PausedDurationMs += now.Sub(*record.PausedAt).Milliseconds()
-		record.PausedAt = nil
+	end := now
+	if at != nil {
+		end = at.UTC()
+		if end.Before(schemas.Checkpoint(record)) || end.After(now) {
+			return nil, "", errors.Invalid("at must fall between the timer's last check and now")
+		}
 	}
-	record.StoppedAt = &now
-	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
-		return nil, "", errors.Internal("failed to stop timer", err)
+	if err := service.finish(ctx, &record, end); err != nil {
+		return nil, "", err
 	}
-	service.emitEntry(envelope.ActionUpdated, &record)
-	service.fireWebhook(ctx, uid, "timer_stopped", &record)
 	taskName, err := service.taskName(ctx, record.TaskID)
 	if err != nil {
 		return nil, "", err
@@ -247,6 +248,7 @@ func (service *Service) updateEntry(ctx context.Context, userID string, entryID 
 	record.SpaceID = project.SpaceID
 	record.StartedAt = req.StartedAt.UTC()
 	record.StoppedAt = req.StoppedAt
+	markChecked(&record)
 	if err := service.orm.WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, "", errors.Internal("failed to update entry", err)
 	}

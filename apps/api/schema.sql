@@ -252,7 +252,8 @@ CREATE TABLE public.time_entries (
     cowork boolean DEFAULT false NOT NULL,
     attribution_source text,
     attribution_confidence double precision,
-    needs_review boolean DEFAULT false NOT NULL
+    needs_review boolean DEFAULT false NOT NULL,
+    checked_at timestamp with time zone
 );
 
 CREATE SEQUENCE public.time_entries_id_seq

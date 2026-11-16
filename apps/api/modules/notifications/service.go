@@ -121,3 +121,28 @@ func (s *Service) SendActiveTimerReminders(ctx context.Context) (sent, failed in
 	}
 	return sent, failed
 }
+
+// NotifyIdleStopped tells each of userIDs, on their push subscription, that the server
+// stopped their timer after IdleCap without activity.
+func (s *Service) NotifyIdleStopped(ctx context.Context, userIDs []int64) {
+	if len(userIDs) == 0 {
+		return
+	}
+	var targets []reminderTarget
+	if err := s.orm.WithContext(ctx).Table("push_subscriptions").
+		Select("push_subscriptions.user_id, users.locale, push_subscriptions.id AS subscription_id, push_subscriptions.endpoint, push_subscriptions.p256dh, push_subscriptions.auth").
+		Joins("JOIN users ON users.id = push_subscriptions.user_id").
+		Where("push_subscriptions.user_id IN ?", userIDs).
+		Scan(&targets).Error; err != nil {
+		s.logger.Error("failed to list subscriptions for stopped timers", "error", err)
+		return
+	}
+	opts := newWebPushOptions(s)
+	for _, target := range targets {
+		payload, err := pushPayload(idleStops, target.Locale)
+		if err != nil {
+			continue
+		}
+		s.deliver(ctx, opts, target, payload, func() {})
+	}
+}

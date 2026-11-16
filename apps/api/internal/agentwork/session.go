@@ -37,7 +37,8 @@ type Result struct {
 
 // Record attributes the session through resolver, then ensures the owner's agent user and
 // upserts the entry by facile_id in one transaction. The resolver runs first and outside
-// the transaction, since its AI step may wait on the network. Replaying the same session
+// the transaction, since its AI step may wait on the network. It clears facts.At so the
+// owner's own running timer, which may be a forgotten one, never decides an agent's work. Replaying the same session
 // updates the entry in place, except where the owner already reassigned it in Review.
 func Record(ctx context.Context, db *gorm.DB, resolver attribution.Resolver, session Session) (*Result, error) {
 	owner, err := attribution.LoadOwner(db, session.OwnerID)
@@ -45,7 +46,7 @@ func Record(ctx context.Context, db *gorm.DB, resolver attribution.Resolver, ses
 		return nil, err
 	}
 	facts := session.Facts
-	facts.At = session.StartedAt
+	facts.At = time.Time{}
 	resolved, err := resolver.Resolve(ctx, db, owner, []attribution.Facts{facts})
 	if err != nil {
 		return nil, err

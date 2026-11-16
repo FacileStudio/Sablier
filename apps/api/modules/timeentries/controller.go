@@ -54,8 +54,8 @@ func (c *Controller) start(ctx context.Context, userID string, req *StartTimerRe
 	return &resp, nil
 }
 
-func (c *Controller) stop(ctx context.Context, userID string) (*TimeEntryResponse, error) {
-	record, taskName, err := c.service.stopTimer(ctx, userID)
+func (c *Controller) stop(ctx context.Context, userID string, req *StopTimerRequest) (*TimeEntryResponse, error) {
+	record, taskName, err := c.service.stopTimer(ctx, userID, req.At)
 	if err != nil {
 		return nil, err
 	}
@@ -169,5 +169,21 @@ func (c *Controller) running(ctx context.Context, userID string) (*TimeEntryResp
 	}
 	resp := toResponse(record)
 	resp.TaskName = taskName
+	last, err := c.service.lastActive(ctx, *record)
+	if err != nil {
+		return nil, err
+	}
+	resp.LastActiveAt = &last
+	return &resp, nil
+}
+
+func (c *Controller) check(ctx context.Context, userID string) (*TimeEntryResponse, error) {
+	record, taskName, err := c.service.checkTimer(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp := toResponse(record)
+	resp.TaskName = taskName
+	resp.LastActiveAt = record.CheckedAt
 	return &resp, nil
 }
