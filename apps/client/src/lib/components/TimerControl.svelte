@@ -3,20 +3,17 @@
 	import { backend, type Project, type TaskSearchResult, type TimeEntry } from '$lib/backend';
 	import { notifyTimeEntriesChanged } from '$lib/time-entry-events';
 	import { spaceName } from '$lib/space-context.svelte';
-	import { formatDuration, getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
-	import { Badge, Button, IconButton, Tooltip, icons } from '@facile/muse';
+	import { getTimeEntryDurationMs, isTimeEntryPaused } from '$lib/utils';
+	import { recentResults } from '$lib/task-search';
+	import { SNOOZE_MS, stillWorkingDue } from '$lib/afk';
+	import { entryLabel, type TimerActions, type TimerView } from '$lib/timer-view';
 	import ManualSessionDrawer from '$lib/components/ManualSessionDrawer.svelte';
+	import StillWorkingModal from '$lib/components/StillWorkingModal.svelte';
 	import TaskPalette from '$lib/components/TaskPalette.svelte';
+	import TimerFab from '$lib/components/TimerFab.svelte';
+	import TimerPill from '$lib/components/TimerPill.svelte';
 	import { NotificationService } from '$lib/notifications';
 	import { t } from '$lib/i18n/index.svelte';
-	import { fly } from 'svelte/transition';
-
-	const timerIcons = {
-		play: 'solar:play-linear',
-		pause: 'solar:pause-linear',
-		stop: 'solar:stop-linear',
-		restart: 'solar:restart-linear'
-	} as const;
 
 	type Props = {
 		projects: Project[];
@@ -27,175 +24,129 @@
 	let { projects, paletteOpen = $bindable(false), onchange }: Props = $props();
 
 	const ctx = getContext<{ token: string; userEmail: string }>('app');
+	const REFRESH_MS = 5 * 60 * 1000;
 
 	let running = $state<TimeEntry | null>(null);
-	let elapsed = $state(0);
-	let ticker: ReturnType<typeof setInterval> | undefined;
-
+	let last = $state<TaskSearchResult | null>(null);
+	let now = $state(Date.now());
 	let startedSpace = $state<{ entryId: number; name: string | null } | null>(null);
-	let stopping = $state(false);
-	let pausing = $state(false);
-	let resuming = $state(false);
+	let busyAction = $state<'stop' | 'pause' | 'resume' | 'check' | null>(null);
 	let error = $state('');
 	let editDrawerOpen = $state(false);
 	let manualDrawerOpen = $state(false);
-	let fabOpen = $state(false);
+	let snoozedUntil = $state(0);
+	let ticker: ReturnType<typeof setInterval> | undefined;
+	let refresher: ReturnType<typeof setInterval> | undefined;
 
-	const runningPaused = $derived(running ? isTimeEntryPaused(running) : false);
-	const busy = $derived(stopping || pausing || resuming);
-	const runningSpace = $derived(
-		running
+	const project = $derived(projects.find((p) => p.id === running?.project_id));
+	const label = $derived(running ? entryLabel(running, project?.name) : '');
+	const askOpen = $derived(running !== null && !editDrawerOpen && stillWorkingDue(running, now, snoozedUntil));
+	const view: TimerView = $derived({
+		running,
+		elapsed: running ? getTimeEntryDurationMs(running, now) : 0,
+		label,
+		icon: project?.icon ?? null,
+		space: running
 			? (spaceName(running.space_id) ?? (startedSpace?.entryId === running.id ? startedSpace.name : null))
-			: null
-	);
-
-	function projectName(id: number): string {
-		return projects.find((p) => p.id === id)?.name ?? String(id);
-	}
-
-	function startTicker() {
-		stopTicker();
-		if (running) {
-			elapsed = getTimeEntryDurationMs(running);
-			ticker = setInterval(() => {
-				elapsed = getTimeEntryDurationMs(running!);
-			}, 1000);
-		}
-	}
-
-	function stopTicker() {
-		if (ticker !== undefined) {
-			clearInterval(ticker);
-			ticker = undefined;
-		}
-	}
-
-	onMount(async () => {
-		const r = await backend.getRunning(ctx.token);
-		running = r.entry;
-		startTicker();
+			: null,
+		paused: running ? isTimeEntryPaused(running) : false,
+		busy: busyAction !== null,
+		stopping: busyAction === 'stop',
+		pausing: busyAction === 'pause',
+		resuming: busyAction === 'resume',
+		last
 	});
 
-	onDestroy(() => stopTicker());
+	async function refresh() {
+		running = (await backend.getRunning(ctx.token)).entry;
+		if (!running) last = recentResults((await backend.searchTasks(ctx.token, '')).results)[0] ?? null;
+	}
 
-	async function startTimer(result: TaskSearchResult) {
-		running = await backend.startTimer(ctx.token, result.project.id, result.task.id);
-		startedSpace = { entryId: running.id, name: result.space?.name ?? null };
-		startTicker();
+	onMount(() => {
+		void refresh();
+		ticker = setInterval(() => (now = Date.now()), 1000);
+		refresher = setInterval(() => void refresh(), REFRESH_MS);
+	});
+
+	onDestroy(() => {
+		clearInterval(ticker);
+		clearInterval(refresher);
+	});
+
+	function changed() {
 		notifyTimeEntriesChanged();
-		NotificationService.triggerTimerStarted(result.project.name);
 		onchange?.();
 	}
 
-	async function stopTimer() {
-		stopping = true;
+	async function act(kind: NonNullable<typeof busyAction>, failed: string, call: () => Promise<void>) {
+		busyAction = kind;
+		error = '';
 		try {
-			const stoppedProjectId = running!.project_id;
+			await call();
+			changed();
+		} catch (e) {
+			error = e instanceof Error ? e.message : failed;
+		} finally {
+			busyAction = null;
+		}
+	}
+
+	async function startTimer(result: TaskSearchResult) {
+		if (running) {
 			await backend.stopTimer(ctx.token);
 			running = null;
-			stopTicker();
-			elapsed = 0;
-			notifyTimeEntriesChanged();
-			NotificationService.triggerTimerStopped(projectName(stoppedProjectId));
-			onchange?.();
-		} catch (e) {
-			error = e instanceof Error ? e.message : t('timer.failed.stop');
-		} finally {
-			stopping = false;
 		}
+		running = await backend.startTimer(ctx.token, result.project.id, result.task.id);
+		startedSpace = { entryId: running.id, name: result.space?.name ?? null };
+		changed();
+		NotificationService.triggerTimerStarted(result.project.name);
 	}
 
-	async function pauseTimer() {
-		pausing = true;
-		error = '';
-		try {
-			running = await backend.pauseTimer(ctx.token);
-			startTicker();
-			notifyTimeEntriesChanged();
-			NotificationService.triggerTimerPaused(projectName(running!.project_id));
-			onchange?.();
-		} catch (e) {
-			error = e instanceof Error ? e.message : t('timer.failed.pause');
-		} finally {
-			pausing = false;
-		}
+	function stopTimer(at?: string) {
+		return act('stop', t('timer.failed.stop'), async () => {
+			const name = project?.name ?? '';
+			await backend.stopTimer(ctx.token, at);
+			running = null;
+			await refresh();
+			NotificationService.triggerTimerStopped(name);
+		});
 	}
 
-	async function resumeTimer() {
-		resuming = true;
-		error = '';
-		try {
-			running = await backend.resumeTimer(ctx.token);
-			startTicker();
-			notifyTimeEntriesChanged();
-			NotificationService.triggerTimerResumed(projectName(running!.project_id));
-			onchange?.();
-		} catch (e) {
-			error = e instanceof Error ? e.message : t('timer.failed.resume');
-		} finally {
-			resuming = false;
-		}
+	function togglePause() {
+		const paused = view.paused;
+		return act(paused ? 'resume' : 'pause', paused ? t('timer.failed.resume') : t('timer.failed.pause'), async () => {
+			running = paused ? await backend.resumeTimer(ctx.token) : await backend.pauseTimer(ctx.token);
+			const name = project?.name ?? '';
+			if (paused) NotificationService.triggerTimerResumed(name);
+			else NotificationService.triggerTimerPaused(name);
+		});
+	}
+
+	function keepGoing() {
+		return act('check', t('palette.failed'), async () => {
+			running = await backend.checkTimer(ctx.token);
+		});
 	}
 
 	async function handleRunningEditChange() {
-		const result = await backend.getRunning(ctx.token);
-		running = result.entry;
-		startTicker();
-		notifyTimeEntriesChanged();
-		onchange?.();
+		await refresh();
+		changed();
 	}
+
+	const actions: TimerActions = {
+		start: () => (paletteOpen = true),
+		add: () => (manualDrawerOpen = true),
+		edit: () => (editDrawerOpen = true),
+		toggle: () => void togglePause(),
+		stop: () => void stopTimer(),
+		continueLast: () => {
+			if (last) void startTimer(last).catch((e) => (error = e instanceof Error ? e.message : t('palette.failed')));
+		}
+	};
 </script>
 
-<!-- Desktop timer panel -->
 <div class="fixed top-3 left-1/2 z-50 hidden -translate-x-1/2 flex-col items-center gap-2 md:flex">
-	<div
-		class="flex items-center rounded-fc-pill bg-fc-bg/70 p-1.5 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
-	>
-		{#if running}
-			<div class="flex items-center gap-4">
-				<span
-					class="pl-4 font-fc-mono text-fc-2xl font-semibold tabular-nums leading-none text-fc-fg"
-				>
-					{formatDuration(elapsed, { includeSeconds: true })}
-				</span>
-				{#if runningSpace}
-					<Badge class="max-w-40" title={t('timer.space')}>{runningSpace}</Badge>
-				{/if}
-				<div class="flex items-center gap-2">
-					<Button
-						variant={runningPaused ? 'primary' : 'outline'}
-						icon={runningPaused ? timerIcons.restart : timerIcons.pause}
-						onclick={runningPaused ? resumeTimer : pauseTimer}
-						disabled={busy}
-					>
-						{#if runningPaused}
-							{resuming ? t('timer.resuming') : t('timer.resume')}
-						{:else}
-							{pausing ? t('timer.pausing') : t('timer.pause')}
-						{/if}
-					</Button>
-					<Button variant="ghost-danger" icon={timerIcons.stop} onclick={stopTimer} disabled={busy}>
-						{stopping ? t('timer.stopping') : t('timer.stop')}
-					</Button>
-					<IconButton
-						variant="secondary"
-						aria-label={t('timer.editEntry')}
-						onclick={() => (editDrawerOpen = true)}
-						disabled={busy}
-					>
-						<iconify-icon icon={icons.edit} width="18" height="18" class="block"></iconify-icon>
-					</IconButton>
-				</div>
-			</div>
-		{:else}
-			<div class="flex items-center gap-2">
-				<Button icon={timerIcons.play} onclick={() => (paletteOpen = true)}>{t('timer.start')}</Button>
-				<IconButton variant="secondary" aria-label={t('timer.addSession')} onclick={() => (manualDrawerOpen = true)}>
-					<iconify-icon icon={icons.plus} width="18" height="18" class="block"></iconify-icon>
-				</IconButton>
-			</div>
-		{/if}
-	</div>
+	<TimerPill {view} {actions} />
 	{#if error}
 		<p
 			class="rounded-fc-pill bg-fc-bg/70 px-4 py-1.5 text-fc-sm text-fc-danger shadow-lg backdrop-blur-2xl backdrop-saturate-150"
@@ -206,129 +157,26 @@
 	{/if}
 </div>
 
-<!-- Mobile FAB backdrop -->
-{#if fabOpen}
-	<div
-		class="fixed inset-0 z-30 md:hidden"
-		onclick={() => (fabOpen = false)}
-		role="presentation"
-	></div>
-{/if}
+<TimerFab {view} {actions} />
 
-<!-- Mobile FAB -->
-<div class="fixed right-4 bottom-28 z-40 flex flex-col items-end gap-3 md:hidden">
-	{#if running}
-		{#if fabOpen}
-			<div class="flex flex-col items-end gap-2" transition:fly={{ y: 10, duration: 150 }}>
-				<Button
-					size="lg"
-					variant="secondary"
-					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
-					icon={icons.edit}
-					onclick={() => {
-						fabOpen = false;
-						editDrawerOpen = true;
-					}}
-					disabled={busy}
-				>
-					{t('timer.editEntry')}
-				</Button>
-				<Button
-					size="lg"
-					class="shadow-lg"
-					icon={runningPaused ? timerIcons.restart : timerIcons.pause}
-					onclick={() => {
-						fabOpen = false;
-						void (runningPaused ? resumeTimer() : pauseTimer());
-					}}
-					disabled={busy}
-				>
-					{#if runningPaused}
-						{resuming ? t('timer.resuming') : t('timer.resume')}
-					{:else}
-						{pausing ? t('timer.pausing') : t('timer.pause')}
-					{/if}
-				</Button>
-				<Button
-					size="lg"
-					variant="ghost-danger"
-					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
-					icon={timerIcons.stop}
-					onclick={() => {
-						fabOpen = false;
-						void stopTimer();
-					}}
-					disabled={busy}
-				>
-					{stopping ? t('timer.stopping') : t('timer.stop')}
-				</Button>
-			</div>
-		{/if}
-		<button
-			type="button"
-			class="flex h-14 items-center gap-2.5 rounded-fc-pill bg-fc-accent px-5 text-fc-accent-fg shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
-			onclick={() => (fabOpen = !fabOpen)}
-			aria-expanded={fabOpen}
-			aria-label={t('timer.actions')}
-		>
-			<span class="size-2 shrink-0 animate-pulse rounded-fc-full bg-fc-success"></span>
-			<span class="font-fc-mono text-fc-lg font-semibold tabular-nums">
-				{formatDuration(elapsed, { includeSeconds: true })}
-			</span>
-			{#if runningSpace}
-				<span class="max-w-24 truncate text-fc-xs opacity-80">{runningSpace}</span>
-			{/if}
-		</button>
-	{:else}
-		{#if fabOpen}
-			<div class="flex flex-col items-end gap-2" transition:fly={{ y: 10, duration: 150 }}>
-				<Button
-					size="lg"
-					variant="secondary"
-					class="bg-fc-bg/70 shadow-lg backdrop-blur-2xl backdrop-saturate-150"
-					icon={icons.plus}
-					onclick={() => {
-						fabOpen = false;
-						manualDrawerOpen = true;
-					}}
-				>
-					{t('timer.addEntry')}
-				</Button>
-				<Button
-					size="lg"
-					class="shadow-lg"
-					icon={timerIcons.play}
-					onclick={() => {
-						fabOpen = false;
-						paletteOpen = true;
-					}}
-				>
-					{t('timer.start')}
-				</Button>
-			</div>
-		{/if}
-		<Tooltip text={t('timer.actions')} describe={false} class="contents">
-			<button
-				type="button"
-				class="flex size-14 items-center justify-center rounded-fc-pill bg-fc-accent text-fc-accent-fg shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
-				onclick={() => (fabOpen = !fabOpen)}
-				aria-expanded={fabOpen}
-				aria-label={t('timer.actions')}
-			>
-				<iconify-icon
-					icon={fabOpen ? icons.close : timerIcons.play}
-					width="24"
-					height="24"
-					class="block"
-				></iconify-icon>
-			</button>
-		</Tooltip>
-	{/if}
-</div>
-
-<TaskPalette bind:open={paletteOpen} title={t('timer.drawer.title')} {projects} onselect={startTimer} />
+<TaskPalette
+	bind:open={paletteOpen}
+	title={running ? t('timer.switch') : t('timer.start')}
+	{projects}
+	onselect={startTimer}
+/>
 
 {#if running}
+	<StillWorkingModal
+		open={askOpen}
+		entry={running}
+		{label}
+		busy={view.busy}
+		onkeep={keepGoing}
+		onstop={(at) => void stopTimer(at)}
+		onfix={() => (editDrawerOpen = true)}
+		ondismiss={() => (snoozedUntil = Date.now() + SNOOZE_MS)}
+	/>
 	<ManualSessionDrawer
 		{projects}
 		editEntry={running}

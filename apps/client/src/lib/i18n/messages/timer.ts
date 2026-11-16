@@ -14,7 +14,25 @@ export const timer = {
 	'timer.addEntry': ['Add entry', 'Ajouter une entrée', 'Añadir entrada', 'Eintrag hinzufügen'],
 	'timer.actions': ['Timer actions', 'Actions du minuteur', 'Acciones del temporizador', 'Timer-Aktionen'],
 	'timer.space': ['Space', 'Espace', 'Espacio', 'Bereich'],
-	'timer.drawer.title': ['Start a timer', 'Démarrer un minuteur', 'Iniciar un temporizador', 'Timer starten'],
+	'timer.switch': ['Switch task', 'Changer de tâche', 'Cambiar de tarea', 'Aufgabe wechseln'],
+	'timer.continue': ['Continue “{task}”', 'Reprendre « {task} »', 'Continuar «{task}»', '„{task}“ fortsetzen'],
+	'afk.title': ['Still working?', 'Vous travaillez toujours ?', '¿Sigues trabajando?', 'Arbeitest du noch?'],
+	'afk.body': [
+		'Your timer on {task} has had no activity since {time}.',
+		'Votre minuteur sur {task} n’a eu aucune activité depuis {time}.',
+		'Tu temporizador en {task} no tiene actividad desde las {time}.',
+		'Dein Timer für {task} hat seit {time} keine Aktivität.'
+	],
+	'afk.auto': [
+		'Sablier stops a timer on its own after 10 hours without activity.',
+		'Sablier arrête seul un minuteur après 10 heures sans activité.',
+		'Sablier detiene solo un temporizador tras 10 horas sin actividad.',
+		'Sablier stoppt einen Timer nach 10 Stunden ohne Aktivität selbst.'
+	],
+	'afk.keep': ['Keep going', 'Continuer', 'Seguir', 'Weitermachen'],
+	'afk.stopAt': ['Stop at {time}', 'Arrêter à {time}', 'Detener a las {time}', 'Um {time} stoppen'],
+	'afk.stopNow': ['Stop now', 'Arrêter maintenant', 'Detener ahora', 'Jetzt stoppen'],
+	'afk.fix': ['Fix the end time', 'Corriger l’heure de fin', 'Corregir la hora de fin', 'Endzeit korrigieren'],
 	'timer.selectProject': ['Select a project', 'Choisir un projet', 'Seleccionar un proyecto', 'Projekt auswählen'],
 	'timer.selectProjectFirst': [
 		'Select a project first',
@@ -136,10 +154,17 @@ export const timer = {
 	'attribution.fallback': ['Unassigned', 'Non attribuée', 'Sin asignar', 'Nicht zugeordnet'],
 	'palette.label': ['Search tasks', 'Rechercher une tâche', 'Buscar tareas', 'Aufgaben suchen'],
 	'palette.placeholder': [
-		'Search a task or a project',
-		'Rechercher une tâche ou un projet',
-		'Buscar una tarea o un proyecto',
-		'Aufgabe oder Projekt suchen'
+		'What are you working on?',
+		'Sur quoi travaillez-vous ?',
+		'¿En qué estás trabajando?',
+		'Woran arbeitest du?'
+	],
+	'palette.back': ['Back', 'Retour', 'Volver', 'Zurück'],
+	'palette.typeToCreate': [
+		'Type a task name to create it',
+		'Tapez un nom de tâche pour la créer',
+		'Escribe un nombre de tarea para crearla',
+		'Gib einen Aufgabennamen ein, um sie anzulegen'
 	],
 	'palette.recent': ['Recent', 'Récentes', 'Recientes', 'Zuletzt'],
 	'palette.create': ['New task', 'Nouvelle tâche', 'Nueva tarea', 'Neue Aufgabe'],

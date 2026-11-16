@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- AFK checks. After 4 hours with no activity, the app asks "Still working?": keep going, stop at the last activity, stop now, or fix the end time. Activity is the start, a resume, an edit, a "keep going" answer, or a heartbeat chained to one within 15 minutes.
+- The server stops a running timer after 10 hours with no activity, at the last activity (or 10 hours after the last check when nothing followed it), and sends a push notice. Paused timers are left alone.
+- `POST /api/time-entries/check` keeps the running timer. `POST /api/time-entries/stop` takes an optional `at`. `GET /api/time-entries/running` returns `last_active_at`.
+
+### Changed
+
+- The timer bar names the running task and project, and clicking the name edits the entry. When idle, it offers "Continue" on the last task.
+- The start palette is "Start session" everywhere, asks "What are you working on?", and switches tasks when a timer already runs, so Search no longer fails with "a timer is already running". Picking another project shows a Back button.
+
+### Fixed
+
+- Agent sessions no longer take the owner's running timer as their project: a forgotten timer had booked Bulle's idea runs to an unrelated task.
+
 ## [1.27.1] - 2026-11-16
 
 ### Security
