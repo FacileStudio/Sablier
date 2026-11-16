@@ -425,10 +425,6 @@ func newDeletions(db *gorm.DB, accounts *auth.Accounts, appEnv *env.Config, appL
 // iconify-icon.
 var externalConnect = []string{"https://api-ardoise.facile.studio", "https://api.iconify.design"}
 
-// externalScript lists the origins the built client loads scripts from besides itself:
-// Vision's tracker, which app.html loads on the production host.
-var externalScript = []string{"https://vision.facile.studio"}
-
 // connectSources adds the browser's Journal origin, which is deployment configuration and
 // not a constant, to the origins above.
 func connectSources(journalBrowserURL string) []string {
@@ -444,7 +440,7 @@ func connectSources(journalBrowserURL string) []string {
 // would otherwise block, and the external origins above. A client directory that cannot be
 // hashed is logged and leaves the default script policy, which only reports.
 func securityConfig(clientDir, journalBrowserURL string, appLogger *slog.Logger) troncmiddleware.SecurityConfig {
-	sources := map[string][]string{"connect-src": connectSources(journalBrowserURL), "script-src": externalScript}
+	sources := map[string][]string{"connect-src": connectSources(journalBrowserURL)}
 	if spa.Available(clientDir) {
 		hashes, err := spa.InlineScriptHashes(clientDir)
 		if err != nil {

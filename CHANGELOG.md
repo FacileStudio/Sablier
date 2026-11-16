@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Security
+
+- Sablier serves the Vision tracker itself at `/vision-tracker.js`, a pinned copy that only sends image beacons, instead of loading `https://vision.facile.studio/s.js`. The content security policy no longer lists the Vision origin in `script-src`.
+
 ## [1.27.0] - 2026-11-16
 
 ### Added
