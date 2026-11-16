@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.28.0] - 2026-11-16
+
 ### Added
 
 - AFK checks. After 4 hours with no activity, the app asks "Still working?": keep going, stop at the last activity, stop now, or fix the end time. Activity is the start, a resume, an edit, a "keep going" answer, or a heartbeat chained to one within 15 minutes.
