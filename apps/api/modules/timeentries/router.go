@@ -30,8 +30,20 @@ func parseListFilter(query url.Values) (listFilter, error) {
 	return filter, nil
 }
 
+// stopRequest reads the optional body of POST /time-entries/stop; an empty body stops now.
+func stopRequest(w http.ResponseWriter, request *http.Request) (*StopTimerRequest, error) {
+	var req StopTimerRequest
+	if request.ContentLength <= 0 {
+		return &req, nil
+	}
+	if err := httpjson.DecodeJSON(w, request, &req); err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
 // RegisterRoutes wires the authenticated /time-entries endpoints, including the
-// timer subroutes for start, stop, pause and resume.
+// timer subroutes for start, stop, check, pause and resume.
 func RegisterRoutes(router chi.Router, service *Service, authService *auth.Service) {
 	router.Route("/time-entries", func(router chi.Router) {
 		router.Use(middleware.RequireAuth(authService))
@@ -82,7 +94,22 @@ func RegisterRoutes(router chi.Router, service *Service, authService *auth.Servi
 
 		router.Post("/stop", func(w http.ResponseWriter, request *http.Request) {
 			identity, _ := authcontext.IdentityFromContext(request.Context())
-			resp, err := service.controller.stop(request.Context(), identity.UserID)
+			req, err := stopRequest(w, request)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			resp, err := service.controller.stop(request.Context(), identity.UserID, req)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			httpjson.WriteJSON(w, http.StatusOK, resp)
+		})
+
+		router.Post("/check", func(w http.ResponseWriter, request *http.Request) {
+			identity, _ := authcontext.IdentityFromContext(request.Context())
+			resp, err := service.controller.check(request.Context(), identity.UserID)
 			if err != nil {
 				httpjson.WriteError(w, err)
 				return

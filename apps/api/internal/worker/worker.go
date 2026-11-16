@@ -7,6 +7,7 @@ import (
 
 	"github.com/FacileStudio/Sablier/apps/api/modules/heartbeats"
 	"github.com/FacileStudio/Sablier/apps/api/modules/notifications"
+	"github.com/FacileStudio/Sablier/apps/api/modules/timeentries"
 )
 
 // RunNotificationWorker runs a ticking loop that sends active-timer
@@ -41,6 +42,29 @@ func RunHeartbeatWorker(ctx context.Context, heartbeatService *heartbeats.Servic
 				appLogger.Error("heartbeats: maintenance failed", slog.Any("error", err))
 			}
 			appLogger.Info("heartbeats: drafts auto-confirmed", slog.Int("confirmed", confirmed))
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// RunIdleTimerWorker stops, once per minute, the running timers that went
+// timeentries.IdleCap without activity, and tells their owners, until ctx is canceled.
+func RunIdleTimerWorker(ctx context.Context, timers *timeentries.Service, notifService *notifications.Service, appLogger *slog.Logger) {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			stopped, err := timers.StopIdleTimers(ctx, time.Now().UTC())
+			if err != nil {
+				appLogger.Error("idle timers: stop failed", slog.Any("error", err))
+			}
+			if len(stopped) > 0 {
+				appLogger.Info("idle timers: stopped", slog.Int("count", len(stopped)))
+				notifService.NotifyIdleStopped(ctx, stopped)
+			}
 		case <-ctx.Done():
 			return
 		}

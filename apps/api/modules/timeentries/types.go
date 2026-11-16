@@ -14,6 +14,12 @@ type StartTimerRequest struct {
 	SpaceID   *string `json:"space_id"`
 }
 
+// StopTimerRequest is the optional body for stopping the timer. At ends the entry earlier
+// than now, no earlier than the timer's last check; absent means now.
+type StopTimerRequest struct {
+	At *time.Time `json:"at"`
+}
+
 // CreateEntryRequest is the body for creating a manual time entry. SpaceID is ignored like
 // StartTimerRequest's. Attribution is set only by the modules that book on a user's behalf.
 type CreateEntryRequest struct {
@@ -53,6 +59,7 @@ type TimeEntryResponse struct {
 	PausedDuration int64      `json:"paused_duration_ms"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
+	LastActiveAt   *time.Time `json:"last_active_at,omitempty"`
 	AttributionResponse
 }
 
