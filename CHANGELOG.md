@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.28.1] - 2026-11-16
+
+### Changed
+
+- Tabs and segmented option cards match the button height (36px, 44px on touch).
+- The avatar menu is slimmer: Downloads and the subscription link move to Settings, Preferences.
+
 ## [1.28.0] - 2026-11-16
 
 ### Added
