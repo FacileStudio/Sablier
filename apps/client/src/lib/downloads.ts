@@ -27,9 +27,9 @@ export const INSTALL_METHODS: CliCommand[] = [
 	},
 	{
 		get label() {
-			return t('downloads.install.facile');
+			return t('downloads.install.kit');
 		},
-		command: 'facile install sablier'
+		command: 'kit add sablier'
 	},
 	{
 		get label() {
