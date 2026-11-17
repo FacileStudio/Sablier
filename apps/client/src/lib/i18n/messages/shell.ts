@@ -171,7 +171,7 @@ export const shell = {
 		'Die Apps teilen deine Projekte und Timer. Melde dich einmal mit Facile an.'
 	],
 	'downloads.install.script': ['Install script', 'Script d’installation', 'Script de instalación', 'Installationsskript'],
-	'downloads.install.facile': ['With facile', 'Avec facile', 'Con facile', 'Mit facile'],
+	'downloads.install.kit': ['With kit', 'Avec kit', 'Con kit', 'Mit kit'],
 	'downloads.install.brew': ['Homebrew', 'Homebrew', 'Homebrew', 'Homebrew'],
 	'downloads.android.heading': ['Installing the APK', 'Installer l’APK', 'Instalar el APK', 'Die APK installieren'],
 	'downloads.android.step1.title': ['Download the APK', 'Téléchargez l’APK', 'Descarga el APK', 'APK herunterladen'],

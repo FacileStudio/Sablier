@@ -63,12 +63,12 @@ The client runs on <http://localhost:5173> and proxies `/api` and `/files` to th
 ## Command line
 
 [`sablier`](https://github.com/FacileStudio/sablier-cli) drives Sablier from a terminal. It
-installs through [facile](https://github.com/FacileStudio/facile), the suite installer,
+installs through [kit](https://github.com/FacileStudio/kit), the Facile package manager,
 which fetches a prebuilt binary and puts `~/.local/bin` on your PATH:
 
 ```sh
 curl -fsSL https://get.facile.studio | bash
-facile install sablier
+kit add sablier
 ```
 
 `facile login sablier` signs in through Facile SSO in your browser.

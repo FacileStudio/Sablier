@@ -21,7 +21,7 @@ describe('release assets', () => {
 	it('install the CLI from sablier-cli and the FacileStudio tap', () => {
 		expect(INSTALL_METHODS.map((method) => method.command)).toEqual([
 			'curl -fsSL https://raw.githubusercontent.com/FacileStudio/sablier-cli/main/install.sh | bash',
-			'facile install sablier',
+			'kit add sablier',
 			'brew install FacileStudio/tap/sablier'
 		]);
 	});
